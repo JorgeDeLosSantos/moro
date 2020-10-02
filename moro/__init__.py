@@ -1,5 +1,5 @@
 """
-Numython, (c) 2020
+Numython R&D, (c) 2020
 
 This module has been designed for academic purposes, using SymPy as base library. 
 It's easy to check that SymPy is slower than NumPy specially in matrix algebra, 

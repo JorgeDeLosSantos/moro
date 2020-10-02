@@ -433,7 +433,7 @@ def _htm2zxz(H, deg=False):
     return phi,theta,psi
 
 
-def htmtra(d):
+def htmtra(*args,**kwargs):
     """
     Calculate the homogeneous transformation matrix of a translation
     
@@ -472,6 +472,22 @@ def htmtra(d):
     ⎢          ⎥
     ⎣0  0  0  1⎦
     """
+    if args and not kwargs:
+        if isinstance(args[0], (list,tuple)):
+            d = args[0]
+        elif len(args)==3:
+            d = args
+    elif kwargs and not args:
+        d = [0,0,0]
+        if "dx" in kwargs: 
+            d[0] = kwargs.get("dx")
+        if "dy" in kwargs:
+            d[1] = kwargs.get("dy")
+        if "dz" in kwargs:
+            d[2] = kwargs.get("dz")
+    else:
+        raise ValueError("Only pass *args or **kwargs, not both")
+
     dx,dy,dz = d[0],d[1],d[2]
     M = Matrix([[1,0,0,dx],
                 [0,1,0,dy],
