@@ -91,7 +91,8 @@ def ishtm(H):
     """
     nrow,ncol = H.shape
     if nrow == ncol == 4:
-        return True
+        if isrot(H[:3,:3]) and H[3,3]==1 and not any(H[3,:3]):
+            return True
     return False
     
 
@@ -178,4 +179,5 @@ def sympy2float(sympy_object):
 
 
 if __name__=="__main__":
-    print( sympy_matrix_to_numpy_float(H) )
+    H = Matrix([[1,1,0,5],[1,0,0,4],[0,0,1,0],[0,0,0,1]])
+    print(ishtm(H))

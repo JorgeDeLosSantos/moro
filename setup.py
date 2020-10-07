@@ -9,12 +9,12 @@ with open(os.path.join(dir_setup, 'moro', 'version.py')) as f:
 
 setup(name='moro',
       version=__version__,
-      description='Python library for modeling of robots',
+      description='Python library for kinematic and dynamic modeling of robots',
       author='Pedro Jorge De Los Santos',
       author_email='delossantosmfq@gmail.com',
       license = "MIT",
       keywords=["Robotics","Kinematics","Dynamics"],
-      url='https://github.com/moro',
+      url='https://github.com/numython-rd/moro',
       packages=['moro',],
       install_requires=['sympy','matplotlib'],
       classifiers=[
