@@ -363,6 +363,10 @@ class RigidBody2D(object):
         V = self.H[:3,1]
         plt.quiver(float(O[0]), float(O[1]), float(U[0]), float(U[1]), color="r", zorder=1000, scale=kaxis)
         plt.quiver(float(O[0]), float(O[1]), float(V[0]), float(V[1]), color="g", zorder=1001, scale=kaxis)
+        self.ax = plt.gca()
+
+    def _gca(self):
+        return self.ax
 
         
     def get_centroid(self):

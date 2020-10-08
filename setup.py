@@ -7,6 +7,9 @@ with open(os.path.join(dir_setup, 'moro', 'version.py')) as f:
     # Defines __version__
     exec(f.read())
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(name='moro',
       version=__version__,
       description='Python library for kinematic and dynamic modeling of robots',
@@ -15,6 +18,8 @@ setup(name='moro',
       license = "MIT",
       keywords=["Robotics","Kinematics","Dynamics"],
       url='https://github.com/numython-rd/moro',
+      long_description=long_description,
+      long_description_content_type="text/markdown",
       packages=['moro',],
       install_requires=['sympy','matplotlib'],
       classifiers=[
