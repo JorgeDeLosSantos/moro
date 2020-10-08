@@ -38,23 +38,25 @@ class Robot(object):
         """
         z-dir of every {i}-Frame wrt {0}-Frame
         """
-        idx = i - 1
-        if idx == 0: return Matrix([[0],[0],[1]])
-        MTH = eye(4)
-        for k in range(i):
-            MTH = MTH*self.Ts[idx]
-        return MTH[:3,2]
+        # idx = i - 1
+        # if idx == 0: return Matrix([[0],[0],[1]])
+        # MTH = eye(4)
+        # for k in range(i):
+        #     MTH = MTH*self.Ts[idx]
+        # return MTH[:3,2]
+        return self.T_i0(i)[:3,2]
     
     def p(self,i):
         """
         Position for every {i}-Frame wrt {0}-Frame
         """
-        idx = i - 1
-        if i == 0: return Matrix([[0],[0],[0]])
-        MTH = eye(4)
-        for k in range(i):
-            MTH = MTH*self.Ts[idx]
-        return MTH[:3,3]
+        # idx = i - 1
+        # if i == 0: return Matrix([[0],[0],[0]])
+        # MTH = eye(4)
+        # for k in range(i):
+        #     MTH = MTH*self.Ts[idx]
+        # return MTH[:3,3]
+        return self.T_i0(i)[:3,3]
     
     @property
     def J(self):
@@ -66,10 +68,10 @@ class Robot(object):
         for i in range(1, n+1):
             idx = i - 1
             if self.joint_types[idx]=='r':
-                jp = self.z(i).cross(self.p(n) - self.p(i))
-                jo = self.z(i)
+                jp = self.z(i-1).cross(self.p(n) - self.p(i-1))
+                jo = self.z(i-1)
             else:
-                jp = self.z(i)
+                jp = self.z(i-1)
                 jo = zeros(3,1)
             jp = jp.col_join(jo)
             M_[:,idx] = jp
