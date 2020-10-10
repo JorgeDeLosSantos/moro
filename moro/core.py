@@ -34,9 +34,9 @@ class Robot(object):
     
     >>> rr = Robot((l1,0,0,t1), (l2,0,0,t2))
 
-    or 
+    or
 
-    >> rr = Robot((l1,0,0,t1,"r"), (l2,0,0,t2,"r"))
+    >>> rr2 = Robot((l1,0,0,t1,"r"), (l2,0,0,t2,"r"))
     """
     def __init__(self,*args):
         self.Ts = [] # Transformation matrices i to i-1
@@ -48,6 +48,7 @@ class Robot(object):
                 self.joint_types.append(k[4])
             else:
                 self.joint_types.append('r')
+
             if self.joint_types[-1] is "r":
                 self.qs.append(k[3])
             else:
@@ -56,13 +57,13 @@ class Robot(object):
     
     def z(self,i):
         """
-        z-dir of every {i}-Frame wrt {0}-Frame
+        Get the z-dir of every {i}-Frame w.r.t. {0}-Frame
         """
         return self.T_i0(i)[:3,2]
     
     def p(self,i):
         """
-        Position for every {i}-Frame wrt {0}-Frame
+        Get the position for every {i}-Frame w.r.t. {0}-Frame
         """
         return self.T_i0(i)[:3,3]
     
@@ -87,35 +88,54 @@ class Robot(object):
 
     @property
     def dof(self):
+        """
+        Get the degrees of freedom
+        """
         return self._dof
 
     @property
     def T(self):
         """ 
-        T_n^0 
-        Homogeneous transformation matrix of {N}-Frame (Tool) wrt 
-        {0}-Frame
+        Get Homogeneous transformation matrix of {N}-Frame w.r.t. {0}-Frame
         """
         return simplify(functools.reduce(operator.mul, self.Ts))
         
     def T_ij(self,i,j):
         """
-        j T i matrix
+        Get the HTM of {i}-Frame w.r.t. {j}-Frame.
         """
         if i == j: return eye(4)
         return simplify(functools.reduce(operator.mul, self.Ts[j:i]))
         
     def T_i0(self,i):
+        """
+        Get the HTM of {i}-Frame w.r.t. {0}-Frame.
+        """
         if i == 0:
             return eye(4)
         else:
-            return self.T_ij(i,0) #simplify(functools.reduce(operator.mul, self.Ts[:i]))
+            return self.T_ij(i,0) 
         
     def R_i0(self,i):
+        """
+        Get the rotation matrix of {i}-Frame w.r.t. {0}-Frame.
+        """
         return self.T_i0(i)[:3,:3]
         
     def plot_diagram(self,vals):
-        #return None
+        """
+        Draw a simple wire-diagram or kinematic-diagram of the manipulator.
+
+        Parameters
+        ----------
+
+        vals : dict
+            Dictionary like: {svar1: nvalue1, svar2: nvalue2, ...}, 
+            where svar1, svar2, ... are symbolic variables that are 
+            currently used in model, and nvalue1, nvalue2, ... 
+            are the numerical values that will substitute these variables.
+
+        """
         fig = plt.figure()
         ax = fig.gca(projection='3d')
         
@@ -138,16 +158,16 @@ class Robot(object):
         px,py,pz = float(X[-1]),float(Y[-1]),float(Z[-1])
         dim = max([px,py,pz])
         
-        self.draw_uvw(eye(4),ax, dim)
+        self._draw_uvw(eye(4),ax, dim)
         for T in Ti_0:
-            self.draw_uvw(T, ax, dim)
+            self._draw_uvw(T, ax, dim)
             
         ax.set_xlim(-dim, dim)
         ax.set_ylim(-dim, dim)
         ax.set_zlim(-dim, dim)
         plt.show()
     
-    def draw_uvw(self,H,ax,sz=1):
+    def _draw_uvw(self,H,ax,sz=1):
         u = H[:3,0]
         v = H[:3,1]
         w = H[:3,2]
@@ -158,6 +178,9 @@ class Robot(object):
         ax.quiver(o[0],o[1],o[2],w[0],w[1],w[2],color="b", length=L)
     
     def qi(self, i):
+        """
+        Get the i-th articular variable.
+        """
         idx = i - 1
         return self.qs[idx]
     

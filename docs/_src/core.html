@@ -154,7 +154,20 @@
 <em class="property">class </em><code class="descclassname">moro.core.</code><code class="descname">Robot</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Define a robot-serial-arm given the Denavit-Hartenberg parameters 
-and joint type, as tuples:</p>
+and joint type, as tuples.</p>
+<p>Each tuple must have the form:</p>
+<p>(a_i, alpha_i, d_i, theta_i)</p>
+<p>Or including the joint type:</p>
+<p>($a_i$, $alpha_i$, $d_i$, $theta_i$, $joint_type$)</p>
+<p>All parameters are <cite>int</cite> or <cite>floats</cite>, or a symbolic variable. 
+Numeric angles must be passed in radians.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rr</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">((</span><span class="n">l1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t1</span><span class="p">),</span> <span class="p">(</span><span class="n">l2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t2</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rr2</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">((</span><span class="n">l1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t1</span><span class="p">,</span><span class="s2">&quot;r&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">l2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t2</span><span class="p">,</span><span class="s2">&quot;r&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
 <dl class="method">
 <dt id="moro.core.Robot.I_i">
 <code class="descname">I_i</code><span class="sig-paren">(</span><em>i</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.I_i"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.I_i" title="Permalink to this definition">¶</a></dt>

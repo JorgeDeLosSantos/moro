@@ -162,7 +162,27 @@
 <div class="viewcode-block" id="Robot"><a class="viewcode-back" href="../../_src/core.html#moro.core.Robot">[docs]</a><span class="k">class</span> <span class="nc">Robot</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Define a robot-serial-arm given the Denavit-Hartenberg parameters </span>
-<span class="sd">    and joint type, as tuples:</span>
+<span class="sd">    and joint type, as tuples.</span>
+
+<span class="sd">    Each tuple must have the form:</span>
+
+<span class="sd">    (a_i, alpha_i, d_i, theta_i)</span>
+
+<span class="sd">    Or including the joint type:</span>
+
+<span class="sd">    ($a_i$, $alpha_i$, $d_i$, $theta_i$, $joint_type$)</span>
+
+<span class="sd">    All parameters are `int` or `floats`, or a symbolic variable. </span>
+<span class="sd">    Numeric angles must be passed in radians.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    </span>
+<span class="sd">    &gt;&gt;&gt; rr = Robot((l1,0,0,t1), (l2,0,0,t2))</span>
+
+<span class="sd">    or</span>
+
+<span class="sd">    &gt;&gt;&gt; rr2 = Robot((l1,0,0,t1,&quot;r&quot;), (l2,0,0,t2,&quot;r&quot;))</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">Ts</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># Transformation matrices i to i-1</span>
@@ -184,23 +204,13 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        z-dir of every {i}-Frame wrt {0}-Frame</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="k">return</span> <span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">],[</span><span class="mi">1</span><span class="p">]])</span>
-        <span class="n">MTH</span> <span class="o">=</span> <span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
-            <span class="n">MTH</span> <span class="o">=</span> <span class="n">MTH</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">Ts</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">MTH</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span></div>
     
 <div class="viewcode-block" id="Robot.p"><a class="viewcode-back" href="../../_src/core.html#moro.core.Robot.p">[docs]</a>    <span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Position for every {i}-Frame wrt {0}-Frame</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="k">return</span> <span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">]])</span>
-        <span class="n">MTH</span> <span class="o">=</span> <span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
-            <span class="n">MTH</span> <span class="o">=</span> <span class="n">MTH</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">Ts</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">MTH</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span></div>
     
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">J</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -212,10 +222,10 @@
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
             <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;r&#39;</span><span class="p">:</span>
-                <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
-                <span class="n">jo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+                <span class="n">jo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
                 <span class="n">jo</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">jp</span> <span class="o">=</span> <span class="n">jp</span><span class="o">.</span><span class="n">col_join</span><span class="p">(</span><span class="n">jo</span><span class="p">)</span>
             <span class="n">M_</span><span class="p">[:,</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">jp</span>
