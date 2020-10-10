@@ -197,6 +197,10 @@ class Robot(object):
         pass
         
     def set_mass(self,mass):
+        """
+        Set mass for each link using a list like: [m1, m2, ..., mn], where 
+        m1, m2, ..., mn, are numeric or symbolic values.
+        """
         self.mass = mass
         
     def set_inertia_tensors(self):
