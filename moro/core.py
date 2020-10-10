@@ -16,7 +16,27 @@ __all__ = ["Robot", "RigidBody2D"]
 class Robot(object):
     """
     Define a robot-serial-arm given the Denavit-Hartenberg parameters 
-    and joint type, as tuples:
+    and joint type, as tuples.
+
+    Each tuple must have the form:
+
+    (a_i, alpha_i, d_i, theta_i)
+
+    Or including the joint type:
+
+    (a_i, alpha_i, d_i, theta_i, joint_type)
+
+    All parameters are `int` or `floats`, or a symbolic variable. 
+    Numeric angles must be passed in radians.
+
+    Examples
+    --------
+    
+    >>> rr = Robot((l1,0,0,t1), (l2,0,0,t2))
+
+    or 
+
+    >> rr = Robot((l1,0,0,t1,"r"), (l2,0,0,t2,"r"))
     """
     def __init__(self,*args):
         self.Ts = [] # Transformation matrices i to i-1
@@ -38,24 +58,12 @@ class Robot(object):
         """
         z-dir of every {i}-Frame wrt {0}-Frame
         """
-        # idx = i - 1
-        # if idx == 0: return Matrix([[0],[0],[1]])
-        # MTH = eye(4)
-        # for k in range(i):
-        #     MTH = MTH*self.Ts[idx]
-        # return MTH[:3,2]
         return self.T_i0(i)[:3,2]
     
     def p(self,i):
         """
         Position for every {i}-Frame wrt {0}-Frame
         """
-        # idx = i - 1
-        # if i == 0: return Matrix([[0],[0],[0]])
-        # MTH = eye(4)
-        # for k in range(i):
-        #     MTH = MTH*self.Ts[idx]
-        # return MTH[:3,3]
         return self.T_i0(i)[:3,3]
     
     @property
