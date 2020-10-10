@@ -6,6 +6,11 @@
 Welcome to moro's documentation!
 ================================
 
+.. image:: https://numython-rd.github.io/projects/moro/img/logo-moro.png
+  :width: 180
+
+Moro is a Python library for kinematic and dynamic modeling of serial robots.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

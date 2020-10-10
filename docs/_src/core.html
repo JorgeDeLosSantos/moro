@@ -158,7 +158,7 @@ and joint type, as tuples.</p>
 <p>Each tuple must have the form:</p>
 <p>(a_i, alpha_i, d_i, theta_i)</p>
 <p>Or including the joint type:</p>
-<p>($a_i$, $alpha_i$, $d_i$, $theta_i$, $joint_type$)</p>
+<p>(a_i, alpha_i, d_i, theta_i, joint_type)</p>
 <p>All parameters are <cite>int</cite> or <cite>floats</cite>, or a symbolic variable. 
 Numeric angles must be passed in radians.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rr</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">((</span><span class="n">l1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t1</span><span class="p">),</span> <span class="p">(</span><span class="n">l2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t2</span><span class="p">))</span>
@@ -183,36 +183,32 @@ Numeric angles must be passed in radians.</p>
 <dl class="method">
 <dt id="moro.core.Robot.R_i0">
 <code class="descname">R_i0</code><span class="sig-paren">(</span><em>i</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.R_i0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.R_i0" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the rotation matrix of {i}-Frame w.r.t. {0}-Frame.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="moro.core.Robot.T">
 <code class="descname">T</code><a class="headerlink" href="#moro.core.Robot.T" title="Permalink to this definition">¶</a></dt>
-<dd><p>T_n^0 
-Homogeneous transformation matrix of {N}-Frame (Tool) wrt 
-{0}-Frame</p>
+<dd><p>Get Homogeneous transformation matrix of {N}-Frame w.r.t. {0}-Frame</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="moro.core.Robot.T_i0">
 <code class="descname">T_i0</code><span class="sig-paren">(</span><em>i</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.T_i0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.T_i0" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the HTM of {i}-Frame w.r.t. {0}-Frame.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="moro.core.Robot.T_ij">
 <code class="descname">T_ij</code><span class="sig-paren">(</span><em>i</em>, <em>j</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.T_ij"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.T_ij" title="Permalink to this definition">¶</a></dt>
-<dd><p>j T i matrix</p>
+<dd><p>Get the HTM of {i}-Frame w.r.t. {j}-Frame.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="moro.core.Robot.dof">
 <code class="descname">dof</code><a class="headerlink" href="#moro.core.Robot.dof" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.draw_uvw">
-<code class="descname">draw_uvw</code><span class="sig-paren">(</span><em>H</em>, <em>ax</em>, <em>sz=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.draw_uvw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.draw_uvw" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the degrees of freedom</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="moro.core.Robot.get_dynamic_model">
@@ -241,13 +237,21 @@ Homogeneous transformation matrix of {N}-Frame (Tool) wrt
 <dl class="method">
 <dt id="moro.core.Robot.p">
 <code class="descname">p</code><span class="sig-paren">(</span><em>i</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.p"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.p" title="Permalink to this definition">¶</a></dt>
-<dd><p>Position for every {i}-Frame wrt {0}-Frame</p>
+<dd><p>Get the position for every {i}-Frame w.r.t. {0}-Frame</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="moro.core.Robot.plot_diagram">
 <code class="descname">plot_diagram</code><span class="sig-paren">(</span><em>vals</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.plot_diagram"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.plot_diagram" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Draw a simple wire-diagram or kinematic-diagram of the manipulator.</p>
+<dl class="docutils">
+<dt>vals <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd>Dictionary like: {svar1: nvalue1, svar2: nvalue2, …}, 
+where svar1, svar2, … are symbolic variables that are 
+currently used in model, and nvalue1, nvalue2, … 
+are the numerical values that will substitute these variables.</dd>
+</dl>
+</dd></dl>
 
 <dl class="method">
 <dt id="moro.core.Robot.plot_workspace">
@@ -264,7 +268,8 @@ Homogeneous transformation matrix of {N}-Frame (Tool) wrt
 <dl class="method">
 <dt id="moro.core.Robot.qi">
 <code class="descname">qi</code><span class="sig-paren">(</span><em>i</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.qi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.qi" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the i-th articular variable.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="moro.core.Robot.qis_range">
@@ -315,7 +320,7 @@ Homogeneous transformation matrix of {N}-Frame (Tool) wrt
 <dl class="method">
 <dt id="moro.core.Robot.z">
 <code class="descname">z</code><span class="sig-paren">(</span><em>i</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/moro/core.html#Robot.z"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.z" title="Permalink to this definition">¶</a></dt>
-<dd><p>z-dir of every {i}-Frame wrt {0}-Frame</p>
+<dd><p>Get the z-dir of every {i}-Frame w.r.t. {0}-Frame</p>
 </dd></dl>
 
 </dd></dl>
