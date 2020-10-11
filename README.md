@@ -27,4 +27,6 @@ Also, Jupyter Notebooks are available in: [https://nbviewer.jupyter.org/github/n
 
 Please report any bugs that you find, use the issue tracker: [https://github.com/numython-rd/moro/issues](https://github.com/numython-rd/moro/issues)
 
-# 
+# Roadmap
+s
+Roadmap of moro: https://github.com/numython-rd/moro/wiki/Roadmap

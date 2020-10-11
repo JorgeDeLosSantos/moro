@@ -15,7 +15,7 @@ from sympy import solve, symbols, init_printing, pi, simplify
 from sympy.matrices import Matrix, eye, zeros, ones
 from sympy.physics.mechanics import init_vprinting
 from .abc import * # To use common symbolic variables
-from .core import * 
+from .core import *
 from .plotting import * 
 from .transformations import * 
 from .util import *

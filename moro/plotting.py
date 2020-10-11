@@ -8,7 +8,10 @@ from sympy.matrices import Matrix,eye
 from moro.transformations import *
 from moro.util import *
 
-__all__ = ["plot_euler", "draw_uv", "draw_uvw"]
+# __all__ = ["plot_euler", "draw_uv", "draw_uvw"]
+__all__ = ["fake"]
+
+fake = 0
 
 def plot_euler(phi,theta,psi,seq="zxz"):
     fig = plt.figure()
@@ -23,10 +26,10 @@ def plot_euler(phi,theta,psi,seq="zxz"):
         R3 = R2*rotz(psi)
     else:
         R1 = R2 = R3 = eye(4)
-    draw_uvw(eye(4), ax, sz=8)
-    draw_uvw(R1, ax, sz=6)
-    draw_uvw(R2, ax, sz=4)
-    draw_uvw(R3, ax, sz=3)
+    draw_uvw(eye(4), ax, sz=6, alpha=0.4)
+    draw_uvw(R1, ax, sz=6, alpha=0.6)
+    draw_uvw(R2, ax, sz=6, alpha=0.8)
+    draw_uvw(R3, ax, sz=6, alpha=1.0)
     ax.set_xlim([-1,1])
     ax.set_ylim([-1,1])
     ax.set_zlim([-1,1])
@@ -34,8 +37,7 @@ def plot_euler(phi,theta,psi,seq="zxz"):
     ax.axis('off')
 
     
-    
-def draw_uvw(H,ax,color=("r","g","b"),sz=1):
+def draw_uvw(H,ax,color=("r","g","b"),sz=1,alpha=1.0):
     u = H[:3,0]
     v = H[:3,1]
     w = H[:3,2]
@@ -49,16 +51,18 @@ def draw_uvw(H,ax,color=("r","g","b"),sz=1):
     else:
         colorl = color
     ax.quiver(o[0],o[1],o[2],u[0],u[1],u[2], color=colorl[0], 
-              length=L, arrow_length_ratio=0.2)
+              length=L, arrow_length_ratio=0.2, alpha=alpha)
     ax.quiver(o[0],o[1],o[2],v[0],v[1],v[2], color=colorl[1], 
-              length=L, arrow_length_ratio=0.2)
+              length=L, arrow_length_ratio=0.2, alpha=alpha)
     ax.quiver(o[0],o[1],o[2],w[0],w[1],w[2], color=colorl[2], 
-              length=L, arrow_length_ratio=0.2)
+              length=L, arrow_length_ratio=0.2, alpha=alpha)
 
 
 def draw_xyz(*args, **kwargs):
     return draw_uvw(*args, **kwargs)
 
+def draw_frame(*args, **kwargs):
+    return draw_uvw(*args, **kwargs)
 
 def draw_uv(H, ax, name="S0", color=("r","g"), sz=1):
     tpos = H*Matrix([1,1,0,1])
@@ -83,7 +87,7 @@ def draw_uv(H, ax, name="S0", color=("r","g"), sz=1):
 
 
 if __name__=="__main__":
-    plot_euler(pi/2,pi/2,0,"x")
+    plot_euler(pi/3, pi/3, 0.5)
     plt.show()
     # ~ fig = plt.figure()
     # ~ ax = fig.add_subplot(111)
