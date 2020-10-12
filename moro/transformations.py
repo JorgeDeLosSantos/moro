@@ -24,7 +24,6 @@ __all__ = [
     "skew"
 ]
     
-    
 # ~ ==========================================
 # ~ Transformation operations
 # ~ ==========================================
@@ -40,7 +39,7 @@ def rotz(theta, deg=False):
         Rotation angle (given in radians by default)
 
     deg : bool
-        ¿Is theta given in degrees?, False is default value
+        ¿Is theta given in degrees?, False is default value.
 
 
     Returns
