@@ -3,6 +3,7 @@
 """
 from sympy import pi,sin,cos,tan
 from sympy.matrices import Matrix,eye
+import sympy as sp
 from itertools import combinations
 # ~ from scipy.spatial import Delaunay, ConvexHull
 import numpy as np
@@ -11,6 +12,7 @@ import sympy.matrices as sm
 from sympy.core.basic import Basic
 
 __all__ = [
+    "pprint",
     "deg2rad",
     "ishtm",
     "isorthonormal",
@@ -21,6 +23,9 @@ __all__ = [
     "issympyobject",
     "hcoords"
 ]
+
+def pprint(*args,**kwargs):
+    return sp.pprint(*args,**kwargs)
 
 def deg2rad(theta, evalf=True):
     """

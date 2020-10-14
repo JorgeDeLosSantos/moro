@@ -78,10 +78,12 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../_src/getting_started.html">Getting started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../_src/core.html">moro core</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../_src/transformations.html">moro transformations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../_src/util.html">moro util</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
 </ul>
 
             
@@ -150,6 +152,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span> <span class="nn">sympy</span> <span class="k">import</span> <span class="n">pi</span><span class="p">,</span><span class="n">sin</span><span class="p">,</span><span class="n">cos</span><span class="p">,</span><span class="n">tan</span>
 <span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="k">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">eye</span>
+<span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sp</span>
 <span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">combinations</span>
 <span class="c1"># ~ from scipy.spatial import Delaunay, ConvexHull</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -158,6 +161,7 @@
 <span class="kn">from</span> <span class="nn">sympy.core.basic</span> <span class="k">import</span> <span class="n">Basic</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;pprint&quot;</span><span class="p">,</span>
     <span class="s2">&quot;deg2rad&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ishtm&quot;</span><span class="p">,</span>
     <span class="s2">&quot;isorthonormal&quot;</span><span class="p">,</span>
@@ -169,7 +173,10 @@
     <span class="s2">&quot;hcoords&quot;</span>
 <span class="p">]</span>
 
-<div class="viewcode-block" id="deg2rad"><a class="viewcode-back" href="../../_src/util.html#moro.util.deg2rad">[docs]</a><span class="k">def</span> <span class="nf">deg2rad</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">evalf</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="pprint"><a class="viewcode-back" href="../../util.html#moro.util.pprint">[docs]</a><span class="k">def</span> <span class="nf">pprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">sp</span><span class="o">.</span><span class="n">pprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="deg2rad"><a class="viewcode-back" href="../../util.html#moro.util.deg2rad">[docs]</a><span class="k">def</span> <span class="nf">deg2rad</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">evalf</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert degrees to radians </span>
 <span class="sd">    </span>
@@ -190,7 +197,7 @@
     <span class="k">return</span> <span class="n">theta_rad</span></div>
 
 
-<div class="viewcode-block" id="rad2deg"><a class="viewcode-back" href="../../_src/util.html#moro.util.rad2deg">[docs]</a><span class="k">def</span> <span class="nf">rad2deg</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">evalf</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="rad2deg"><a class="viewcode-back" href="../../util.html#moro.util.rad2deg">[docs]</a><span class="k">def</span> <span class="nf">rad2deg</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">evalf</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert radians to degrees </span>
 <span class="sd">    </span>
@@ -211,7 +218,7 @@
     <span class="k">return</span> <span class="n">theta_deg</span></div>
 
 
-<div class="viewcode-block" id="issympyobject"><a class="viewcode-back" href="../../_src/util.html#moro.util.issympyobject">[docs]</a><span class="k">def</span> <span class="nf">issympyobject</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<div class="viewcode-block" id="issympyobject"><a class="viewcode-back" href="../../util.html#moro.util.issympyobject">[docs]</a><span class="k">def</span> <span class="nf">issympyobject</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Determine if input (obj) is a sympy object.</span>
 <span class="sd">    </span>
@@ -232,7 +239,7 @@
         <span class="k">return</span> <span class="kc">False</span></div>
 
     
-<div class="viewcode-block" id="ishtm"><a class="viewcode-back" href="../../_src/util.html#moro.util.ishtm">[docs]</a><span class="k">def</span> <span class="nf">ishtm</span><span class="p">(</span><span class="n">H</span><span class="p">):</span>
+<div class="viewcode-block" id="ishtm"><a class="viewcode-back" href="../../util.html#moro.util.ishtm">[docs]</a><span class="k">def</span> <span class="nf">ishtm</span><span class="p">(</span><span class="n">H</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Is H a homogeneous transformation matrix ?</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -243,7 +250,7 @@
     <span class="k">return</span> <span class="kc">False</span></div>
     
 
-<div class="viewcode-block" id="isrot"><a class="viewcode-back" href="../../_src/util.html#moro.util.isrot">[docs]</a><span class="k">def</span> <span class="nf">isrot</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
+<div class="viewcode-block" id="isrot"><a class="viewcode-back" href="../../util.html#moro.util.isrot">[docs]</a><span class="k">def</span> <span class="nf">isrot</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Is R a rotation matrix ?</span>
 <span class="sd">    </span>
@@ -264,7 +271,7 @@
     <span class="k">return</span> <span class="kc">False</span></div>
     
     
-<div class="viewcode-block" id="isorthonormal"><a class="viewcode-back" href="../../_src/util.html#moro.util.isorthonormal">[docs]</a><span class="k">def</span> <span class="nf">isorthonormal</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
+<div class="viewcode-block" id="isorthonormal"><a class="viewcode-back" href="../../util.html#moro.util.isorthonormal">[docs]</a><span class="k">def</span> <span class="nf">isorthonormal</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Check if R is orthonormal</span>
 <span class="sd">    </span>
@@ -289,11 +296,11 @@
     <span class="k">return</span> <span class="kc">True</span></div>
     
     
-<div class="viewcode-block" id="hcoords"><a class="viewcode-back" href="../../_src/util.html#moro.util.hcoords">[docs]</a><span class="k">def</span> <span class="nf">hcoords</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+<div class="viewcode-block" id="hcoords"><a class="viewcode-back" href="../../util.html#moro.util.hcoords">[docs]</a><span class="k">def</span> <span class="nf">hcoords</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">v</span><span class="o">.</span><span class="n">col_join</span><span class="p">(</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">1</span><span class="p">]))</span></div>
     
 
-<div class="viewcode-block" id="sympy_matrix_to_numpy_float"><a class="viewcode-back" href="../../_src/util.html#moro.util.sympy_matrix_to_numpy_float">[docs]</a><span class="k">def</span> <span class="nf">sympy_matrix_to_numpy_float</span><span class="p">(</span><span class="n">H</span><span class="p">):</span>
+<div class="viewcode-block" id="sympy_matrix_to_numpy_float"><a class="viewcode-back" href="../../util.html#moro.util.sympy_matrix_to_numpy_float">[docs]</a><span class="k">def</span> <span class="nf">sympy_matrix_to_numpy_float</span><span class="p">(</span><span class="n">H</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert SymPy Matrix (numerical) to NumPy array</span>
 <span class="sd">    </span>
@@ -312,7 +319,7 @@
     <span class="k">return</span> <span class="n">Hf</span></div>
     
     
-<div class="viewcode-block" id="sympy2float"><a class="viewcode-back" href="../../_src/util.html#moro.util.sympy2float">[docs]</a><span class="k">def</span> <span class="nf">sympy2float</span><span class="p">(</span><span class="n">sympy_object</span><span class="p">):</span>
+<div class="viewcode-block" id="sympy2float"><a class="viewcode-back" href="../../util.html#moro.util.sympy2float">[docs]</a><span class="k">def</span> <span class="nf">sympy2float</span><span class="p">(</span><span class="n">sympy_object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert a SymPy object to float object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -361,21 +368,12 @@
 
     
     
-      <script type="text/javascript">
-          var DOCUMENTATION_OPTIONS = {
-              URL_ROOT:'../../',
-              VERSION:'0.1.0',
-              LANGUAGE:'None',
-              COLLAPSE_INDEX:false,
-              FILE_SUFFIX:'.html',
-              HAS_SOURCE:  true,
-              SOURCELINK_SUFFIX: '.txt'
-          };
-      </script>
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script type="text/javascript" src="../../_static/jquery.js"></script>
         <script type="text/javascript" src="../../_static/underscore.js"></script>
         <script type="text/javascript" src="../../_static/doctools.js"></script>
-        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
 
   

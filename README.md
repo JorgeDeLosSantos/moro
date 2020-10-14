@@ -20,7 +20,7 @@ pip install https://github.com/numython-rd/moro.git
 
 Documentation is available in [https://numython-rd.github.io/moro/](https://numython-rd.github.io/moro/). 
 
-Also, Jupyter Notebooks are available in: [https://nbviewer.jupyter.org/github/numython-rd/moro/tree/master/examples/nbook/](https://nbviewer.jupyter.org/github/numython-rd/moro/tree/master/examples/nbook/)
+Also, Jupyter Notebooks are available in: [https://nbviewer.jupyter.org/github/numython-rd/moro/tree/master/examples/nbooks/](https://nbviewer.jupyter.org/github/numython-rd/moro/tree/master/examples/nbooks/)
 
 
 # Bugs

@@ -1,5 +1,5 @@
-moro util
----------
+The :code:`util` module
+-----------------------
    
 .. automodule:: moro.util
     :members:

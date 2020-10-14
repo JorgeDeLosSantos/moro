@@ -17,10 +17,12 @@ Why is it named Moro? Because: (mo)deling of (ro)bots
    :maxdepth: 2
    :caption: Contents:
 
-   _src/getting_started.rst
-   _src/core.rst
-   _src/transformations.rst
-   _src/util.rst
+   installation.rst
+   getting_started.rst
+   examples.rst
+   core.rst
+   transformations.rst
+   util.rst
 
 
 Indices and tables

@@ -1,7 +1,7 @@
-moro transformations
---------------------
+The :code:`core` module
+-----------------------
    
-.. automodule:: moro.transformations
+.. automodule:: moro.core
     :members:
     :undoc-members:
     :inherited-members:

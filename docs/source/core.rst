@@ -1,5 +1,5 @@
-moro core
----------
+The :code:`core` module
+-----------------------
    
 .. automodule:: moro.core
     :members:
