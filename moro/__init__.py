@@ -1,11 +1,8 @@
 """
 Numython R&D, (c) 2020
-
-This module has been designed for academic purposes, using SymPy as base library. 
-It's easy to check that SymPy is slower than NumPy specially in matrix algebra, 
-however SymPy is more convenient to use as didactic tool due to the given facilities 
-as the symbolic manipulation, calculation of partial and ordinary derivatives, 
-matricial multiplication using asterisk symbol, "init_printing" function and so on.
+Moro is a Python library for kinematic and dynamic modeling of serial robots. 
+This library has been designed, mainly, for academic and research purposes, 
+using SymPy as base library. 
 """
 from .version import __version__
 

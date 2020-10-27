@@ -183,19 +183,16 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
+<span class="sd">    :param theta: Rotation angle (given in radians by default)</span>
+<span class="sd">    :type theta: float, int or `symbolic`</span>
 
-<span class="sd">    theta : float, int or `symbolic`</span>
-<span class="sd">        Rotation angle (given in radians by default)</span>
-
-<span class="sd">    deg : bool</span>
-<span class="sd">        ¿Is theta given in degrees?, False is default value.</span>
-
+<span class="sd">    :param deg: ¿Is theta given in degrees?, False is default value.</span>
+<span class="sd">    :type deg: bool</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-
-<span class="sd">    R : `sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        Rotation matrix (SO3)</span>
+<span class="sd">    :return: `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">    :rtype: Rotation matrix (SO3)</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -355,14 +352,14 @@
 <span class="sd">    </span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    rotations : tuple</span>
-<span class="sd">        A tuple that contains (angle, axis, frame, deg)</span>
+<span class="sd">    :param rotations: A tuple that contains (angle, axis, frame, deg)</span>
+<span class="sd">    :type rotations: tuple</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    R : :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        Rotation matrix</span>
-
+<span class="sd">    :return: Rotation matrix</span>
+<span class="sd">    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">        </span>
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; compose_rotations((45, &quot;z&quot;, &quot;fixed&quot;, True), (30, &quot;x&quot;, &quot;local&quot;, True))</span>
@@ -587,20 +584,20 @@
 <span class="sd">    </span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    </span>
-<span class="sd">    d : list, tuple</span>
-<span class="sd">        Translation vector</span>
+<span class="sd">    *args : list, tuple, int, float</span>
+<span class="sd">        Translation vector or components</span>
+
+<span class="sd">    **kwargs : float, int</span>
+<span class="sd">        dx, dy and dz keyword arguments</span>
 <span class="sd">    </span>
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    </span>
 <span class="sd">    H : :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
 <span class="sd">        Homogeneous transformation matrix</span>
 <span class="sd">        </span>
 <span class="sd">        </span>
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-<span class="sd">    </span>
 <span class="sd">    &gt;&gt;&gt; htmtra([50,-100,30])</span>
 <span class="sd">    ⎡1  0  0   50 ⎤</span>
 <span class="sd">    ⎢             ⎥</span>
@@ -619,6 +616,29 @@
 <span class="sd">    ⎢0  0  1  c⎥</span>
 <span class="sd">    ⎢          ⎥</span>
 <span class="sd">    ⎣0  0  0  1⎦</span>
+
+<span class="sd">    Using float/integer arguments:</span>
+
+<span class="sd">    &gt;&gt;&gt; htmtra(10,-40,50)</span>
+<span class="sd">    ⎡1  0  0  10 ⎤</span>
+<span class="sd">    ⎢            ⎥</span>
+<span class="sd">    ⎢0  1  0  -40⎥</span>
+<span class="sd">    ⎢            ⎥</span>
+<span class="sd">    ⎢0  0  1  50 ⎥</span>
+<span class="sd">    ⎢            ⎥</span>
+<span class="sd">    ⎣0  0  0   1 ⎦</span>
+
+<span class="sd">    Using keyword arguments:</span>
+
+<span class="sd">    &gt;&gt;&gt; htmtra(dz=100,dx=300,dy=-200)</span>
+<span class="sd">    ⎡1  0  0  300 ⎤</span>
+<span class="sd">    ⎢             ⎥</span>
+<span class="sd">    ⎢0  1  0  -200⎥</span>
+<span class="sd">    ⎢             ⎥</span>
+<span class="sd">    ⎢0  0  1  100 ⎥</span>
+<span class="sd">    ⎢             ⎥</span>
+<span class="sd">    ⎣0  0  0   1  ⎦</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">args</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">kwargs</span><span class="p">:</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span><span class="nb">tuple</span><span class="p">)):</span>
@@ -651,7 +671,6 @@
 <span class="sd">    </span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    </span>
 <span class="sd">    theta : float, int or `symbolic`</span>
 <span class="sd">        Rotation angle (given in radians by default)</span>
 <span class="sd">        </span>
@@ -663,7 +682,6 @@
 <span class="sd">        </span>
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    </span>
 <span class="sd">    H : :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
 <span class="sd">        Homogeneous transformation matrix</span>
 <span class="sd">        </span>

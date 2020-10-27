@@ -8,10 +8,7 @@ from sympy.matrices import Matrix,eye
 from moro.transformations import *
 from moro.util import *
 
-# __all__ = ["plot_euler", "draw_uv", "draw_uvw"]
-__all__ = ["fake"]
-
-fake = 0
+__all__ = ["plot_euler", "draw_uv", "draw_uvw"]
 
 def plot_euler(phi,theta,psi,seq="zxz"):
     fig = plt.figure()

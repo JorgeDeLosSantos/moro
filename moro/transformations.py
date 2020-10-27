@@ -34,19 +34,16 @@ def rotz(theta, deg=False):
 
     Parameters
     ----------
+    :param theta: Rotation angle (given in radians by default)
+    :type theta: float, int or `symbolic`
 
-    theta : float, int or `symbolic`
-        Rotation angle (given in radians by default)
-
-    deg : bool
-        ¿Is theta given in degrees?, False is default value.
-
+    :param deg: ¿Is theta given in degrees?, False is default value.
+    :type deg: bool
 
     Returns
     -------
-
-    R : `sympy.matrices.dense.MutableDenseMatrix`
-        Rotation matrix (SO3)
+    :return: `sympy.matrices.dense.MutableDenseMatrix`
+    :rtype: Rotation matrix (SO3)
 
     Examples
     --------
@@ -206,14 +203,14 @@ def compose_rotations(*rotations):
     
     Parameters
     ----------
-    rotations : tuple
-        A tuple that contains (angle, axis, frame, deg)
+    :param rotations: A tuple that contains (angle, axis, frame, deg)
+    :type rotations: tuple
 
     Returns
     -------
-    R : :class:`sympy.matrices.dense.MutableDenseMatrix`
-        Rotation matrix
-
+    :return: Rotation matrix
+    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`
+        
     Examples
     --------
     >>> compose_rotations((45, "z", "fixed", True), (30, "x", "local", True))
@@ -438,20 +435,20 @@ def htmtra(*args,**kwargs):
     
     Parameters
     ----------
-    
-    d : list, tuple
-        Translation vector
+    *args : list, tuple, int, float
+        Translation vector or components
+
+    **kwargs : float, int
+        dx, dy and dz keyword arguments
     
     Returns
     -------
-    
     H : :class:`sympy.matrices.dense.MutableDenseMatrix`
         Homogeneous transformation matrix
         
         
     Examples
     --------
-    
     >>> htmtra([50,-100,30])
     ⎡1  0  0   50 ⎤
     ⎢             ⎥
@@ -470,6 +467,29 @@ def htmtra(*args,**kwargs):
     ⎢0  0  1  c⎥
     ⎢          ⎥
     ⎣0  0  0  1⎦
+
+    Using float/integer arguments:
+
+    >>> htmtra(10,-40,50)
+    ⎡1  0  0  10 ⎤
+    ⎢            ⎥
+    ⎢0  1  0  -40⎥
+    ⎢            ⎥
+    ⎢0  0  1  50 ⎥
+    ⎢            ⎥
+    ⎣0  0  0   1 ⎦
+
+    Using keyword arguments:
+
+    >>> htmtra(dz=100,dx=300,dy=-200)
+    ⎡1  0  0  300 ⎤
+    ⎢             ⎥
+    ⎢0  1  0  -200⎥
+    ⎢             ⎥
+    ⎢0  0  1  100 ⎥
+    ⎢             ⎥
+    ⎣0  0  0   1  ⎦
+
     """
     if args and not kwargs:
         if isinstance(args[0], (list,tuple)):
@@ -502,7 +522,6 @@ def htmrot(theta, axis="z", deg=False):
     
     Parameters
     ----------
-    
     theta : float, int or `symbolic`
         Rotation angle (given in radians by default)
         
@@ -514,7 +533,6 @@ def htmrot(theta, axis="z", deg=False):
         
     Returns
     -------
-    
     H : :class:`sympy.matrices.dense.MutableDenseMatrix`
         Homogeneous transformation matrix
         
