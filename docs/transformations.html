@@ -190,18 +190,22 @@ the SO(3) matrix associated.</p>
 <dt id="moro.transformations.dh">
 <code class="sig-prename descclassname">moro.transformations.</code><code class="sig-name descname">dh</code><span class="sig-paren">(</span><em class="sig-param">a</em>, <em class="sig-param">alpha</em>, <em class="sig-param">d</em>, <em class="sig-param">theta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#dh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.transformations.dh" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates Denavit-Hartenberg matrix given the four parameters.</p>
-<dl class="simple">
-<dt>a<span class="classifier">int, float or symbol</span></dt><dd><p>DH parameter</p>
-</dd>
-<dt>alpha<span class="classifier">int, float or symbol</span></dt><dd><p>DH parrameter</p>
-</dd>
-<dt>d<span class="classifier">int, float or symbol</span></dt><dd><p>DH parameter</p>
-</dd>
-<dt>theta<span class="classifier">int, float or symbol</span></dt><dd><p>DH parameter</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a</strong> (<em>int</em><em>, </em><em>float</em><em> or </em><em>symbol</em>) – DH parameter</p></li>
+<li><p><strong>alpha</strong> (<em>int</em><em>, </em><em>float</em><em> or </em><em>symbol</em>) – DH parameter</p></li>
+<li><p><strong>d</strong> (<em>int</em><em>, </em><em>float</em><em> or </em><em>symbol</em>) – DH parameter</p></li>
+<li><p><strong>theta</strong> (<em>int</em><em>, </em><em>float</em><em> or </em><em>symbol</em>) – DH parameter</p></li>
+</ul>
 </dd>
 </dl>
-<dl>
-<dt>H<span class="classifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">sympy.matrices.dense.MutableDenseMatrix</span></code></span></dt><dd><p>Denavit-Hartenberg matrix (4x4)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Denavit-Hartenberg matrix (4x4)</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">sympy.matrices.dense.MutableDenseMatrix</span></code></p>
 </dd>
 </dl>
 <p>With numerical values:</p>
@@ -236,20 +240,23 @@ the SO(3) matrix associated.</p>
 <dd><p>Given a set of Euler Angles (phi,theta,psi) for specific 
 sequence this function returns the homogeneous transformation 
 matrix associated. Default sequence is ZXZ.</p>
-<dl class="simple">
-<dt>phi<span class="classifier">int,float,symbol</span></dt><dd><p>phi angle</p>
-</dd>
-<dt>theta<span class="classifier">int,float,symbol</span></dt><dd><p>theta angle</p>
-</dd>
-<dt>psi<span class="classifier">int,float,symbol</span></dt><dd><p>psi angle</p>
-</dd>
-<dt>seq<span class="classifier">str</span></dt><dd><p>Rotation sequence</p>
-</dd>
-<dt>deg<span class="classifier">bool</span></dt><dd><p>True if (phi,theta,psi) are given in degrees</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>phi</strong> (<em>int</em><em>,</em><em>float</em><em>,</em><em>symbol</em>) – phi angle</p></li>
+<li><p><strong>theta</strong> (<em>int</em><em>,</em><em>float</em><em>,</em><em>symbol</em>) – theta angle</p></li>
+<li><p><strong>psi</strong> (<em>int</em><em>,</em><em>float</em><em>,</em><em>symbol</em>) – psi angle</p></li>
+<li><p><strong>seq</strong> (<em>str</em>) – Rotation sequence</p></li>
+<li><p><strong>deg</strong> (<em>bool</em>) – True if (phi,theta,psi) are given in degrees</p></li>
+</ul>
 </dd>
 </dl>
-<dl>
-<dt>H<span class="classifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">sympy.matrices.dense.MutableDenseMatrix</span></code></span></dt><dd><p>Homogeneous transformation matrix</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Homogeneous transformation matrix</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">sympy.matrices.dense.MutableDenseMatrix</span></code></p>
 </dd>
 </dl>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">eul2htm</span><span class="p">(</span><span class="mi">90</span><span class="p">,</span><span class="mi">90</span><span class="p">,</span><span class="mi">90</span><span class="p">,</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="kc">True</span><span class="p">)</span>
@@ -438,14 +445,20 @@ rotation “theta” about “axis”.</p>
 <dt id="moro.transformations.rotx">
 <code class="sig-prename descclassname">moro.transformations.</code><code class="sig-name descname">rotx</code><span class="sig-paren">(</span><em class="sig-param">theta</em>, <em class="sig-param">deg=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rotx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.transformations.rotx" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the rotation matrix about the x-axis</p>
-<dl>
-<dt>theta<span class="classifier">float, int or <cite>symbolic</cite></span></dt><dd><p>Rotation angle (given in radians by default)</p>
-</dd>
-<dt>deg<span class="classifier">bool</span></dt><dd><p>¿Is theta given in degrees?</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>theta</strong> (float, int or <cite>symbolic</cite>) – Rotation angle (given in radians by default)</p></li>
+<li><p><strong>deg</strong> (<em>bool</em>) – ¿Is theta given in degrees?, False is default value.</p></li>
+</ul>
 </dd>
 </dl>
-<dl>
-<dt>R<span class="classifier"><cite>sympy.matrices.dense.MutableDenseMatrix</cite></span></dt><dd><p>Rotation matrix (SO3)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><cite>sympy.matrices.dense.MutableDenseMatrix</cite></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Rotation matrix (SO3)</p>
 </dd>
 </dl>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rotx</span><span class="p">(</span><span class="n">pi</span><span class="p">)</span>
@@ -468,14 +481,20 @@ rotation “theta” about “axis”.</p>
 <dt id="moro.transformations.roty">
 <code class="sig-prename descclassname">moro.transformations.</code><code class="sig-name descname">roty</code><span class="sig-paren">(</span><em class="sig-param">theta</em>, <em class="sig-param">deg=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#roty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.transformations.roty" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the rotation matrix about the y-axis</p>
-<dl>
-<dt>theta<span class="classifier">float, int or <cite>symbolic</cite></span></dt><dd><p>Rotation angle (given in radians by default)</p>
-</dd>
-<dt>deg<span class="classifier">bool</span></dt><dd><p>¿Is theta given in degrees?</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>theta</strong> (float, int or <cite>symbolic</cite>) – Rotation angle (given in radians by default)</p></li>
+<li><p><strong>deg</strong> (<em>bool</em>) – ¿Is theta given in degrees?, False is default value.</p></li>
+</ul>
 </dd>
 </dl>
-<dl>
-<dt>R<span class="classifier"><cite>sympy.matrices.dense.MutableDenseMatrix</cite></span></dt><dd><p>Rotation matrix (SO3)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><cite>sympy.matrices.dense.MutableDenseMatrix</cite></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Rotation matrix (SO3)</p>
 </dd>
 </dl>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">roty</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">3</span><span class="p">)</span>

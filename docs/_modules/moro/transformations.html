@@ -242,19 +242,16 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
+<span class="sd">    :param theta: Rotation angle (given in radians by default)</span>
+<span class="sd">    :type theta: float, int or `symbolic`</span>
 
-<span class="sd">    theta : float, int or `symbolic`</span>
-<span class="sd">        Rotation angle (given in radians by default)</span>
-
-<span class="sd">    deg : bool</span>
-<span class="sd">        ¿Is theta given in degrees?</span>
-
+<span class="sd">    :param deg: ¿Is theta given in degrees?, False is default value.</span>
+<span class="sd">    :type deg: bool</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-
-<span class="sd">    R : `sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        Rotation matrix (SO3)</span>
+<span class="sd">    :return: `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">    :rtype: Rotation matrix (SO3)</span>
 <span class="sd">        </span>
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -294,19 +291,16 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    </span>
-<span class="sd">    theta : float, int or `symbolic`</span>
-<span class="sd">        Rotation angle (given in radians by default)</span>
+<span class="sd">    :param theta: Rotation angle (given in radians by default)</span>
+<span class="sd">    :type theta: float, int or `symbolic`</span>
 
-<span class="sd">    deg : bool</span>
-<span class="sd">        ¿Is theta given in degrees?</span>
-
+<span class="sd">    :param deg: ¿Is theta given in degrees?, False is default value.</span>
+<span class="sd">    :type deg: bool</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    </span>
-<span class="sd">    R : `sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        Rotation matrix (SO3)</span>
+<span class="sd">    :return: `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">    :rtype: Rotation matrix (SO3)</span>
 <span class="sd">        </span>
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -393,19 +387,24 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    a : int, float or symbol</span>
-<span class="sd">        DH parameter</span>
-<span class="sd">    alpha : int, float or symbol</span>
-<span class="sd">        DH parrameter</span>
-<span class="sd">    d : int, float or symbol</span>
-<span class="sd">        DH parameter</span>
-<span class="sd">    theta : int, float or symbol</span>
-<span class="sd">        DH parameter</span>
+<span class="sd">    :param a: DH parameter</span>
+<span class="sd">    :type a: int, float or symbol</span>
+
+<span class="sd">    :param alpha: DH parameter</span>
+<span class="sd">    :type alpha: int, float or symbol</span>
+
+<span class="sd">    :param d: DH parameter</span>
+<span class="sd">    :type d: int, float or symbol</span>
+
+<span class="sd">    :param theta: DH parameter</span>
+<span class="sd">    :type theta: int, float or symbol    </span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    H : :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        Denavit-Hartenberg matrix (4x4)</span>
+
+<span class="sd">    :return: Denavit-Hartenberg matrix (4x4)</span>
+<span class="sd">    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">        </span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -449,22 +448,27 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    phi : int,float,symbol</span>
-<span class="sd">        phi angle</span>
-<span class="sd">    theta : int,float,symbol</span>
-<span class="sd">        theta angle</span>
-<span class="sd">    psi : int,float,symbol</span>
-<span class="sd">        psi angle</span>
-<span class="sd">    seq : str</span>
-<span class="sd">        Rotation sequence</span>
-<span class="sd">    deg : bool</span>
-<span class="sd">        True if (phi,theta,psi) are given in degrees</span>
 
+<span class="sd">    :param phi: phi angle</span>
+<span class="sd">    :type phi: int,float,symbol</span>
+
+<span class="sd">    :param theta: theta angle</span>
+<span class="sd">    :type theta: int,float,symbol</span>
+
+<span class="sd">    :param psi: psi angle</span>
+<span class="sd">    :type psi: int,float,symbol</span>
+
+<span class="sd">    :param seq: Rotation sequence</span>
+<span class="sd">    :type seq: str</span>
+
+<span class="sd">    :param deg: True if (phi,theta,psi) are given in degrees</span>
+<span class="sd">    :type deg: bool</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    H : :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        Homogeneous transformation matrix</span>
+
+<span class="sd">    :return: Homogeneous transformation matrix</span>
+<span class="sd">    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
 <span class="sd">    </span>
 <span class="sd">    </span>
 <span class="sd">    Examples</span>
@@ -543,10 +547,10 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ZXZ&quot;</span><span class="p">,</span><span class="s2">&quot;zxz&quot;</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_htm2zxz</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ZYZ&quot;</span><span class="p">,</span><span class="s2">&quot;zyz&quot;</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">_htm2zyz</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
+    <span class="c1"># elif seq in (&quot;ZYZ&quot;,&quot;zyz&quot;):</span>
+    <span class="c1">#     return _htm2zyz(H, deg)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">pass</span> <span class="c1"># raise exception (to impl)</span></div>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Currently only ZXZ sequence is supported&quot;</span><span class="p">)</span></div>
 
 
 <span class="k">def</span> <span class="nf">_htm2zxz</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>

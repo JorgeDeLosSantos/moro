@@ -1,5 +1,10 @@
 """
 
+Numython R&D, (c) 2020
+Moro is a Python library for kinematic and dynamic modeling of serial robots. 
+This library has been designed, mainly, for academic and research purposes, 
+using SymPy as base library. 
+
 """
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -144,8 +149,8 @@ class Robot(object):
         Ti_0 = []
         points.append(zeros(1,3))
         for i in range(self.dof):
-            Ti_0.append(self.Ti_0(i).subs(vals))
-            points.append((self.Ti_0(i)[:3,3]).subs(vals))
+            Ti_0.append(self.T_i0(i+1).subs(vals))
+            points.append((self.T_i0(i+1)[:3,3]).subs(vals))
             
         X = [float(k[0]) for k in points]
         Y = [float(k[1]) for k in points]
@@ -192,18 +197,18 @@ class Robot(object):
     def qis_range(self, *args):
         self._qis_range = args
         
-    def plot_workspace(self):
+    def __plot_workspace(self):
         """ TODO """
         pass
         
-    def set_mass(self,mass):
+    def __set_mass(self,mass):
         """
         Set mass for each link using a list like: [m1, m2, ..., mn], where 
         m1, m2, ..., mn, are numeric or symbolic values.
         """
         self.mass = mass
         
-    def set_inertia_tensors(self):
+    def __set_inertia_tensors(self):
         dof = self.dof
         self.inertia_tensors = []
         for k in range(dof):
@@ -211,29 +216,33 @@ class Robot(object):
             Ix,Iy,Iz = symbols(Istr)
             self.inertia_tensors.append( diag(Ix,Iy,Iz) )
             
-    def set_cm_locations(self,cmlocs):
+    def __set_cm_locations(self,cmlocs):
         self.cm_locations = cmlocs
 
-    def set_gravity_vector(self,G):
+    def __set_gravity_vector(self,G):
         """
         Set the gravity vector in the base frame.
         """
         self.G = G
     
-    def rcm_i(self,i):
+    def __rcm_i(self,i):
         idx = i - 1
         rcm_ii = Matrix( self.cm_locations[idx] )
         rcm_i = ( self.T_i0(i) * hcoords( rcm_ii ) )[:3,:]
         return simplify( rcm_i )
         
-    def vcm_i(self,i):
+    def __vcm_i(self,i):
         rcm_i = self.rcm_i(i)
         vcm_i = rcm_i.diff(t)
         return simplify( vcm_i )
         
     def w_ijj(self,i):
+        """
+        Angular velocity of {i}-Frame w.r.t. {j}-Frame, described 
+        in {j}-Frame, where j = i - 1. 
+        """
         # j = i - 1
-        idx = i - 1
+        idx = i - 1 
         if self.joint_types[idx] == "r":
             wijj = Matrix([0,0,self.qs[idx].diff()])
         else:
@@ -243,7 +252,7 @@ class Robot(object):
         
     def w_i(self,i):
         """
-        
+        Angular velocity of {i}-Frame w.r.t. {0}-Frame.
         """
         idx = i - 1
         wi = Matrix([0,0,0])
@@ -251,7 +260,7 @@ class Robot(object):
             wi += self.R_i0(k-1)*self.w_ijj(k)
         return wi
         
-    def I_i(self,i):
+    def __I_i(self,i):
         """
         Returns the inertia tensor of i-th link w.r.t. base frame.
         """
@@ -261,7 +270,7 @@ class Robot(object):
         Ii = simplify( self.R_i0(i) * Iii * self.R_i0(i).T )
         return Ii
             
-    def kin_i(self,i):
+    def __kin_i(self,i):
         """
         Returns the kinetic energy of i-th link
         """
@@ -276,7 +285,7 @@ class Robot(object):
         Ki = Ktra_i + Krot_i
         return Ki
         
-    def pot_i(self,i):
+    def __pot_i(self,i):
         """
         Returns the potential energy of i-th link
         """
@@ -286,7 +295,7 @@ class Robot(object):
         rcm_i = self.rcm_i(i)
         return - mi * G.T * rcm_i
         
-    def get_kinetic_energy(self):
+    def __get_kinetic_energy(self):
         """
         Returns the kinetic energy of the robot
         """
@@ -295,7 +304,7 @@ class Robot(object):
             K += self.kin_i(i+1) 
         return nsimplify(K)
         
-    def get_potential_energy(self):
+    def __get_potential_energy(self):
         """
         Returns the potential energy of the robot
         """
@@ -304,7 +313,7 @@ class Robot(object):
             U += self.pot_i(i+1) 
         return nsimplify(U)
         
-    def get_dynamic_model(self):
+    def __get_dynamic_model(self):
         """
         Returns the dynamic model of the robot
         """
@@ -321,18 +330,35 @@ class Robot(object):
         
 
 
+
+
+
 #### RigidBody2D
 
 class RigidBody2D(object):
     """
     Defines a rigid body through a series of points that 
     make it up.
+
+    :param points: List of lists or tuples
+    :type points: list, tuple
+
+
+    Examples
+    --------
+
+    >>> points = [(0,0), (1,0), (0,1)]
+    >>> rb = RigidBody2D(points)
+
     """
     def __init__(self,points):
         self._points = points # Points
         self.Hs = [eye(4),] # Transformation matrices
         
     def restart(self):
+        """
+        Restart to initial coordinates of the rigid body
+        """
         self.Hs = [eye(4),]
     
     @property
@@ -353,20 +379,19 @@ class RigidBody2D(object):
 
     def rotate(self,angle):
         """
-        Rota el cuerpo rígido un ángulo determinado alrededor 
-        del eje coordenado z.
+        Rotates the rigid body around z-axis.
         """
         R = htmrot(angle, axis="z") # Aplicando rotación
         self.Hs.append(R)
     
     def move(self,q):
         """
-        Traslada el cuerpo rígido un vector q
+        Moves the rigid body
         """
         D = htmtra(q) # Aplicando traslación
         self.Hs.append(D)
         
-    def scale(self,sf):
+    def __scale(self,sf):
         """
         Escala el cuerpo rígido
         """
@@ -374,7 +399,7 @@ class RigidBody2D(object):
         # ~ self.Hs.append(S)
         pass # nothing to do here
 
-    def scale_matrix(self,sf):
+    def __scale_matrix(self,sf):
         M = Matrix([[sf,0,0,0],
                       [0,sf,0,0],
                       [0,0,sf,0],
@@ -383,7 +408,7 @@ class RigidBody2D(object):
         
     def draw(self,color="r",kaxis=None):
         """
-        Dibuja el cuerpo rígido en sus estatus actual
+        Draw the rigid body
         """
         X,Y = [],[]
         cx,cy = self.get_centroid()
@@ -407,6 +432,9 @@ class RigidBody2D(object):
 
         
     def get_centroid(self):
+        """
+        Return the centroid of the rigid body
+        """
         n = len(self.points)
         sx,sy = 0,0
         for point in self.points:

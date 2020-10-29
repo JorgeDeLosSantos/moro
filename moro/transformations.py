@@ -93,19 +93,16 @@ def roty(theta, deg=False):
 
     Parameters
     ----------
+    :param theta: Rotation angle (given in radians by default)
+    :type theta: float, int or `symbolic`
 
-    theta : float, int or `symbolic`
-        Rotation angle (given in radians by default)
-
-    deg : bool
-        ¿Is theta given in degrees?
-
+    :param deg: ¿Is theta given in degrees?, False is default value.
+    :type deg: bool
 
     Returns
     -------
-
-    R : `sympy.matrices.dense.MutableDenseMatrix`
-        Rotation matrix (SO3)
+    :return: `sympy.matrices.dense.MutableDenseMatrix`
+    :rtype: Rotation matrix (SO3)
         
     Examples
     --------
@@ -145,19 +142,16 @@ def rotx(theta, deg=False):
 
     Parameters
     ----------
-    
-    theta : float, int or `symbolic`
-        Rotation angle (given in radians by default)
+    :param theta: Rotation angle (given in radians by default)
+    :type theta: float, int or `symbolic`
 
-    deg : bool
-        ¿Is theta given in degrees?
-
+    :param deg: ¿Is theta given in degrees?, False is default value.
+    :type deg: bool
 
     Returns
     -------
-    
-    R : `sympy.matrices.dense.MutableDenseMatrix`
-        Rotation matrix (SO3)
+    :return: `sympy.matrices.dense.MutableDenseMatrix`
+    :rtype: Rotation matrix (SO3)
         
     Examples
     --------
@@ -244,19 +238,24 @@ def dh(a,alpha,d,theta):
 
     Parameters
     ----------
-    a : int, float or symbol
-        DH parameter
-    alpha : int, float or symbol
-        DH parrameter
-    d : int, float or symbol
-        DH parameter
-    theta : int, float or symbol
-        DH parameter
+    :param a: DH parameter
+    :type a: int, float or symbol
+
+    :param alpha: DH parameter
+    :type alpha: int, float or symbol
+
+    :param d: DH parameter
+    :type d: int, float or symbol
+
+    :param theta: DH parameter
+    :type theta: int, float or symbol    
 
     Returns
     -------
-    H : :class:`sympy.matrices.dense.MutableDenseMatrix`
-        Denavit-Hartenberg matrix (4x4)
+
+    :return: Denavit-Hartenberg matrix (4x4)
+    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`
+        
 
     Examples
     --------
@@ -300,22 +299,27 @@ def eul2htm(phi,theta,psi,seq="zxz",deg=False):
 
     Parameters
     ----------
-    phi : int,float,symbol
-        phi angle
-    theta : int,float,symbol
-        theta angle
-    psi : int,float,symbol
-        psi angle
-    seq : str
-        Rotation sequence
-    deg : bool
-        True if (phi,theta,psi) are given in degrees
 
+    :param phi: phi angle
+    :type phi: int,float,symbol
+
+    :param theta: theta angle
+    :type theta: int,float,symbol
+
+    :param psi: psi angle
+    :type psi: int,float,symbol
+
+    :param seq: Rotation sequence
+    :type seq: str
+
+    :param deg: True if (phi,theta,psi) are given in degrees
+    :type deg: bool
 
     Returns
     -------
-    H : :class:`sympy.matrices.dense.MutableDenseMatrix`
-        Homogeneous transformation matrix
+
+    :return: Homogeneous transformation matrix
+    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`
     
     
     Examples
@@ -394,10 +398,10 @@ def htm2eul(H, seq="zxz", deg=False):
     """
     if seq in ("ZXZ","zxz"):
         return _htm2zxz(H, deg)
-    elif seq in ("ZYZ","zyz"):
-        return _htm2zyz(H, deg)
+    # elif seq in ("ZYZ","zyz"):
+    #     return _htm2zyz(H, deg)
     else:
-        pass # raise exception (to impl)
+        raise ValueError("Currently only ZXZ sequence is supported")
 
 
 def _htm2zxz(H, deg=False):

@@ -29,7 +29,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The transformations module" href="transformations.html" />
-    <link rel="prev" title="Getting started" href="getting_started.html" /> 
+    <link rel="prev" title="Examples" href="examples.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -80,7 +80,9 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
@@ -148,244 +150,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="module-moro.core">
-<span id="the-core-module"></span><h1>The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module<a class="headerlink" href="#module-moro.core" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
-<dt id="moro.core.Robot">
-<em class="property">class </em><code class="sig-prename descclassname">moro.core.</code><code class="sig-name descname">Robot</code><span class="sig-paren">(</span><em class="sig-param">*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Define a robot-serial-arm given the Denavit-Hartenberg parameters 
-and joint type, as tuples.</p>
-<p>Each tuple must have the form:</p>
-<p>(a_i, alpha_i, d_i, theta_i)</p>
-<p>Or including the joint type:</p>
-<p>(a_i, alpha_i, d_i, theta_i, joint_type)</p>
-<p>All parameters are <cite>int</cite> or <cite>floats</cite>, or a symbolic variable. 
-Numeric angles must be passed in radians.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rr</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">((</span><span class="n">l1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t1</span><span class="p">),</span> <span class="p">(</span><span class="n">l2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t2</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>or</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rr2</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">((</span><span class="n">l1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t1</span><span class="p">,</span><span class="s2">&quot;r&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">l2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">t2</span><span class="p">,</span><span class="s2">&quot;r&quot;</span><span class="p">))</span>
-</pre></div>
-</div>
-<dl class="method">
-<dt id="moro.core.Robot.I_i">
-<code class="sig-name descname">I_i</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.I_i"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.I_i" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the inertia tensor of i-th link w.r.t. base frame.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.J">
-<em class="property">property </em><code class="sig-name descname">J</code><a class="headerlink" href="#moro.core.Robot.J" title="Permalink to this definition">¶</a></dt>
-<dd><p>Geometric Jacobian matrix</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.R_i0">
-<code class="sig-name descname">R_i0</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.R_i0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.R_i0" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the rotation matrix of {i}-Frame w.r.t. {0}-Frame.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.T">
-<em class="property">property </em><code class="sig-name descname">T</code><a class="headerlink" href="#moro.core.Robot.T" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get Homogeneous transformation matrix of {N}-Frame w.r.t. {0}-Frame</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.T_i0">
-<code class="sig-name descname">T_i0</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.T_i0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.T_i0" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the HTM of {i}-Frame w.r.t. {0}-Frame.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.T_ij">
-<code class="sig-name descname">T_ij</code><span class="sig-paren">(</span><em class="sig-param">i</em>, <em class="sig-param">j</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.T_ij"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.T_ij" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the HTM of {i}-Frame w.r.t. {j}-Frame.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.dof">
-<em class="property">property </em><code class="sig-name descname">dof</code><a class="headerlink" href="#moro.core.Robot.dof" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the degrees of freedom</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.get_dynamic_model">
-<code class="sig-name descname">get_dynamic_model</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_dynamic_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.get_dynamic_model" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the dynamic model of the robot</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.get_kinetic_energy">
-<code class="sig-name descname">get_kinetic_energy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_kinetic_energy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.get_kinetic_energy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the kinetic energy of the robot</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.get_potential_energy">
-<code class="sig-name descname">get_potential_energy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_potential_energy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.get_potential_energy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the potential energy of the robot</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.kin_i">
-<code class="sig-name descname">kin_i</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.kin_i"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.kin_i" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the kinetic energy of i-th link</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.p">
-<code class="sig-name descname">p</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.p"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.p" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the position for every {i}-Frame w.r.t. {0}-Frame</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.plot_diagram">
-<code class="sig-name descname">plot_diagram</code><span class="sig-paren">(</span><em class="sig-param">vals</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.plot_diagram"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.plot_diagram" title="Permalink to this definition">¶</a></dt>
-<dd><p>Draw a simple wire-diagram or kinematic-diagram of the manipulator.</p>
-<dl class="simple">
-<dt>vals<span class="classifier">dict</span></dt><dd><p>Dictionary like: {svar1: nvalue1, svar2: nvalue2, …}, 
-where svar1, svar2, … are symbolic variables that are 
-currently used in model, and nvalue1, nvalue2, … 
-are the numerical values that will substitute these variables.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.plot_workspace">
-<code class="sig-name descname">plot_workspace</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.plot_workspace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.plot_workspace" title="Permalink to this definition">¶</a></dt>
-<dd><p>TODO</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.pot_i">
-<code class="sig-name descname">pot_i</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.pot_i"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.pot_i" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the potential energy of i-th link</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.qi">
-<code class="sig-name descname">qi</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.qi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.qi" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the i-th articular variable.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.qis_range">
-<em class="property">property </em><code class="sig-name descname">qis_range</code><a class="headerlink" href="#moro.core.Robot.qis_range" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.rcm_i">
-<code class="sig-name descname">rcm_i</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.rcm_i"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.rcm_i" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.set_cm_locations">
-<code class="sig-name descname">set_cm_locations</code><span class="sig-paren">(</span><em class="sig-param">cmlocs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_cm_locations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.set_cm_locations" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.set_gravity_vector">
-<code class="sig-name descname">set_gravity_vector</code><span class="sig-paren">(</span><em class="sig-param">G</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_gravity_vector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.set_gravity_vector" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set the gravity vector in the base frame.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.set_inertia_tensors">
-<code class="sig-name descname">set_inertia_tensors</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_inertia_tensors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.set_inertia_tensors" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.set_mass">
-<code class="sig-name descname">set_mass</code><span class="sig-paren">(</span><em class="sig-param">mass</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_mass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.set_mass" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set mass for each link using a list like: [m1, m2, …, mn], where 
-m1, m2, …, mn, are numeric or symbolic values.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.vcm_i">
-<code class="sig-name descname">vcm_i</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.vcm_i"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.vcm_i" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.w_i">
-<code class="sig-name descname">w_i</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.w_i"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.w_i" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.w_ijj">
-<code class="sig-name descname">w_ijj</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.w_ijj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.w_ijj" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.Robot.z">
-<code class="sig-name descname">z</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.z"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.Robot.z" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the z-dir of every {i}-Frame w.r.t. {0}-Frame</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="moro.core.RigidBody2D">
-<em class="property">class </em><code class="sig-prename descclassname">moro.core.</code><code class="sig-name descname">RigidBody2D</code><span class="sig-paren">(</span><em class="sig-param">points</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.RigidBody2D" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Defines a rigid body through a series of points that 
-make it up.</p>
-<dl class="method">
-<dt id="moro.core.RigidBody2D.H">
-<em class="property">property </em><code class="sig-name descname">H</code><a class="headerlink" href="#moro.core.RigidBody2D.H" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.RigidBody2D.draw">
-<code class="sig-name descname">draw</code><span class="sig-paren">(</span><em class="sig-param">color='r'</em>, <em class="sig-param">kaxis=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.draw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.RigidBody2D.draw" title="Permalink to this definition">¶</a></dt>
-<dd><p>Dibuja el cuerpo rígido en sus estatus actual</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.RigidBody2D.get_centroid">
-<code class="sig-name descname">get_centroid</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.get_centroid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.RigidBody2D.get_centroid" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.RigidBody2D.move">
-<code class="sig-name descname">move</code><span class="sig-paren">(</span><em class="sig-param">q</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.move"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.RigidBody2D.move" title="Permalink to this definition">¶</a></dt>
-<dd><p>Traslada el cuerpo rígido un vector q</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.RigidBody2D.points">
-<em class="property">property </em><code class="sig-name descname">points</code><a class="headerlink" href="#moro.core.RigidBody2D.points" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.RigidBody2D.restart">
-<code class="sig-name descname">restart</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.restart"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.RigidBody2D.restart" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="moro.core.RigidBody2D.rotate">
-<code class="sig-name descname">rotate</code><span class="sig-paren">(</span><em class="sig-param">angle</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.rotate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.RigidBody2D.rotate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Rota el cuerpo rígido un ángulo determinado alrededor 
-del eje coordenado z.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.RigidBody2D.scale">
-<code class="sig-name descname">scale</code><span class="sig-paren">(</span><em class="sig-param">sf</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.scale"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.RigidBody2D.scale" title="Permalink to this definition">¶</a></dt>
-<dd><p>Escala el cuerpo rígido</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="moro.core.RigidBody2D.scale_matrix">
-<code class="sig-name descname">scale_matrix</code><span class="sig-paren">(</span><em class="sig-param">sf</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.scale_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#moro.core.RigidBody2D.scale_matrix" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
+  <div class="section" id="the-core-module">
+<h1>The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module<a class="headerlink" href="#the-core-module" title="Permalink to this headline">¶</a></h1>
 </div>
 
 
@@ -399,7 +165,7 @@ del eje coordenado z.</p>
         <a href="transformations.html" class="btn btn-neutral float-right" title="The transformations module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="getting_started.html" class="btn btn-neutral" title="Getting started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="examples.html" class="btn btn-neutral" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -434,6 +200,7 @@ del eje coordenado z.</p>
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
         <script type="text/javascript" src="_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
 
   
