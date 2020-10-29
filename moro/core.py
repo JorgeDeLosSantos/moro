@@ -13,7 +13,6 @@ from sympy import *
 from sympy.matrices import Matrix,eye,diag
 from moro.abc import *
 from moro.transformations import *
-from moro.ws import *
 from moro.util import *
 
 __all__ = ["Robot", "RigidBody2D"]
