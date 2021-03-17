@@ -200,37 +200,41 @@ class Robot(object):
         """ TODO """
         pass
         
-    def __set_mass(self,mass):
+    def set_masses(self,masses):
         """
         Set mass for each link using a list like: [m1, m2, ..., mn], where 
         m1, m2, ..., mn, are numeric or symbolic values.
         """
-        self.mass = mass
+        self.masses = masses
         
-    def __set_inertia_tensors(self):
+    def set_inertia_tensors(self,tensors=None):
         dof = self.dof
         self.inertia_tensors = []
-        for k in range(dof):
-            Istr = "I_{{x{0}}}, I_{{y{0}}}, I_{{z{0}}}".format(k+1)
-            Ix,Iy,Iz = symbols(Istr)
-            self.inertia_tensors.append( diag(Ix,Iy,Iz) )
+        if tensors is None:
+            for k in range(dof):
+                Istr = "I_{{xx{0}}}, I_{{yy{0}}}, I_{{zz{0}}}".format(k+1)
+                Ix,Iy,Iz = symbols(Istr)
+                self.inertia_tensors.append( diag(Ix,Iy,Iz) )
+        else:
+            for k in range(dof):
+                self.inertia_tensors.append( tensors[k] )
             
-    def __set_cm_locations(self,cmlocs):
+    def set_cm_locations(self,cmlocs):
         self.cm_locations = cmlocs
 
-    def __set_gravity_vector(self,G):
+    def set_gravity_vector(self,G):
         """
         Set the gravity vector in the base frame.
         """
         self.G = G
     
-    def __rcm_i(self,i):
+    def rcm_i(self,i):
         idx = i - 1
         rcm_ii = Matrix( self.cm_locations[idx] )
         rcm_i = ( self.T_i0(i) * hcoords( rcm_ii ) )[:3,:]
         return simplify( rcm_i )
         
-    def __vcm_i(self,i):
+    def vcm_i(self,i):
         rcm_i = self.rcm_i(i)
         vcm_i = rcm_i.diff(t)
         return simplify( vcm_i )
@@ -259,22 +263,24 @@ class Robot(object):
             wi += self.R_i0(k-1)*self.w_ijj(k)
         return wi
         
-    def __I_i(self,i):
+    def I_i(self,i):
         """
         Returns the inertia tensor of i-th link w.r.t. base frame.
         """
+        if i == 0:
+            raise ValueError("i must be greater than 0")
         idx = i - 1
-        self.set_inertia_tensors()
+        # self.set_inertia_tensors()
         Iii = self.inertia_tensors[idx]
         Ii = simplify( self.R_i0(i) * Iii * self.R_i0(i).T )
         return Ii
             
-    def __kin_i(self,i):
+    def kin_i(self,i):
         """
         Returns the kinetic energy of i-th link
         """
         idx = i - 1
-        mi = self.mass[idx]
+        mi = self.masses[idx]
         vi = self.vcm_i(i)
         wi = self.w_i(i)
         Ii = self.I_i(i)
@@ -284,17 +290,17 @@ class Robot(object):
         Ki = Ktra_i + Krot_i
         return Ki
         
-    def __pot_i(self,i):
+    def pot_i(self,i):
         """
         Returns the potential energy of i-th link
         """
         idx = i - 1
-        mi = self.mass[idx]
+        mi = self.masses[idx]
         G = Matrix( self.G )
         rcm_i = self.rcm_i(i)
         return - mi * G.T * rcm_i
         
-    def __get_kinetic_energy(self):
+    def get_kinetic_energy(self):
         """
         Returns the kinetic energy of the robot
         """
@@ -303,7 +309,7 @@ class Robot(object):
             K += self.kin_i(i+1) 
         return nsimplify(K)
         
-    def __get_potential_energy(self):
+    def get_potential_energy(self):
         """
         Returns the potential energy of the robot
         """
@@ -312,7 +318,7 @@ class Robot(object):
             U += self.pot_i(i+1) 
         return nsimplify(U)
         
-    def __get_dynamic_model(self):
+    def get_dynamic_model(self):
         """
         Returns the dynamic model of the robot
         """
@@ -323,12 +329,9 @@ class Robot(object):
         for i in range(self.dof):
             q = self.qs[i]
             qp = self.qs[i].diff()
-            equations.append( simplify(L.diff(qp).diff(t) - L.diff(q) ))
+            equations.append( Eq( simplify(L.diff(qp).diff(t) - L.diff(q) )[0], symbols(f"tau_{i+1}") ) ) 
             
         return equations
-        
-
-
 
 
 
