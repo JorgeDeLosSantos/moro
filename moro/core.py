@@ -324,12 +324,12 @@ class Robot(object):
         """
         K = self.get_kinetic_energy()
         U = self.get_potential_energy()
-        L = K - U
+        L = ( K - U )[0]
         equations = []
         for i in range(self.dof):
             q = self.qs[i]
             qp = self.qs[i].diff()
-            equations.append( Eq( simplify(L.diff(qp).diff(t) - L.diff(q) )[0], symbols(f"tau_{i+1}") ) ) 
+            equations.append( Eq( simplify(L.diff(qp).diff(t) - L.diff(q) ), symbols(f"tau_{i+1}") ) ) 
             
         return equations
 
