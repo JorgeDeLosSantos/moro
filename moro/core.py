@@ -238,6 +238,61 @@ class Robot(object):
         rcm_i = self.rcm_i(i)
         vcm_i = rcm_i.diff(t)
         return simplify( vcm_i )
+    
+    def _J_cm_i(self,i):
+        """
+        Geometric Jacobian matrix
+        """
+        n = self.dof
+        M_ = zeros(6,n)
+        for j in range(1, n+1):
+            idx = j - 1
+            if j <= i:
+                if self.joint_types[idx]=='r':
+                    jp = self.z(j-1).cross(self.rcm_i(i) - self.p(j-1))
+                    jo = self.z(j-1)
+                else:
+                    jp = self.z(j-1)
+                    jo = zeros(3,1)
+            else:
+                jp = zeros(3,1)
+                jo = zeros(3,1)
+            jp = jp.col_join(jo)
+            M_[:,idx] = jp
+        return simplify(M_)
+    
+    def Jv_cm_i(self,i):
+        return self._J_cm_i(i)[:3,:]
+    
+    def Jw_cm_i(self,i):
+        return self._J_cm_i(i)[3:,:]
+    
+    def J_cm_i(self,i):
+        return self._J_cm_i(i)
+    
+    def J_point(self,point,i):
+        idx = i - 1
+        point_wrt_i = Matrix( point )
+        point_wrt_0 = ( self.T_i0(i) * hcoords( point_wrt_i ) )[:3,:]
+        
+        n = self.dof
+        M_ = zeros(6,n)
+        for j in range(1, n+1):
+            idx = j - 1
+            if j <= i:
+                if self.joint_types[idx]=='r':
+                    jp = self.z(j-1).cross(point_wrt_0 - self.p(j-1))
+                    jo = self.z(j-1)
+                else:
+                    jp = self.z(j-1)
+                    jo = zeros(3,1)
+            else:
+                jp = zeros(3,1)
+                jo = zeros(3,1)
+            jp = jp.col_join(jo)
+            M_[:,idx] = jp
+        return simplify(M_)
+        
         
     def w_ijj(self,i):
         """
@@ -467,5 +522,5 @@ def test_rb2():
 
 
 if __name__=="__main__":
-    print(30*"aaaaa")
+    pass
     

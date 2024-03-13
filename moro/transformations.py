@@ -652,4 +652,4 @@ def skew(u):
     
 
 if __name__=="__main__":
-    print(eul2htm(0,0,pi,"xyy"))
+    print(eul2htm(0,0,pi,"zxz"))
