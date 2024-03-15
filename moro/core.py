@@ -208,6 +208,10 @@ class Robot(object):
         self.masses = masses
         
     def set_inertia_tensors(self,tensors=None):
+        """
+        Inertia tensor w.r.t. {i}' frame. By default it is assumed 
+        that the links are symmetrical, then products of inertia are zero.
+        """
         dof = self.dof
         self.inertia_tensors = []
         if tensors is None:
@@ -293,7 +297,6 @@ class Robot(object):
             M_[:,idx] = jp
         return simplify(M_)
         
-        
     def w_ijj(self,i):
         """
         Angular velocity of {i}-Frame w.r.t. {j}-Frame, described 
@@ -329,6 +332,62 @@ class Robot(object):
         Iii = self.inertia_tensors[idx]
         Ii = simplify( self.R_i0(i) * Iii * self.R_i0(i).T )
         return Ii
+    
+    def I_ii(self,i):
+        """
+        Returns the inertia tensor of i-th link w.r.t. {i}' frame.
+        """
+        if i == 0:
+            raise ValueError("i must be greater than 0")
+        idx = i - 1
+        Iii = self.inertia_tensors[idx]
+        return Iii
+    
+    def m_i(self,i):
+        return self.masses[i-1]
+
+    def get_inertia_matrix(self):
+        n = self.dof
+        M = zeros(n)
+        for i in range(1, n+1):
+            M += self.m_i(i) * self.Jv_cm_i(i).T * self.Jv_cm_i(i) 
+            M += self.Jw_cm_i(i).T * self.R_i0(i) * self.I_ii(1) * self.R_i0(i).T * self.Jw_cm_i(i)
+        return simplify(M)
+        
+    def get_coriolis_matrix(self):
+        n = self.dof
+        M = self.get_inertia_matrix()
+        C = zeros(n)
+        for i in range(1,n+1):
+            for j in range(1,n+1):
+                C[i-1,j-1] = 0
+                for k in range(1,n+1):
+                    C[i-1,j-1] += self.christoffel_symbols(i,j,k) * self.qs[k-1].diff()
+        return nsimplify(C)
+        
+    def christoffel_symbols(self,i,j,k):
+        M = self.get_inertia_matrix()
+        q = self.qs
+        idx_i, idx_j, idx_k = i-1, j-1, k-1 
+        mij = M[idx_i, idx_j]
+        mik = M[idx_i, idx_k]
+        mjk = M[idx_j, idx_k]
+        cijk = (1/2)*( mij.diff(q[idx_k]) + mik.diff(q[idx_j]) - mjk.diff(q[idx_i]) )
+        return cijk
+    
+    def get_gravity_torque_vector(self):
+        pot = self.get_potential_energy()
+        gv = [nsimplify(pot.diff(k)) for k in self.qs]
+        return Matrix(gv)
+    
+    def get_dynamic_model_matrix_form(self):
+        M = self.get_inertia_matrix()
+        C = self.get_coriolis_matrix()
+        G = self.get_gravity_torque_vector()
+        qpp = Matrix([q.diff(t,2) for q in self.qs])
+        qp = Matrix([q.diff(t) for q in self.qs])
+        tau = Matrix([ symbols(f"tau_{i+1}") for i in range(len(qp))])
+        return Eq(MatAdd( MatMul(M,qpp), MatMul(C,qp),  G) , tau)
             
     def kin_i(self,i):
         """
