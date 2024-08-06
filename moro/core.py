@@ -157,7 +157,7 @@ class Robot(object):
         ax.plot(X,Y,Z, "o-", color="#778877", lw=3)
         ax.plot([0],[0],[0], "mo", markersize=6)
         ax.set_axis_off()
-        ax.view_init(90,0)
+        ax.view_init(30,30)
         
         px,py,pz = float(X[-1]),float(Y[-1]),float(Z[-1])
         dim = max([px,py,pz])
@@ -351,7 +351,7 @@ class Robot(object):
         M = zeros(n)
         for i in range(1, n+1):
             M += self.m_i(i) * self.Jv_cm_i(i).T * self.Jv_cm_i(i) 
-            M += self.Jw_cm_i(i).T * self.R_i0(i) * self.I_ii(1) * self.R_i0(i).T * self.Jw_cm_i(i)
+            M += self.Jw_cm_i(i).T * self.R_i0(i) * self.I_ii(i) * self.R_i0(i).T * self.Jw_cm_i(i)
         return simplify(M)
         
     def get_coriolis_matrix(self):
