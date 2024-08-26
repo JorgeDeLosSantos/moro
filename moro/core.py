@@ -1,6 +1,6 @@
 """
 
-Numython R&D, (c) 2020
+Numython R&D, (c) 2024
 Moro is a Python library for kinematic and dynamic modeling of serial robots. 
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
@@ -20,27 +20,24 @@ __all__ = ["Robot", "RigidBody2D"]
 class Robot(object):
     """
     Define a robot-serial-arm given the Denavit-Hartenberg parameters 
-    and joint type, as tuples.
+    and joint type, as tuples (or lists). Each tuple must have the form:
 
-    Each tuple must have the form:
-
-    (a_i, alpha_i, d_i, theta_i)
+    `(a_i, alpha_i, d_i, theta_i)`
 
     Or including the joint type:
 
-    (a_i, alpha_i, d_i, theta_i, joint_type)
+    `(a_i, alpha_i, d_i, theta_i, joint_type)`
 
-    All parameters are `int` or `floats`, or a symbolic variable. 
-    Numeric angles must be passed in radians.
+    All parameters are `int` or `floats`, or a symbolic variable. Numeric angles must be passed in radians. If `joint_type` is not passed then assume that the joint is revolute.
 
     Examples
     --------
     
-    >>> rr = Robot((l1,0,0,t1), (l2,0,0,t2))
+    >>> rr = Robot((l1,0,0,q1), (l2,0,0,q2))
 
     or
 
-    >>> rr2 = Robot((l1,0,0,t1,"r"), (l2,0,0,t2,"r"))
+    >>> rr2 = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
     """
     def __init__(self,*args):
         self.Ts = [] # Transformation matrices i to i-1
@@ -53,7 +50,7 @@ class Robot(object):
             else:
                 self.joint_types.append('r')
 
-            if self.joint_types[-1] is "r":
+            if self.joint_types[-1] == "r":
                 self.qs.append(k[3])
             else:
                 self.qs.append(k[2])
@@ -61,7 +58,17 @@ class Robot(object):
     
     def z(self,i):
         """
-        Get the z-dir of every {i}-Frame w.r.t. {0}-Frame
+        Get the z-dir of every {i}-Frame w.r.t. {0}-Frame.
+        
+        Parameters
+        ----------
+        i: int
+            {i}-th Frame
+            
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            The direction of z_i axis
         """
         return self.T_i0(i)[:3,2]
     
@@ -74,7 +81,7 @@ class Robot(object):
     @property
     def J(self):
         """
-        Geometric Jacobian matrix
+        Get the geometric jacobian matrix of the end-effector.
         """
         n = self.dof
         M_ = zeros(6,n)
@@ -93,27 +100,27 @@ class Robot(object):
     @property
     def dof(self):
         """
-        Get the degrees of freedom
+        Get the degrees of freedom of the robot.
         """
         return self._dof
 
     @property
     def T(self):
         """ 
-        Get Homogeneous transformation matrix of {N}-Frame w.r.t. {0}-Frame
+        Get the homogeneous transformation matrix of {N}-Frame w.r.t. {0}-Frame
         """
         return simplify(functools.reduce(operator.mul, self.Ts))
         
     def T_ij(self,i,j):
         """
-        Get the HTM of {i}-Frame w.r.t. {j}-Frame.
+        Get the homogeneous transformation matrix of {i}-Frame w.r.t. {j}-Frame.
         """
         if i == j: return eye(4)
         return simplify(functools.reduce(operator.mul, self.Ts[j:i]))
         
     def T_i0(self,i):
         """
-        Get the HTM of {i}-Frame w.r.t. {0}-Frame.
+        Get the homogeneous transformation matrix of {i}-Frame w.r.t. {0}-Frame.
         """
         if i == 0:
             return eye(4)
@@ -275,6 +282,23 @@ class Robot(object):
         return self._J_cm_i(i)
     
     def J_point(self,point,i):
+        """
+        Compute the jacobian matrix of a specific point in the manipulator.
+        
+        Parameters
+        ----------
+        point : list 
+            Coordinates of the point w.r.t. {i}-Frame. 
+
+        i : int
+            Link number in which the point is located.
+            
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Jacobian matrix of the point.
+        
+        """
         idx = i - 1
         point_wrt_i = Matrix( point )
         point_wrt_0 = ( self.T_i0(i) * hcoords( point_wrt_i ) )[:3,:]
@@ -299,7 +323,7 @@ class Robot(object):
         
     def w_ijj(self,i):
         """
-        Angular velocity of {i}-Frame w.r.t. {j}-Frame, described 
+        Angular velocity of the [i]-link w.r.t. [j]-link, described 
         in {j}-Frame, where j = i - 1. 
         """
         # j = i - 1
@@ -313,7 +337,38 @@ class Robot(object):
         
     def w_i(self,i):
         """
-        Angular velocity of {i}-Frame w.r.t. {0}-Frame.
+        Compute the angular velocity of the [i]-link w.r.t. {0}-Frame.
+        
+        Parameters
+        ----------
+        i: int 
+            Link number.
+        
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Angular velocity of the [i]-link w.r.t. {0}-Frame.
+        
+        Examples
+        --------
+        >>> RR = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
+        >>> pprint(RR.w_i(1))
+        ⎡    0    ⎤
+        ⎢         ⎥
+        ⎢    0    ⎥
+        ⎢         ⎥
+        ⎢d        ⎥
+        ⎢──(q₁(t))⎥
+        ⎣dt       ⎦
+        >>> pprint(RR.w_i(2))
+        ⎡          0          ⎤
+        ⎢                     ⎥
+        ⎢          0          ⎥
+        ⎢                     ⎥
+        ⎢d           d        ⎥
+        ⎢──(q₁(t)) + ──(q₂(t))⎥
+        ⎣dt          dt       ⎦
+        
         """
         idx = i - 1
         wi = Matrix([0,0,0])
@@ -323,7 +378,7 @@ class Robot(object):
         
     def I_i(self,i):
         """
-        Returns the inertia tensor of i-th link w.r.t. base frame.
+        Return the inertia tensor of [i-th] link w.r.t. base frame.
         """
         if i == 0:
             raise ValueError("i must be greater than 0")
@@ -335,7 +390,7 @@ class Robot(object):
     
     def I_ii(self,i):
         """
-        Returns the inertia tensor of i-th link w.r.t. {i}' frame.
+        Return the inertia tensor of i-th link w.r.t. {i}' frame.
         """
         if i == 0:
             raise ValueError("i must be greater than 0")

@@ -11,12 +11,12 @@ Alternatively, you can install the development version from GitHub repository:
 
 .. code-block::
 
-	pip install https://github.com/numython-rd/moro.git
+	pip install https://github.com/jorgedelossantos/moro.git
 
 Or clone the repository and install:
 
 .. code-block::
 	
-	git clone https://github.com/numython-rd/moro.git
+	git clone https://github.com/jorgedelossantos/moro.git
 	cd moro
 	pip install setup.py

@@ -21,13 +21,13 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'moro'
-copyright = '2020, Pedro Jorge De Los Santos'
+copyright = '2024, Pedro Jorge De Los Santos'
 author = 'Pedro Jorge De Los Santos'
 
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '0.2.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -46,6 +46,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     "sphinx_rtd_theme",
+    "numpydoc"
 ]
 
 # Add any paths that contain templates here, relative to this directory.

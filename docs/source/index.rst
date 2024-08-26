@@ -11,8 +11,6 @@ Welcome to moro's documentation!
 
 Moro is a Python library for kinematic and dynamic modeling of serial robots. This library has been designed, mainly, for academic and research purposes, using SymPy as base library. 
 
-Why is it named Moro? Because: (mo)deling of (ro)bots
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
