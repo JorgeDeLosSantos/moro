@@ -30,7 +30,7 @@ def plot_euler(phi,theta,psi,seq="zxz"):
     ax.set_xlim([-1,1])
     ax.set_ylim([-1,1])
     ax.set_zlim([-1,1])
-    ax.set_aspect("equal")
+    # ax.set_aspect("equal")
     ax.axis('off')
 
     
@@ -80,7 +80,7 @@ def draw_uv(H, ax, name="S0", color=("r","g"), sz=1):
     ax.arrow(o[0],o[1],u[0],u[1], color=colorl[0])
     ax.arrow(o[0],o[1],v[0],v[1], color=colorl[1])
     ax.text(tpos[0], tpos[1], "{"+name+"}", fontsize=8)
-    ax.set_aspect("equal")
+    ax.set_aspect("auto")
 
 
 if __name__=="__main__":

@@ -13,20 +13,20 @@ pip install moro
 Or from this repo:
 
 ```
-pip install https://github.com/numython-rd/moro.git
+pip install https://github.com/JorgeDeLosSantos/moro.git
 ```
 
 # Documentation and examples
 
-Documentation is available in [https://numython-rd.github.io/moro/](https://numython-rd.github.io/moro/). 
+Documentation is available in [https://jorgedelossantos.github.io/moro/](https://jorgedelossantos.github.io/moro/). 
 
-Also, Jupyter Notebooks are available in: [https://nbviewer.jupyter.org/github/numython-rd/moro/tree/master/examples/nbooks/](https://nbviewer.jupyter.org/github/numython-rd/moro/tree/master/examples/nbooks/)
+Also, Jupyter Notebooks are available in: [https://nbviewer.jupyter.org/github/jorgedelossantos/moro/tree/master/examples/nbooks/](https://nbviewer.jupyter.org/github/jorgedelossantos/moro/tree/master/examples/nbooks/)
 
 
 # Bugs
 
-Please report any bugs that you find, use the issue tracker: [https://github.com/numython-rd/moro/issues](https://github.com/numython-rd/moro/issues)
+Please report any bugs that you find, use the issue tracker: [https://github.com/jorgedelossantos/moro/issues](https://github.com/jorgedelossantos/moro/issues)
 
 # Roadmap
 
-Roadmap of moro: https://github.com/numython-rd/moro/wiki/Roadmap
+Roadmap of moro: https://github.com/jorgedelossantos/moro/wiki/Roadmap
