@@ -14,10 +14,13 @@ __all__ = [
     "compose_rotations",
     "dh",
     "eul2htm",
+    "eul2rot",
     "htm2eul",
     "htmrot",
     "htmtra",
+    "rot2eul",
     "rot2axa",
+    "rot",
     "rotx",
     "roty",
     "rotz",
@@ -27,6 +30,16 @@ __all__ = [
 # ~ ==========================================
 # ~ Transformation operations
 # ~ ==========================================
+def rot(theta, axis="z", deg=False):
+    axis = axis.lower()
+    if axis=="x":
+        return rotx(theta, deg)
+    elif axis=="y":
+        return roty(theta, deg)
+    elif axis=="z":
+        return rotz(theta, deg)
+    else:
+        raise ValueError(f"{axis} is not a valid axis of rotation.")
 
 def rotz(theta, deg=False):
     """
@@ -432,6 +445,91 @@ def _htm2zxz(H, deg=False):
         
     return phi,theta,psi
 
+
+def rot2eul(R, seq="zxz", deg=False):
+    if seq in ("ZXZ","zxz"):
+        return _rot2zxz(R, deg)
+    elif seq in ("ZYZ","zyz"):
+        return _rot2zyz(R, deg)
+    else:
+        raise ValueError("Currently only ZXZ and ZYZ sequence is supported")
+
+def _rot2zxz(R, deg=False):
+    """
+    Calculates ZXZ Euler Angles from a rotation matrix
+    """
+    r33,r13,r23,r31,r32,r11,r12,r21 = R[2,2],R[0,2],R[1,2],R[2,0],R[2,1],R[0,0],R[0,1],R[1,0]
+    if abs(r33) != 1:
+        theta1 = atan2(sqrt(1-r33**2), r33)
+        phi1 = atan2(r13, -r23)
+        psi1 = atan2(r31, r32)
+        theta2 = atan2(-sqrt(1-r33**2), r33)
+        phi2 = atan2(-r13, r23)
+        psi2 = atan2(-r31, -r32)
+        solution = [(phi1,theta1,psi1), (phi2,theta2,psi2)]
+    elif r33==1:
+        theta = 0
+        phi = 0
+        psi = atan2(r21, r11)
+        solution = [(phi,theta,psi)]
+    elif r33==-1:
+        theta = pi
+        psi = 0
+        phi = atan2(r21, r11)
+        solution = [(phi,theta,psi)]
+    else:
+        pass # TODO raise an error
+        
+    if deg:
+        solution = [(rad2deg(a), rad2deg(b), rad2deg(c)) for a,b,c in solution]
+        
+    return solution
+
+
+def _rot2zyz(R, deg=False):
+    """
+    Calculates ZXZ Euler Angles from a rotation matrix
+    """
+    r33,r13,r23,r31,r32,r11,r12,r21 = R[2,2],R[0,2],R[1,2],R[2,0],R[2,1],R[0,0],R[0,1],R[1,0]
+    if abs(r33) != 1:
+        theta1 = atan2(sqrt(1-r33**2), r33)
+        phi1 = atan2(r23, r13)
+        psi1 = atan2(r32, -r31)
+        theta2 = atan2(-sqrt(1-r33**2), r33)
+        phi2 = atan2(-r23, -r13)
+        psi2 = atan2(-r32, r31)
+        solution = [(phi1,theta1,psi1), (phi2,theta2,psi2)]
+    elif r33==1:
+        theta = 0
+        phi = 0
+        psi = atan2(r21, r11)
+        solution = [(phi,theta,psi)]
+    elif r33==-1:
+        theta = pi
+        psi = 0
+        phi = atan2(-r21, -r11)
+        solution = [(phi,theta,psi)]
+    else:
+        pass # TODO raise an error
+        
+    if deg:
+        solution = [(rad2deg(a), rad2deg(b), rad2deg(c)) for a,b,c in solution]
+        
+    return solution
+
+def eul2rot(phi,theta,psi,seq="zxz",deg=False):
+    if deg: # If angles are given in degrees -> convert to radians
+        phi,theta,psi = deg2rad(Matrix([phi,theta,psi]), evalf=False)
+    seq = seq.lower()
+
+    if not seq in ("zxz","zyz","xyx","xzx","yxy","yzy"):
+        raise ValueError(f"{seq} is not a valid sequence")
+
+    axis1 = seq[0]
+    axis2 = seq[1]
+    axis3 = seq[2]
+    R = rot(phi,axis1) * rot(theta,axis2) * rot(psi,axis3)
+    return R
 
 def htmtra(*args,**kwargs):
     """
