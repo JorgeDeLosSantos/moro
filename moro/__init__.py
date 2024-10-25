@@ -17,7 +17,7 @@ from .util import *
 
 # import sympy functions
 from sympy import solve, symbols, init_printing, pi, simplify, nsimplify
-from sympy import sin,cos,tan
+from sympy import sin,cos,tan,sqrt
 from sympy.matrices import Matrix, eye, zeros, ones
 from sympy.physics.mechanics import init_vprinting
 
