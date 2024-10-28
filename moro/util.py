@@ -27,7 +27,8 @@ __all__ = [
     "sympy2float",
     "sympy_matrix_to_numpy_float",
     "issympyobject",
-    "vector_in_hcoords"
+    "vector_in_hcoords",
+    "is_position_vector"
 ]
 
 def pprint(*args,**kwargs):
@@ -182,6 +183,14 @@ def vector_in_hcoords(v):
     if len(v) != 3:
         raise ValueError("Vector v should have three components ")
     return v.col_join(Matrix([1]))
+
+def is_position_vector(v):
+    """
+    Check if v is a position vector (3-components)
+    """
+    if len(v) != 3:
+        return False
+    return True
     
 
 def sympy_matrix_to_numpy_float(H):

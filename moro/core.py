@@ -9,11 +9,13 @@ using SymPy as base library.
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import operator, functools
+import sympy as sp
 from sympy import *
 from sympy.matrices import Matrix,eye,diag
 from moro.abc import *
 from moro.transformations import *
 from moro.util import *
+import moro.inverse_kinematics as ikin
 
 __all__ = ["Robot", "RigidBody2D"]
 
@@ -55,6 +57,7 @@ class Robot(object):
             else:
                 self.qs.append(k[2])
         self._dof = len(args) # Degree of freedom
+        self.__set_default_joint_limits() # set default joint-limits on create
     
     def z(self,i):
         """
@@ -381,7 +384,6 @@ class Robot(object):
         ⎣dt          dt       ⎦
         
         """
-        idx = i - 1
         wi = Matrix([0,0,0])
         for k in range(1,i+1):
             wi += self.R_i0(k-1)*self.w_ijj(k)
@@ -390,6 +392,16 @@ class Robot(object):
     def I_i(self,i):
         """
         Return the inertia tensor of [i-th] link w.r.t. base frame.
+        
+        Parameters
+        ----------
+        i: int 
+            Link number.
+        
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Inertia tensor of the [i]-link w.r.t. {0}-Frame.
         """
         if i == 0:
             raise ValueError("i must be greater than 0")
@@ -401,7 +413,19 @@ class Robot(object):
     
     def I_ii(self,i):
         """
-        Return the inertia tensor of i-th link w.r.t. {i}' frame.
+        Return the inertia tensor of i-th link w.r.t. {i}' frame 
+        (located in the center of mass of link [i] and aligned with 
+        the {i}-Frame).
+        
+        Parameters
+        ----------
+        i: int 
+            Link number.
+        
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Inertia tensor of the [i]-link w.r.t. {i}'-Frame.
         """
         if i == 0:
             raise ValueError("i must be greater than 0")
@@ -472,7 +496,20 @@ class Robot(object):
         
     def pot_i(self,i):
         """
-        Returns the potential energy of i-th link
+        Returns the potential energy of the [i-th] link.
+        
+        .. math::
+        
+            P_i = - m_i \\mathbf{g}^T \\mathbf{r}_{G_i} 
+        
+        Parameters
+        ----------
+        i: int
+            Link number.
+            
+        Returns
+        -------
+        
         """
         idx = i - 1
         mi = self.masses[idx]
@@ -513,25 +550,61 @@ class Robot(object):
             
         return equations
     
-    def solve_inverse_kinematics(self,pose):
-        if ishtm(pose):
-            # If pose is a SE(3) 
-            
-            
-        raise NotImplementedError("This method hasn't been implemented yet")
-
+    def solve_inverse_kinematics(self,pose,q0=None):
+        r_e = self.T[:3,3] # end-effector position
+        if is_position_vector(pose):
+            eqs = re - pose
+            variables = self.qs # all joint variables
+            joint_limits = self.joint_limits # all joint limits
+            if q0 is None:
+                initial_guesses = ikin.generate_random_initial_guesses(variables, joint_limits)
+            else:
+                initial_guesses = q0
+            ikin_sol = ikin.solve_inverse_kinematics(eqs, variables, initial_guesses, joint_limits)
+        if is_SE3(pose):
+            # If pose is a SE(3)
+            raise NotImplementedError("This method hasn't been implemented yet")
+        return ikin_sol
+    
+    def __set_default_joint_limits(self):
+        joint_limits = []
+        for k in range(self.dof):
+            if self.joint_types[k] == "r":  # for revolute joint
+                lower_value = -sp.pi # -180°
+                upper_value = sp.pi  # 180°
+            else: # for prismatic joint
+                lower_value = 0     # 
+                upper_value = 1000  #
+            joint_limits.append((lower_value, upper_value))
+        self._joint_limits = joint_limits
+        
+    @property
+    def joint_limits(self):
+        return self._joint_limits
+    
+    @joint_limits.setter
+    def joint_limits(self,*limits):
+        if len(limits) != self.dof:
+            raise ValueError("The number of joint limits must match DOF.")
+        for limit in limits:
+            if len(limit) != 2:
+                raise ValueError("Each joint-limit should be a 2-tuple.")
+        self._joint_limits = limits
 
 
 #### RigidBody2D
 
 class RigidBody2D(object):
     """
-    Defines a rigid body through a series of points that 
+    Defines a rigid body (two-dimensional) through a series of points that 
     make it up.
-
-    :param points: List of lists or tuples
-    :type points: list, tuple
-
+    
+    Parameters
+    ----------
+    
+    points: list, tuple
+        A list of 2-lists (or list of 2-tuples) containing the 
+        N-points that make up the rigid body.
 
     Examples
     --------
