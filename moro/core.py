@@ -553,14 +553,15 @@ class Robot(object):
     def solve_inverse_kinematics(self,pose,q0=None):
         r_e = self.T[:3,3] # end-effector position
         if is_position_vector(pose):
-            eqs = re - pose
+            eqs = r_e - pose
             variables = self.qs # all joint variables
-            joint_limits = self.joint_limits # all joint limits
+            joint_limits = self.__numerical_joint_limits # all joint limits
             if q0 is None:
                 initial_guesses = ikin.generate_random_initial_guesses(variables, joint_limits)
             else:
                 initial_guesses = q0
-            ikin_sol = ikin.solve_inverse_kinematics(eqs, variables, initial_guesses, joint_limits)
+            # print(eqs, variables, initial_guesses, joint_limits)
+            ikin_sol = ikin.solve_inverse_kinematics(eqs, variables, initial_guesses, joint_limits, method="GD")
         if is_SE3(pose):
             # If pose is a SE(3)
             raise NotImplementedError("This method hasn't been implemented yet")
@@ -590,6 +591,14 @@ class Robot(object):
             if len(limit) != 2:
                 raise ValueError("Each joint-limit should be a 2-tuple.")
         self._joint_limits = limits
+    
+    @property
+    def __numerical_joint_limits(self):
+        joint_limits = self.joint_limits 
+        joint_limits_num = [(float(a), float(b)) for (a,b) in joint_limits] 
+        return joint_limits_num
+            
+        
 
 
 #### RigidBody2D

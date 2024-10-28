@@ -9,13 +9,18 @@ using SymPy as base library.
 import sympy as sp
 import random
 
-def solve_inverse_kinematics(equations,variables,initial_guesses,joint_limits,max_steps=10):
+def solve_inverse_kinematics(equations,
+                             variables,
+                             initial_guesses,
+                             joint_limits,
+                             method="nsolve",
+                             max_steps=10):
     current_step = 1
     try:
-        solution = nsolve(equations, variables, initial_guesses)
+        solution = nsolve(equations, variables, initial_guesses, method)
     except ValueError:
         initial_guesses = generate_random_initial_guesses(variables, joint_limits)
-        solution = nsolve(equations, variables, initial_guesses)
+        solution = nsolve(equations, variables, initial_guesses, method)
     while current_step <= max_steps:
         no_sol = 0
         if len(solution) == 0:
@@ -26,19 +31,43 @@ def solve_inverse_kinematics(equations,variables,initial_guesses,joint_limits,ma
         if no_sol > 0:
             try:
                 initial_guesses = generate_random_initial_guesses(variables, joint_limits)
-                solution = nsolve(equations, variables, initial_guesses)
+                solution = nsolve(equations, variables, initial_guesses, method)
             except ValueError:
                 pass # skip current step
         else:
             break
         current_step += 1
+    if current_step > max_steps:
+        raise ValueError("Could not find solution within given limits.")
     return solution, current_step
 
-def nsolve(equations,variables,initial_guesses):
-    """
-    Just nsolve of SymPy
-    """
-    return sp.nsolve(equations, variables, initial_guesses, dict=True)
+def nsolve(equations,variables,initial_guesses,method):
+    if method=="nsolve":
+        return sp.nsolve(equations, variables, initial_guesses, dict=True)
+    else:
+        return gradient_descent(equations, variables, initial_guesses)
+
+def gradient_descent(equations,variables,initial_guesses,eps=1e-8):
+    J = equations.jacobian(variables)
+    # print(J)
+    joint_pos = dict( zip(variables, initial_guesses) ) # joint pos
+    q = sp.Matrix(initial_guesses)
+    e = equations.subs(joint_pos)
+    beta = 0.01
+    k = 0
+    while e.norm() > eps:
+        JN = J.subs( joint_pos )
+        Jinv = JN.pinv()
+        De = beta*-e
+        Dq = Jinv*De
+        q = q + Dq
+        joint_pos = dict( zip(variables, q) ) # updating joint positions
+        e = equations.subs(joint_pos)
+        k += 1
+        if k > 10:
+            raise ValueError(f"Could not find solution. Last calculated: {joint_pos}")
+        print(q, e)
+    return joint_pos
 
 def normalize_solution_minus_pi_to_pi(q_sol, evalf=False):
     PI = sp.ones(len(q_sol), 1) * sp.pi
