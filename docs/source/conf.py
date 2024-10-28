@@ -25,9 +25,9 @@ copyright = '2024, Pedro Jorge De Los Santos'
 author = 'Pedro Jorge De Los Santos'
 
 # The short X.Y version
-version = ''
+version = '0.3'
 # The full version, including alpha/beta/rc tags
-release = '0.2.1'
+release = '0.3.0.dev1'
 
 
 # -- General configuration ---------------------------------------------------

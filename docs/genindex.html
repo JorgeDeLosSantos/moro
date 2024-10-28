@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Index &mdash; moro 0.2.1 documentation</title>
+  <title>Index &mdash; moro 0.3.0.dev1 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
 
@@ -33,6 +33,9 @@
           <a href="index.html" class="icon icon-home">
             moro
           </a>
+              <div class="version">
+                0.3
+              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -140,6 +143,10 @@
       <li><a href="transformations.html#moro.transformations.eul2htm">eul2htm() (in module moro.transformations)</a>
 </li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="transformations.html#moro.transformations.eul2rot">eul2rot() (in module moro.transformations)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="G">G</h2>
@@ -171,12 +178,10 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="core.html#moro.core.RigidBody2D.H">H (moro.core.RigidBody2D property)</a>
 </li>
-      <li><a href="util.html#moro.util.hcoords">hcoords() (in module moro.util)</a>
+      <li><a href="transformations.html#moro.transformations.htm2eul">htm2eul() (in module moro.transformations)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="transformations.html#moro.transformations.htm2eul">htm2eul() (in module moro.transformations)</a>
-</li>
       <li><a href="transformations.html#moro.transformations.htmrot">htmrot() (in module moro.transformations)</a>
 </li>
       <li><a href="transformations.html#moro.transformations.htmtra">htmtra() (in module moro.transformations)</a>
@@ -191,10 +196,14 @@
 </li>
       <li><a href="core.html#moro.core.Robot.I_ii">I_ii() (moro.core.Robot method)</a>
 </li>
-      <li><a href="util.html#moro.util.ishtm">ishtm() (in module moro.util)</a>
+      <li><a href="util.html#moro.util.is_SE3">is_SE3() (in module moro.util)</a>
+</li>
+      <li><a href="util.html#moro.util.is_SO3">is_SO3() (in module moro.util)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="util.html#moro.util.ishtm">ishtm() (in module moro.util)</a>
+</li>
       <li><a href="util.html#moro.util.isorthonormal">isorthonormal() (in module moro.util)</a>
 </li>
       <li><a href="util.html#moro.util.isrot">isrot() (in module moro.util)</a>
@@ -317,11 +326,15 @@
 </li>
       <li><a href="core.html#moro.core.RigidBody2D">RigidBody2D (class in moro.core)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="core.html#moro.core.Robot">Robot (class in moro.core)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="transformations.html#moro.transformations.rot">rot() (in module moro.transformations)</a>
+</li>
       <li><a href="transformations.html#moro.transformations.rot2axa">rot2axa() (in module moro.transformations)</a>
+</li>
+      <li><a href="transformations.html#moro.transformations.rot2eul">rot2eul() (in module moro.transformations)</a>
 </li>
       <li><a href="core.html#moro.core.RigidBody2D.rotate">rotate() (moro.core.RigidBody2D method)</a>
 </li>
@@ -343,11 +356,13 @@
 </li>
       <li><a href="core.html#moro.core.Robot.set_inertia_tensors">set_inertia_tensors() (moro.core.Robot method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="core.html#moro.core.Robot.set_masses">set_masses() (moro.core.Robot method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="transformations.html#moro.transformations.skew">skew() (in module moro.transformations)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.solve_inverse_kinematics">solve_inverse_kinematics() (moro.core.Robot method)</a>
 </li>
       <li><a href="util.html#moro.util.sympy2float">sympy2float() (in module moro.util)</a>
 </li>
@@ -374,6 +389,10 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="core.html#moro.core.Robot.vcm_i">vcm_i() (moro.core.Robot method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="util.html#moro.util.vector_in_hcoords">vector_in_hcoords() (in module moro.util)</a>
 </li>
   </ul></td>
 </tr></table>

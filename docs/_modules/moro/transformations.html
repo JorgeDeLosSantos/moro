@@ -92,10 +92,13 @@
     <span class="s2">&quot;compose_rotations&quot;</span><span class="p">,</span>
     <span class="s2">&quot;dh&quot;</span><span class="p">,</span>
     <span class="s2">&quot;eul2htm&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;eul2rot&quot;</span><span class="p">,</span>
     <span class="s2">&quot;htm2eul&quot;</span><span class="p">,</span>
     <span class="s2">&quot;htmrot&quot;</span><span class="p">,</span>
     <span class="s2">&quot;htmtra&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rot2eul&quot;</span><span class="p">,</span>
     <span class="s2">&quot;rot2axa&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rot&quot;</span><span class="p">,</span>
     <span class="s2">&quot;rotx&quot;</span><span class="p">,</span>
     <span class="s2">&quot;roty&quot;</span><span class="p">,</span>
     <span class="s2">&quot;rotz&quot;</span><span class="p">,</span>
@@ -105,6 +108,16 @@
 <span class="c1"># ~ ==========================================</span>
 <span class="c1"># ~ Transformation operations</span>
 <span class="c1"># ~ ==========================================</span>
+<div class="viewcode-block" id="rot"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rot">[docs]</a><span class="k">def</span> <span class="nf">rot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">axis</span> <span class="o">=</span> <span class="n">axis</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">axis</span><span class="o">==</span><span class="s2">&quot;x&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">rotx</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">axis</span><span class="o">==</span><span class="s2">&quot;y&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">roty</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">axis</span><span class="o">==</span><span class="s2">&quot;z&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">rotz</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">axis</span><span class="si">}</span><span class="s2"> is not a valid axis of rotation.&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="rotz"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rotz">[docs]</a><span class="k">def</span> <span class="nf">rotz</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -510,6 +523,91 @@
         
     <span class="k">return</span> <span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span>
 
+
+<div class="viewcode-block" id="rot2eul"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rot2eul">[docs]</a><span class="k">def</span> <span class="nf">rot2eul</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ZXZ&quot;</span><span class="p">,</span><span class="s2">&quot;zxz&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_rot2zxz</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ZYZ&quot;</span><span class="p">,</span><span class="s2">&quot;zyz&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_rot2zyz</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Currently only ZXZ and ZYZ sequence is supported&quot;</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">_rot2zxz</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates ZXZ Euler Angles from a rotation matrix</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r33</span><span class="p">,</span><span class="n">r13</span><span class="p">,</span><span class="n">r23</span><span class="p">,</span><span class="n">r31</span><span class="p">,</span><span class="n">r32</span><span class="p">,</span><span class="n">r11</span><span class="p">,</span><span class="n">r12</span><span class="p">,</span><span class="n">r21</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">r33</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">theta1</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">r33</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">r33</span><span class="p">)</span>
+        <span class="n">phi1</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r13</span><span class="p">,</span> <span class="o">-</span><span class="n">r23</span><span class="p">)</span>
+        <span class="n">psi1</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r31</span><span class="p">,</span> <span class="n">r32</span><span class="p">)</span>
+        <span class="n">theta2</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="o">-</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">r33</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">r33</span><span class="p">)</span>
+        <span class="n">phi2</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="o">-</span><span class="n">r13</span><span class="p">,</span> <span class="n">r23</span><span class="p">)</span>
+        <span class="n">psi2</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="o">-</span><span class="n">r31</span><span class="p">,</span> <span class="o">-</span><span class="n">r32</span><span class="p">)</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi1</span><span class="p">,</span><span class="n">theta1</span><span class="p">,</span><span class="n">psi1</span><span class="p">),</span> <span class="p">(</span><span class="n">phi2</span><span class="p">,</span><span class="n">theta2</span><span class="p">,</span><span class="n">psi2</span><span class="p">)]</span>
+    <span class="k">elif</span> <span class="n">r33</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">psi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">)]</span>
+    <span class="k">elif</span> <span class="n">r33</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">pi</span>
+        <span class="n">psi</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">pass</span> <span class="c1"># TODO raise an error</span>
+        
+    <span class="k">if</span> <span class="n">deg</span><span class="p">:</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">b</span><span class="p">),</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="n">solution</span><span class="p">]</span>
+        
+    <span class="k">return</span> <span class="n">solution</span>
+
+
+<span class="k">def</span> <span class="nf">_rot2zyz</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates ZXZ Euler Angles from a rotation matrix</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r33</span><span class="p">,</span><span class="n">r13</span><span class="p">,</span><span class="n">r23</span><span class="p">,</span><span class="n">r31</span><span class="p">,</span><span class="n">r32</span><span class="p">,</span><span class="n">r11</span><span class="p">,</span><span class="n">r12</span><span class="p">,</span><span class="n">r21</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">r33</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">theta1</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">r33</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">r33</span><span class="p">)</span>
+        <span class="n">phi1</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r23</span><span class="p">,</span> <span class="n">r13</span><span class="p">)</span>
+        <span class="n">psi1</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r32</span><span class="p">,</span> <span class="o">-</span><span class="n">r31</span><span class="p">)</span>
+        <span class="n">theta2</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="o">-</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">r33</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">r33</span><span class="p">)</span>
+        <span class="n">phi2</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="o">-</span><span class="n">r23</span><span class="p">,</span> <span class="o">-</span><span class="n">r13</span><span class="p">)</span>
+        <span class="n">psi2</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="o">-</span><span class="n">r32</span><span class="p">,</span> <span class="n">r31</span><span class="p">)</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi1</span><span class="p">,</span><span class="n">theta1</span><span class="p">,</span><span class="n">psi1</span><span class="p">),</span> <span class="p">(</span><span class="n">phi2</span><span class="p">,</span><span class="n">theta2</span><span class="p">,</span><span class="n">psi2</span><span class="p">)]</span>
+    <span class="k">elif</span> <span class="n">r33</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">psi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">)]</span>
+    <span class="k">elif</span> <span class="n">r33</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">pi</span>
+        <span class="n">psi</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="o">-</span><span class="n">r21</span><span class="p">,</span> <span class="o">-</span><span class="n">r11</span><span class="p">)</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">pass</span> <span class="c1"># TODO raise an error</span>
+        
+    <span class="k">if</span> <span class="n">deg</span><span class="p">:</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">b</span><span class="p">),</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="n">solution</span><span class="p">]</span>
+        
+    <span class="k">return</span> <span class="n">solution</span>
+
+<div class="viewcode-block" id="eul2rot"><a class="viewcode-back" href="../../transformations.html#moro.transformations.eul2rot">[docs]</a><span class="k">def</span> <span class="nf">eul2rot</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">,</span><span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">deg</span><span class="p">:</span> <span class="c1"># If angles are given in degrees -&gt; convert to radians</span>
+        <span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span> <span class="o">=</span> <span class="n">deg2rad</span><span class="p">(</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">]),</span> <span class="n">evalf</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">seq</span> <span class="o">=</span> <span class="n">seq</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="s2">&quot;zyz&quot;</span><span class="p">,</span><span class="s2">&quot;xyx&quot;</span><span class="p">,</span><span class="s2">&quot;xzx&quot;</span><span class="p">,</span><span class="s2">&quot;yxy&quot;</span><span class="p">,</span><span class="s2">&quot;yzy&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">seq</span><span class="si">}</span><span class="s2"> is not a valid sequence&quot;</span><span class="p">)</span>
+
+    <span class="n">axis1</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">axis2</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">axis3</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">rot</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">axis1</span><span class="p">)</span> <span class="o">*</span> <span class="n">rot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span><span class="n">axis2</span><span class="p">)</span> <span class="o">*</span> <span class="n">rot</span><span class="p">(</span><span class="n">psi</span><span class="p">,</span><span class="n">axis3</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">R</span></div>
 
 <div class="viewcode-block" id="htmtra"><a class="viewcode-back" href="../../transformations.html#moro.transformations.htmtra">[docs]</a><span class="k">def</span> <span class="nf">htmtra</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>

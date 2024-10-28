@@ -77,8 +77,12 @@
              
   <h1>Source code for moro.util</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
-
+<span class="sd">Numython R&amp;D, (c) 2020</span>
+<span class="sd">Moro is a Python library for kinematic and dynamic modeling of serial robots. </span>
+<span class="sd">This library has been designed, mainly, for academic and research purposes, </span>
+<span class="sd">using SymPy as base library. </span>
 <span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">pi</span><span class="p">,</span><span class="n">sin</span><span class="p">,</span><span class="n">cos</span><span class="p">,</span><span class="n">tan</span>
 <span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">eye</span>
 <span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sp</span>
@@ -94,12 +98,14 @@
     <span class="s2">&quot;deg2rad&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ishtm&quot;</span><span class="p">,</span>
     <span class="s2">&quot;isorthonormal&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_SE3&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_SO3&quot;</span><span class="p">,</span>
     <span class="s2">&quot;isrot&quot;</span><span class="p">,</span>
     <span class="s2">&quot;rad2deg&quot;</span><span class="p">,</span>
     <span class="s2">&quot;sympy2float&quot;</span><span class="p">,</span>
     <span class="s2">&quot;sympy_matrix_to_numpy_float&quot;</span><span class="p">,</span>
     <span class="s2">&quot;issympyobject&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;hcoords&quot;</span>
+    <span class="s2">&quot;vector_in_hcoords&quot;</span>
 <span class="p">]</span>
 
 <div class="viewcode-block" id="pprint"><a class="viewcode-back" href="../../util.html#moro.util.pprint">[docs]</a><span class="k">def</span> <span class="nf">pprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -170,18 +176,23 @@
     
 <div class="viewcode-block" id="ishtm"><a class="viewcode-back" href="../../util.html#moro.util.ishtm">[docs]</a><span class="k">def</span> <span class="nf">ishtm</span><span class="p">(</span><span class="n">H</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Is H a homogeneous transformation matrix ?</span>
+<span class="sd">    Check if H a homogeneous transformation matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">is_SE3</span><span class="p">(</span><span class="n">H</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="is_SE3"><a class="viewcode-back" href="../../util.html#moro.util.is_SE3">[docs]</a><span class="k">def</span> <span class="nf">is_SE3</span><span class="p">(</span><span class="n">H</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if H is a matrix of the SE(3) group.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">nrow</span><span class="p">,</span><span class="n">ncol</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">shape</span>
     <span class="k">if</span> <span class="n">nrow</span> <span class="o">==</span> <span class="n">ncol</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">isrot</span><span class="p">(</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,:</span><span class="mi">3</span><span class="p">])</span> <span class="ow">and</span> <span class="n">H</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">H</span><span class="p">[</span><span class="mi">3</span><span class="p">,:</span><span class="mi">3</span><span class="p">]):</span>
             <span class="k">return</span> <span class="kc">True</span>
     <span class="k">return</span> <span class="kc">False</span></div>
-    
 
-<div class="viewcode-block" id="isrot"><a class="viewcode-back" href="../../util.html#moro.util.isrot">[docs]</a><span class="k">def</span> <span class="nf">isrot</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
+<div class="viewcode-block" id="is_SO3"><a class="viewcode-back" href="../../util.html#moro.util.is_SO3">[docs]</a><span class="k">def</span> <span class="nf">is_SO3</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Is R a rotation matrix ?</span>
+<span class="sd">    Check if R is a matrix of the SO(3) group.</span>
 <span class="sd">    </span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -198,6 +209,23 @@
     <span class="k">if</span> <span class="p">(</span><span class="n">nrow</span> <span class="o">==</span> <span class="n">ncol</span> <span class="o">==</span> <span class="mi">3</span><span class="p">)</span> <span class="ow">and</span> <span class="n">isorthonormal</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">True</span>
     <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="isrot"><a class="viewcode-back" href="../../util.html#moro.util.isrot">[docs]</a><span class="k">def</span> <span class="nf">isrot</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Is R a rotation matrix ?</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    R : `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    False or True</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">is_SO3</span><span class="p">(</span><span class="n">R</span><span class="p">)</span></div>
     
     
 <div class="viewcode-block" id="isorthonormal"><a class="viewcode-back" href="../../util.html#moro.util.isorthonormal">[docs]</a><span class="k">def</span> <span class="nf">isorthonormal</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
@@ -225,7 +253,12 @@
     <span class="k">return</span> <span class="kc">True</span></div>
     
     
-<div class="viewcode-block" id="hcoords"><a class="viewcode-back" href="../../util.html#moro.util.hcoords">[docs]</a><span class="k">def</span> <span class="nf">hcoords</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+<div class="viewcode-block" id="vector_in_hcoords"><a class="viewcode-back" href="../../util.html#moro.util.vector_in_hcoords">[docs]</a><span class="k">def</span> <span class="nf">vector_in_hcoords</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return vector v in homogeneous coordinates (adding one at the end).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Vector v should have three components &quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">v</span><span class="o">.</span><span class="n">col_join</span><span class="p">(</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">1</span><span class="p">]))</span></div>
     
 
