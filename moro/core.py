@@ -501,6 +501,9 @@ class Robot(object):
             equations.append( Eq( simplify(L.diff(qp).diff(t) - L.diff(q) ), symbols(f"tau_{i+1}") ) ) 
             
         return equations
+    
+    def solve_inverse_kinematics(self,pose):
+        raise NotImplementedError("This method hasn't been implemented yet")
 
 
 
