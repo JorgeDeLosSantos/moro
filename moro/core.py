@@ -20,7 +20,7 @@ __all__ = ["Robot", "RigidBody2D"]
 class Robot(object):
     """
     Define a robot-serial-arm given the Denavit-Hartenberg parameters 
-    and joint type, as tuples (or lists). Each tuple must have the form:
+    and the joint type, as tuples (or lists). Each tuple must have the form:
 
     `(a_i, alpha_i, d_i, theta_i)`
 
@@ -28,7 +28,7 @@ class Robot(object):
 
     `(a_i, alpha_i, d_i, theta_i, joint_type)`
 
-    All parameters are `int` or `floats`, or a symbolic variable. Numeric angles must be passed in radians. If `joint_type` is not passed then assume that the joint is revolute.
+    All parameters are `int` or `floats`, or a symbolic variable of SymPy. Numeric angles must be passed in radians. If `joint_type` is not passed, the joint is assumed to be revolute.
 
     Examples
     --------
@@ -42,12 +42,12 @@ class Robot(object):
     def __init__(self,*args):
         self.Ts = [] # Transformation matrices i to i-1
         self.joint_types = [] # Joint type -> "r" revolute, "p" prismatic
-        self.qs = []
+        self.qs = [] # Joint variables
         for k in args:
             self.Ts.append(dh(k[0],k[1],k[2],k[3])) # Compute Ti->i-1
             if len(k)>4:
                 self.joint_types.append(k[4])
-            else:
+            else: # By default, the joint type is assumed to be revolute
                 self.joint_types.append('r')
 
             if self.joint_types[-1] == "r":
@@ -58,7 +58,7 @@ class Robot(object):
     
     def z(self,i):
         """
-        Get the z-dir of every {i}-Frame w.r.t. {0}-Frame.
+        Get the z_i axis direction w.r.t. {0}-Frame.
         
         Parameters
         ----------
@@ -74,23 +74,34 @@ class Robot(object):
     
     def p(self,i):
         """
-        Get the position for every {i}-Frame w.r.t. {0}-Frame
+        Get the position (of the origin of coordinates) of the {i}-Frame w.r.t. {0}-Frame
+        
+        Parameters
+        ----------
+        i: int
+            {i}-th Frame
+            
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            The position of {i}-Frame as a 3-component vector.
         """
         return self.T_i0(i)[:3,3]
     
     @property
     def J(self):
         """
-        Get the geometric jacobian matrix of the end-effector.
+        sympy.matrices.dense.MutableDenseMatrix
+            Get the geometric jacobian matrix of the end-effector.
         """
         n = self.dof
         M_ = zeros(6,n)
         for i in range(1, n+1):
             idx = i - 1
-            if self.joint_types[idx]=='r':
+            if self.joint_types[idx]=='r': # If i-th joint is revolute
                 jp = self.z(i-1).cross(self.p(n) - self.p(i-1))
                 jo = self.z(i-1)
-            else:
+            else: # If i-th joint is prismatic
                 jp = self.z(i-1)
                 jo = zeros(3,1)
             jp = jp.col_join(jo)
@@ -242,7 +253,7 @@ class Robot(object):
     def rcm_i(self,i):
         idx = i - 1
         rcm_ii = Matrix( self.cm_locations[idx] )
-        rcm_i = ( self.T_i0(i) * hcoords( rcm_ii ) )[:3,:]
+        rcm_i = ( self.T_i0(i) * vector_in_hcoords( rcm_ii ) )[:3,:]
         return simplify( rcm_i )
         
     def vcm_i(self,i):
@@ -301,7 +312,7 @@ class Robot(object):
         """
         idx = i - 1
         point_wrt_i = Matrix( point )
-        point_wrt_0 = ( self.T_i0(i) * hcoords( point_wrt_i ) )[:3,:]
+        point_wrt_0 = ( self.T_i0(i) * vector_in_hcoords( point_wrt_i ) )[:3,:]
         
         n = self.dof
         M_ = zeros(6,n)
@@ -503,6 +514,10 @@ class Robot(object):
         return equations
     
     def solve_inverse_kinematics(self,pose):
+        if ishtm(pose):
+            # If pose is a SE(3) 
+            
+            
         raise NotImplementedError("This method hasn't been implemented yet")
 
 

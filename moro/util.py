@@ -1,6 +1,10 @@
 """
-
+Numython R&D, (c) 2020
+Moro is a Python library for kinematic and dynamic modeling of serial robots. 
+This library has been designed, mainly, for academic and research purposes, 
+using SymPy as base library. 
 """
+
 from sympy import pi,sin,cos,tan
 from sympy.matrices import Matrix,eye
 import sympy as sp
@@ -16,12 +20,14 @@ __all__ = [
     "deg2rad",
     "ishtm",
     "isorthonormal",
+    "is_SE3",
+    "is_SO3",
     "isrot",
     "rad2deg",
     "sympy2float",
     "sympy_matrix_to_numpy_float",
     "issympyobject",
-    "hcoords"
+    "vector_in_hcoords"
 ]
 
 def pprint(*args,**kwargs):
@@ -92,18 +98,23 @@ def issympyobject(obj):
     
 def ishtm(H):
     """
-    Is H a homogeneous transformation matrix ?
+    Check if H a homogeneous transformation matrix.
+    """
+    return is_SE3(H)
+    
+def is_SE3(H):
+    """
+    Check if H is a matrix of the SE(3) group.
     """
     nrow,ncol = H.shape
     if nrow == ncol == 4:
         if isrot(H[:3,:3]) and H[3,3]==1 and not any(H[3,:3]):
             return True
     return False
-    
 
-def isrot(R):
+def is_SO3(R):
     """
-    Is R a rotation matrix ?
+    Check if R is a matrix of the SO(3) group.
     
     Parameters
     ----------
@@ -120,6 +131,23 @@ def isrot(R):
     if (nrow == ncol == 3) and isorthonormal(R):
         return True
     return False
+
+def isrot(R):
+    """
+    Is R a rotation matrix ?
+    
+    Parameters
+    ----------
+    
+    R : `sympy.matrices.dense.MutableDenseMatrix`
+    
+    Returns
+    -------
+    
+    False or True
+    
+    """
+    return is_SO3(R)
     
     
 def isorthonormal(R):
@@ -147,7 +175,12 @@ def isorthonormal(R):
     return True
     
     
-def hcoords(v):
+def vector_in_hcoords(v):
+    """
+    Return vector v in homogeneous coordinates (adding one at the end).
+    """
+    if len(v) != 3:
+        raise ValueError("Vector v should have three components ")
     return v.col_join(Matrix([1]))
     
 
