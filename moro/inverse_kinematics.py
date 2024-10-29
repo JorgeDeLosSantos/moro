@@ -39,7 +39,7 @@ def solve_inverse_kinematics(equations,
         current_step += 1
     if current_step > max_steps:
         raise ValueError("Could not find solution within given limits.")
-    return solution, current_step
+    return solution
 
 def nsolve(equations,variables,initial_guesses,method):
     if method=="nsolve":
@@ -68,6 +68,34 @@ def gradient_descent(equations,variables,initial_guesses,eps=1e-8):
             raise ValueError(f"Could not find solution. Last calculated: {joint_pos}")
         print(q, e)
     return joint_pos
+
+def ik_as_is(pose, fk, variables, initial_guesses, joint_limits):
+    equations = fk - pose
+    qsol = solve_inverse_kinematics(equations, 
+                                    variables, 
+                                    initial_guesses,
+                                    joint_limits
+                                    )
+    return qsol
+
+
+def pieper_method(H,T10,T21,T32,T43,T54,T65,variables,initial_guesses,joint_limits):
+    position_equations = (T10*T21*T32*T43)[:3,3] - (H*(T54*T65).inv())[:3,3]
+    qsol_position = solve_inverse_kinematics(position_equations, 
+                                             variables[:3], 
+                                             initial_guesses[:3],
+                                             joint_limits[:3]
+                                             )
+    # print(qsol_position)
+    R30_sol = ( T10*T21*T32 ).subs(qsol_position[0])[:3,:3]
+    orientation_equations = ( R30_sol * T43[:3,:3] * T54[:3,:3] * T65[:3,:3] ) - ( H[:3,:3] )
+    # orientation_equations = sp.Matrix([_oeqs[2,0], _oeqs[2,1], _oeqs[2,2], _oeqs[0,2], _oeqs[1,2]])
+    qsol_orientation = solve_inverse_kinematics(orientation_equations,
+                                                variables[3:],
+                                                initial_guesses[3:],
+                                                joint_limits[3:]
+                                                )
+    return [{**qsol_position[0], **qsol_orientation[0]}]
 
 def normalize_solution_minus_pi_to_pi(q_sol, evalf=False):
     PI = sp.ones(len(q_sol), 1) * sp.pi

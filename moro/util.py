@@ -109,7 +109,7 @@ def is_SE3(H):
     """
     nrow,ncol = H.shape
     if nrow == ncol == 4:
-        if isrot(H[:3,:3]) and H[3,3]==1 and not any(H[3,:3]):
+        if is_SO3(H[:3,:3]) and H[3,3]==1 and not any(H[3,:3]):
             return True
     return False
 
@@ -169,9 +169,11 @@ def isorthonormal(R):
     _,ncol = R.shape
     for i,j in combinations(range(ncol), 2):
         if ( R[:,i].dot(R[:,j]) ).simplify() != 0:
+            print( f"Perp:  {( R[:,i].dot(R[:,j]) ).simplify()}" )
             return False
     for i in range(ncol):
-        if R[:,i].norm().simplify() != 1:
+        if abs(R[:,i].norm().simplify() - 1) > 1e-12:
+            print(R[:,i].norm().simplify())
             return False
     return True
     
