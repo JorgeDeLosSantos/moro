@@ -1,14 +1,17 @@
 """
-
+Numython R&D, (c) 2024
+Moro is a Python library for kinematic and dynamic modeling of serial robots. 
+This library has been designed, mainly, for academic and research purposes, 
+using SymPy as base library. 
 """
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from sympy import *
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
+import sympy as sp
+from sympy import sin,cos
 from sympy.matrices import Matrix,eye
 from moro.abc import *
 from moro.util import *
     
-
 __all__ = [
     "axa2rot",
     "compose_rotations",
@@ -313,26 +316,24 @@ def eul2htm(phi,theta,psi,seq="zxz",deg=False):
     Parameters
     ----------
 
-    :param phi: phi angle
-    :type phi: int,float,symbol
+    phi: int, float, symbol
+        First angle of the set
 
-    :param theta: theta angle
-    :type theta: int,float,symbol
+    theta: int, float, symbol
+        Second angle of the set
 
-    :param psi: psi angle
-    :type psi: int,float,symbol
-
-    :param seq: Rotation sequence
-    :type seq: str
-
-    :param deg: True if (phi,theta,psi) are given in degrees
-    :type deg: bool
+    psi: int, float, symbol
+        Third angle of the set
+        
+    deg: bool
+        This parameter is True if phi, theta, and psi are given in degrees, 
+        by default it's assumed to be False (angles in radians).
 
     Returns
     -------
 
-    :return: Homogeneous transformation matrix
-    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`
+    H: `sympy.matrices.dense.MutableDenseMatrix`
+        A homogeneous transformation matrix (SE(3)).
     
     
     Examples
@@ -686,7 +687,7 @@ def htmrot(theta, axis="z", deg=False):
     elif axis in ("x","X",1,"1"):
         R = rotx(theta)
     else:
-        R = eye(3) # raise except (to impl)
+        raise ValueError("The axis is invalid, axis must be 'x', 'y' or 'z'")
     H = _rot2htm(R)
     return H
 
@@ -703,8 +704,10 @@ def _rot2htm(R):
 
 def rot2axa(R, deg=False):
     """
-    Given a SO(3) matrix return the axis-angle representation
+    Given a SO(3) matrix return the axis-angle representation.
     """
+    if not(is_SO3(R)):
+        raise ValueError("R must be a rotation matrix.")
     r32,r23 = R[2,1],R[1,2]
     r13,r31 = R[0,2],R[2,0]
     r21,r12 = R[1,0],R[0,1]
@@ -742,6 +745,8 @@ def skew(u):
     """
     Return skew-symmetric matrix associated to u vector 
     """
+    if len(u) != 3:
+        raise ValueError("The vector u must have three components.")
     ux,uy,uz = u
     S = Matrix([[0, -uz, uy],
                 [uz, 0, -ux], 
