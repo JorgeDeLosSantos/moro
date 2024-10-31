@@ -249,24 +249,41 @@ class Robot(object):
         self._qis_range = args
         
     def __plot_workspace(self):
-        """ TODO """
+        """ 
+        TODO 
+        """
         pass
         
     def set_masses(self,masses):
         """
         Set mass for each link using a list like: [m1, m2, ..., mn], where 
         m1, m2, ..., mn, are numeric or symbolic values.
+        
+        Parameters
+        ----------
+        masses: list, tuple
+            A list of numerical or symbolic values that correspond to link masses.
         """
         self.masses = masses
         
     def set_inertia_tensors(self,tensors=None):
         """
-        Inertia tensor w.r.t. {i}' frame. By default it is assumed 
-        that the links are symmetrical, then products of inertia are zero.
+        Inertia tensor w.r.t. {i}'-Frame. Consider that the reference 
+        frame {i}' is located at the center of mass of link [i] 
+        and oriented in the same way as {i}-Frame. By default (if tensors argument
+        is not passed), it is assumed that each link is symmetrical to, 
+        at least, two planes of the reference frame located in its center of mass, 
+        then products of inertia are zero.
+        
+        Parameters
+        ----------
+        tensors: sympy.matrices.dense.MutableDenseMatrix
+            A list containinig `sympy.matrices.dense.MutableDenseMatrix` that 
+            corresponds to each inertia tensor w.r.t. {i}'-Frame.
         """
         dof = self.dof
         self.inertia_tensors = []
-        if tensors is None:
+        if tensors is None: # Default assumption
             for k in range(dof):
                 Istr = "I_{{xx{0}}}, I_{{yy{0}}}, I_{{zz{0}}}".format(k+1)
                 Ix,Iy,Iz = symbols(Istr)
