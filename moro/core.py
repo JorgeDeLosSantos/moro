@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 # from mpl_toolkits.mplot3d import Axes3D
 import operator, functools
 import sympy as sp
+from sympy import pi
 from sympy.matrices import Matrix,eye,diag,zeros
 from sympy import simplify, nsimplify
 from sympy import Eq,MatAdd,MatMul
@@ -195,7 +196,7 @@ class Robot(object):
         fig = plt.figure()
         ax = fig.gca(projection='3d')
         
-        Ts = self.Ts
+        # Ts = self.Ts
         points = []
         Ti_0 = []
         points.append(zeros(1,3))
@@ -208,7 +209,7 @@ class Robot(object):
         Z = [float(k[2]) for k in points]
         ax.plot(X,Y,Z, "o-", color="#778877", lw=3)
         ax.plot([0],[0],[0], "mo", markersize=6)
-        ax.set_axis_off()
+        # ax.set_axis_off()
         ax.view_init(30,30)
         
         px,py,pz = float(X[-1]),float(Y[-1]),float(Z[-1])
@@ -323,12 +324,40 @@ class Robot(object):
         self.G = G
     
     def rcm_i(self,i):
+        """
+        Return the position of the center of mass of the 
+        i-th link w.r.t. the base frame.
+        
+        Parameters
+        ----------
+        i: int
+            Link number
+        
+        Returns
+        -------
+        `sympy.matrices.dense.MutableDenseMatrix`
+            A column vector
+        """
         idx = i - 1
         rcm_ii = Matrix( self.cm_locations[idx] )
         rcm_i = ( self.T_i0(i) * vector_in_hcoords( rcm_ii ) )[:3,:]
         return simplify( rcm_i )
         
     def vcm_i(self,i):
+        """
+        Return the velocity of the center of mass of the 
+        i-th link w.r.t. the base frame.
+        
+        Parameters
+        ----------
+        i: int
+            Link number
+        
+        Returns
+        -------
+        `sympy.matrices.dense.MutableDenseMatrix`
+            A column vector
+        """
         rcm_i = self.rcm_i(i)
         vcm_i = rcm_i.diff(t)
         return simplify( vcm_i )
@@ -362,6 +391,20 @@ class Robot(object):
         return self._J_cm_i(i)[3:,:]
     
     def J_cm_i(self,i):
+        """
+        Compute the jacobian matrix of the center of mass of 
+        the i-th link.
+        
+        Parameters
+        ----------
+        i : int
+            Link number.
+            
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Jacobian matrix of i-th CoM.     
+        """
         return self._J_cm_i(i)
     
     def J_point(self,point,i):
@@ -406,10 +449,28 @@ class Robot(object):
         
     def w_ijj(self,i):
         """
-        Angular velocity of the [i]-link w.r.t. [j]-link, described 
-        in {j}-Frame, where j = i - 1. 
+        Return the angular velocity of the [i]-link w.r.t. [j]-link, 
+        described in {j}-Frame, where j = i - 1. 
+        
+        Since we are using Denavit-Hartenberg frames, then:
+        
+        .. math:: 
+            
+            \\omega_{{i-i,i}}^{{i-1}} = \\begin{bmatrix} 0 \\\\ 0 \\\\ \\dot{{q}}_i \\end{bmatrix}
+            
+        If the i-th joint is revolute, or:
+        
+        .. math:: 
+            
+            \\omega_{{i-i,i}}^{{i-1}} = \\begin{bmatrix} 0 \\\\ 0 \\\\ 0 \\end{bmatrix}
+        
+        If the i-th joint is a prismatic.
+        
+        Parameters
+        ----------
+        i : int
+            Link number.
         """
-        # j = i - 1
         idx = i - 1 
         if self.joint_types[idx] == "r":
             wijj = Matrix([0,0,self.qs[idx].diff()])
@@ -794,8 +855,24 @@ class RigidBody2D(object):
 
 
 def test_robot():
-    r = Robot((l1,0,0,t1), (l2,0,0,t2))
-    r.plot_diagram({t1:pi/2, t2:pi/2, l1:100, l2:100})
+    ABB = Robot((0,pi/2,330,q1), 
+                (320,0,0,q2), 
+                (0,pi/2,0,q3), 
+                (0,-pi/2,300,q4), 
+                (0,pi/2,0,q5), 
+                (0,0,80,q6))
+    r = Robot((0,pi/2,d1,q1),(l2,0,0,q2), (l3,0,0,q3))
+    # r.plot_diagram({q1:0, q2:0, q3:0, d1:100, l2:100, l3:100})
+    ABB.plot_diagram(
+        {
+            q1:deg2rad(33.69),
+            q2:deg2rad(-26.13),
+            q3:deg2rad(191.99),
+            q4:deg2rad(180),
+            q5:deg2rad(165.87),
+            q6:deg2rad(-146.31)
+        }
+    )
     
     
 def test_rb2():
@@ -812,5 +889,5 @@ def test_rb2():
 
 
 if __name__=="__main__":
-    pass
+    test_robot()
     

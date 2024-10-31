@@ -83,6 +83,10 @@
              
   <section id="module-moro.transformations">
 <span id="the-transformations-module"></span><h1>The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module<a class="headerlink" href="#module-moro.transformations" title="Permalink to this heading"></a></h1>
+<p>Numython R&amp;D, (c) 2024
+Moro is a Python library for kinematic and dynamic modeling of serial robots. 
+This library has been designed, mainly, for academic and research purposes, 
+using SymPy as base library.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.axa2rot">
 <span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">axa2rot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#axa2rot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.axa2rot" title="Permalink to this definition"></a></dt>
@@ -186,30 +190,24 @@ the SO(3) matrix associated.</p>
 <dd><p>Given a set of Euler Angles (phi,theta,psi) for specific 
 sequence this function returns the homogeneous transformation 
 matrix associated. Default sequence is ZXZ.</p>
-<dl class="field-list">
+<dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>:param phi: phi angle</strong></dt><dd></dd>
-<dt><strong>:type phi: int,float,symbol</strong></dt><dd></dd>
-<dt><strong>:param theta: theta angle</strong></dt><dd></dd>
-<dt><strong>:type theta: int,float,symbol</strong></dt><dd></dd>
-<dt><strong>:param psi: psi angle</strong></dt><dd></dd>
-<dt><strong>:type psi: int,float,symbol</strong></dt><dd></dd>
-<dt><strong>:param seq: Rotation sequence</strong></dt><dd></dd>
-<dt><strong>:type seq: str</strong></dt><dd></dd>
-<dt><strong>:param deg: True if (phi,theta,psi) are given in degrees</strong></dt><dd></dd>
-<dt><strong>:type deg: bool</strong></dt><dd></dd>
+<dt><strong>phi: int, float, symbol</strong></dt><dd><p>First angle of the set</p>
+</dd>
+<dt><strong>theta: int, float, symbol</strong></dt><dd><p>Second angle of the set</p>
+</dd>
+<dt><strong>psi: int, float, symbol</strong></dt><dd><p>Third angle of the set</p>
+</dd>
+<dt><strong>deg: bool</strong></dt><dd><p>This parameter is True if phi, theta, and psi are given in degrees, 
+by default it’s assumed to be False (angles in radians).</p>
+</dd>
 </dl>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><dl class="field-list simple">
-<dt class="field-odd">return</dt>
-<dd class="field-odd"><p>Homogeneous transformation matrix
-..</p>
+<dd class="field-even"><dl class="simple">
+<dt>H: <cite>sympy.matrices.dense.MutableDenseMatrix</cite></dt><dd><p>A homogeneous transformation matrix (SE(3)).</p>
 </dd>
-</dl>
-<dl>
-<dt><strong>:rtype:</strong><span class="classifier">class:<cite>sympy.matrices.dense.MutableDenseMatrix</cite></span></dt><dd></dd>
 </dl>
 </dd>
 </dl>
@@ -417,7 +415,7 @@ rotation “theta” about “axis”.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.rot2axa">
 <span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">rot2axa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rot2axa"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.rot2axa" title="Permalink to this definition"></a></dt>
-<dd><p>Given a SO(3) matrix return the axis-angle representation</p>
+<dd><p>Given a SO(3) matrix return the axis-angle representation.</p>
 </dd></dl>
 
 <dl class="py function">

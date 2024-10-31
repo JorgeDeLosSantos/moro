@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>moro.transformations &mdash; moro 0.2.1 documentation</title>
+  <title>moro.transformations &mdash; moro 0.3.0.dev1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
 
@@ -33,6 +33,9 @@
           <a href="../../index.html" class="icon icon-home">
             moro
           </a>
+              <div class="version">
+                0.3
+              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -77,15 +80,17 @@
              
   <h1>Source code for moro.transformations</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
-
+<span class="sd">Numython R&amp;D, (c) 2024</span>
+<span class="sd">Moro is a Python library for kinematic and dynamic modeling of serial robots. </span>
+<span class="sd">This library has been designed, mainly, for academic and research purposes, </span>
+<span class="sd">using SymPy as base library. </span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">from</span> <span class="nn">mpl_toolkits.mplot3d</span> <span class="kn">import</span> <span class="n">Axes3D</span>
-<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="c1"># import matplotlib.pyplot as plt</span>
+<span class="c1"># from mpl_toolkits.mplot3d import Axes3D</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">sin</span><span class="p">,</span><span class="n">cos</span><span class="p">,</span><span class="n">atan2</span><span class="p">,</span><span class="n">acos</span><span class="p">,</span><span class="n">sqrt</span><span class="p">,</span><span class="n">pi</span>
 <span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">eye</span>
 <span class="kn">from</span> <span class="nn">moro.abc</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">moro.util</span> <span class="kn">import</span> <span class="o">*</span>
-    
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;axa2rot&quot;</span><span class="p">,</span>
@@ -391,26 +396,24 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 
-<span class="sd">    :param phi: phi angle</span>
-<span class="sd">    :type phi: int,float,symbol</span>
+<span class="sd">    phi: int, float, symbol</span>
+<span class="sd">        First angle of the set</span>
 
-<span class="sd">    :param theta: theta angle</span>
-<span class="sd">    :type theta: int,float,symbol</span>
+<span class="sd">    theta: int, float, symbol</span>
+<span class="sd">        Second angle of the set</span>
 
-<span class="sd">    :param psi: psi angle</span>
-<span class="sd">    :type psi: int,float,symbol</span>
-
-<span class="sd">    :param seq: Rotation sequence</span>
-<span class="sd">    :type seq: str</span>
-
-<span class="sd">    :param deg: True if (phi,theta,psi) are given in degrees</span>
-<span class="sd">    :type deg: bool</span>
+<span class="sd">    psi: int, float, symbol</span>
+<span class="sd">        Third angle of the set</span>
+<span class="sd">        </span>
+<span class="sd">    deg: bool</span>
+<span class="sd">        This parameter is True if phi, theta, and psi are given in degrees, </span>
+<span class="sd">        by default it&#39;s assumed to be False (angles in radians).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 
-<span class="sd">    :return: Homogeneous transformation matrix</span>
-<span class="sd">    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">    H: `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">        A homogeneous transformation matrix (SE(3)).</span>
 <span class="sd">    </span>
 <span class="sd">    </span>
 <span class="sd">    Examples</span>
@@ -764,7 +767,7 @@
     <span class="k">elif</span> <span class="n">axis</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span><span class="s2">&quot;X&quot;</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;1&quot;</span><span class="p">):</span>
         <span class="n">R</span> <span class="o">=</span> <span class="n">rotx</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">R</span> <span class="o">=</span> <span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c1"># raise except (to impl)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The axis is invalid, axis must be &#39;x&#39;, &#39;y&#39; or &#39;z&#39;&quot;</span><span class="p">)</span>
     <span class="n">H</span> <span class="o">=</span> <span class="n">_rot2htm</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">H</span></div>
 
@@ -781,8 +784,10 @@
 
 <div class="viewcode-block" id="rot2axa"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rot2axa">[docs]</a><span class="k">def</span> <span class="nf">rot2axa</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Given a SO(3) matrix return the axis-angle representation</span>
+<span class="sd">    Given a SO(3) matrix return the axis-angle representation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span><span class="p">(</span><span class="n">is_SO3</span><span class="p">(</span><span class="n">R</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;R must be a rotation matrix.&quot;</span><span class="p">)</span>
     <span class="n">r32</span><span class="p">,</span><span class="n">r23</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span>
     <span class="n">r13</span><span class="p">,</span><span class="n">r31</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">r21</span><span class="p">,</span><span class="n">r12</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
@@ -820,6 +825,8 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return skew-symmetric matrix associated to u vector </span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The vector u must have three components.&quot;</span><span class="p">)</span>
     <span class="n">ux</span><span class="p">,</span><span class="n">uy</span><span class="p">,</span><span class="n">uz</span> <span class="o">=</span> <span class="n">u</span>
     <span class="n">S</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">uz</span><span class="p">,</span> <span class="n">uy</span><span class="p">],</span>
                 <span class="p">[</span><span class="n">uz</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">ux</span><span class="p">],</span> 

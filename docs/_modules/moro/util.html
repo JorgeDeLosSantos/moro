@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>moro.util &mdash; moro 0.2.1 documentation</title>
+  <title>moro.util &mdash; moro 0.3.0.dev1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
 
@@ -33,6 +33,9 @@
           <a href="../../index.html" class="icon icon-home">
             moro
           </a>
+              <div class="version">
+                0.3
+              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -83,8 +86,8 @@
 <span class="sd">using SymPy as base library. </span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">pi</span><span class="p">,</span><span class="n">sin</span><span class="p">,</span><span class="n">cos</span><span class="p">,</span><span class="n">tan</span>
-<span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">eye</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">pi</span>
+<span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span>
 <span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sp</span>
 <span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span>
 <span class="c1"># ~ from scipy.spatial import Delaunay, ConvexHull</span>
@@ -105,7 +108,8 @@
     <span class="s2">&quot;sympy2float&quot;</span><span class="p">,</span>
     <span class="s2">&quot;sympy_matrix_to_numpy_float&quot;</span><span class="p">,</span>
     <span class="s2">&quot;issympyobject&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;vector_in_hcoords&quot;</span>
+    <span class="s2">&quot;vector_in_hcoords&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_position_vector&quot;</span>
 <span class="p">]</span>
 
 <div class="viewcode-block" id="pprint"><a class="viewcode-back" href="../../util.html#moro.util.pprint">[docs]</a><span class="k">def</span> <span class="nf">pprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -186,7 +190,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">nrow</span><span class="p">,</span><span class="n">ncol</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">shape</span>
     <span class="k">if</span> <span class="n">nrow</span> <span class="o">==</span> <span class="n">ncol</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">isrot</span><span class="p">(</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,:</span><span class="mi">3</span><span class="p">])</span> <span class="ow">and</span> <span class="n">H</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">H</span><span class="p">[</span><span class="mi">3</span><span class="p">,:</span><span class="mi">3</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">is_SO3</span><span class="p">(</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,:</span><span class="mi">3</span><span class="p">])</span> <span class="ow">and</span> <span class="n">H</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">H</span><span class="p">[</span><span class="mi">3</span><span class="p">,:</span><span class="mi">3</span><span class="p">]):</span>
             <span class="k">return</span> <span class="kc">True</span>
     <span class="k">return</span> <span class="kc">False</span></div>
 
@@ -246,9 +250,11 @@
     <span class="n">_</span><span class="p">,</span><span class="n">ncol</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">shape</span>
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">j</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">ncol</span><span class="p">),</span> <span class="mi">2</span><span class="p">):</span>
         <span class="k">if</span> <span class="p">(</span> <span class="n">R</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">R</span><span class="p">[:,</span><span class="n">j</span><span class="p">])</span> <span class="p">)</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span> <span class="sa">f</span><span class="s2">&quot;Perp:  </span><span class="si">{</span><span class="p">(</span><span class="w"> </span><span class="n">R</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">R</span><span class="p">[:,</span><span class="n">j</span><span class="p">])</span><span class="w"> </span><span class="p">)</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncol</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">R</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">R</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-12</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">R</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span><span class="o">.</span><span class="n">simplify</span><span class="p">())</span>
             <span class="k">return</span> <span class="kc">False</span>
     <span class="k">return</span> <span class="kc">True</span></div>
     
@@ -260,6 +266,14 @@
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Vector v should have three components &quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">v</span><span class="o">.</span><span class="n">col_join</span><span class="p">(</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">1</span><span class="p">]))</span></div>
+
+<div class="viewcode-block" id="is_position_vector"><a class="viewcode-back" href="../../util.html#moro.util.is_position_vector">[docs]</a><span class="k">def</span> <span class="nf">is_position_vector</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if v is a position vector (3-components)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
     
 
 <div class="viewcode-block" id="sympy_matrix_to_numpy_float"><a class="viewcode-back" href="../../util.html#moro.util.sympy_matrix_to_numpy_float">[docs]</a><span class="k">def</span> <span class="nf">sympy_matrix_to_numpy_float</span><span class="p">(</span><span class="n">H</span><span class="p">):</span>
