@@ -95,6 +95,10 @@ class Robot(object):
     @property
     def J(self):
         """
+        Get the geometric jacobian matrix of the end-effector.
+        
+        Returns
+        -------
         sympy.matrices.dense.MutableDenseMatrix
             Get the geometric jacobian matrix of the end-effector.
         """
@@ -116,19 +120,35 @@ class Robot(object):
     def dof(self):
         """
         Get the degrees of freedom of the robot.
+        
+        Returns
+        -------
+        int
+            Degrees of freedom of the robot
         """
         return self._dof
 
     @property
     def T(self):
         """ 
-        Get the homogeneous transformation matrix of {N}-Frame w.r.t. {0}-Frame
+        Get the homogeneous transformation matrix of {N}-Frame (end-effector)
+        w.r.t. {0}-Frame.
+        
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            T_n^0
         """
         return simplify(functools.reduce(operator.mul, self.Ts))
         
     def T_ij(self,i,j):
         """
-        Get the homogeneous transformation matrix of {i}-Frame w.r.t. {j}-Frame.
+        Get the homogeneous transformation matrix of {i}-Frame w.r.t. {j}-Frame. 
+        
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            T_i^j
         """
         if i == j: return eye(4)
         return simplify(functools.reduce(operator.mul, self.Ts[j:i]))
@@ -136,6 +156,11 @@ class Robot(object):
     def T_i0(self,i):
         """
         Get the homogeneous transformation matrix of {i}-Frame w.r.t. {0}-Frame.
+        
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Returns T_i^0
         """
         if i == 0:
             return eye(4)
@@ -145,17 +170,22 @@ class Robot(object):
     def R_i0(self,i):
         """
         Get the rotation matrix of {i}-Frame w.r.t. {0}-Frame.
+        
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Returns R_i^0
         """
         return self.T_i0(i)[:3,:3]
         
-    def plot_diagram(self,vals):
+    def plot_diagram(self,num_vals):
         """
         Draw a simple wire-diagram or kinematic-diagram of the manipulator.
 
         Parameters
         ----------
 
-        vals : dict
+        num_vals : dict
             Dictionary like: {svar1: nvalue1, svar2: nvalue2, ...}, 
             where svar1, svar2, ... are symbolic variables that are 
             currently used in model, and nvalue1, nvalue2, ... 
@@ -170,8 +200,8 @@ class Robot(object):
         Ti_0 = []
         points.append(zeros(1,3))
         for i in range(self.dof):
-            Ti_0.append(self.T_i0(i+1).subs(vals))
-            points.append((self.T_i0(i+1)[:3,3]).subs(vals))
+            Ti_0.append(self.T_i0(i+1).subs(num_vals))
+            points.append((self.T_i0(i+1)[:3,3]).subs(num_vals))
             
         X = [float(k[0]) for k in points]
         Y = [float(k[1]) for k in points]

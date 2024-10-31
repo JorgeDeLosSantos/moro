@@ -1,6 +1,6 @@
 # moro
 
-A Python library for kinematic and dynamic modeling of robots.
+A Python library for kinematic and dynamic (symbolic) modeling of robots.
 
 # Installation
 
@@ -13,7 +13,7 @@ pip install moro
 Or from this repo:
 
 ```
-pip install https://github.com/JorgeDeLosSantos/moro.git
+pip install git+https://github.com/JorgeDeLosSantos/moro.git
 ```
 
 # Documentation and examples
