@@ -14,10 +14,9 @@ from .plotting import *
 from .transformations import * 
 from .util import *
 
-
 # import sympy functions
-from sympy import solve, symbols, init_printing, pi, simplify, nsimplify
-from sympy import sin,cos,tan,sqrt
+from sympy import solve, symbols, pi, simplify, nsimplify, trigsimp
+from sympy import sin,cos,tan,sqrt,atan2
 from sympy.matrices import Matrix, eye, zeros, ones
 from sympy.physics.mechanics import init_vprinting
 

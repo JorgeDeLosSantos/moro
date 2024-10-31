@@ -7,11 +7,12 @@ using SymPy as base library.
 
 """
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+# from mpl_toolkits.mplot3d import Axes3D
 import operator, functools
 import sympy as sp
-from sympy import *
-from sympy.matrices import Matrix,eye,diag
+from sympy.matrices import Matrix,eye,diag,zeros
+from sympy import simplify, nsimplify
+from sympy import Eq,MatAdd,MatMul
 from moro.abc import *
 from moro.transformations import *
 from moro.util import *

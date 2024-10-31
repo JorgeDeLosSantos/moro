@@ -6,12 +6,11 @@ using SymPy as base library.
 """
 # import matplotlib.pyplot as plt
 # from mpl_toolkits.mplot3d import Axes3D
-import sympy as sp
-from sympy import sin,cos
+from sympy import sin,cos,atan2,acos,sqrt,pi
 from sympy.matrices import Matrix,eye
 from moro.abc import *
 from moro.util import *
-    
+
 __all__ = [
     "axa2rot",
     "compose_rotations",
