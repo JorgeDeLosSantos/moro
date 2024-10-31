@@ -285,7 +285,7 @@ class Robot(object):
         self.inertia_tensors = []
         if tensors is None: # Default assumption
             for k in range(dof):
-                Istr = "I_{{xx{0}}}, I_{{yy{0}}}, I_{{zz{0}}}".format(k+1)
+                Istr = f"I_{{x_{k}x_{k}}}, I_{{y_{k}y_{k}}} I_{{z_{k}z_{k}}}"
                 Ix,Iy,Iz = symbols(Istr)
                 self.inertia_tensors.append( diag(Ix,Iy,Iz) )
         else:
@@ -293,11 +293,32 @@ class Robot(object):
                 self.inertia_tensors.append( tensors[k] )
             
     def set_cm_locations(self,cmlocs):
+        """
+        Set the positions of the center of mass for each 
+        link.
+    
+        Parameters
+        ----------
+        cmlocs: list, tuple
+            A list of lists (or tuples) or a tuple of tuples (or lists) containing 
+            each center of mass position w.r.t. its reference frame.
+        
+        Examples
+        --------
+        >>> RR = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
+        >>> RR.set_cm_locations([(-lc1,0,0), (-lc2,0,0)])
+        """
         self.cm_locations = cmlocs
 
     def set_gravity_vector(self,G):
         """
         Set the gravity vector in the base frame.
+        
+        Parameters
+        ----------
+        G: list, tuple
+            A list or tuple of three elements that define 
+            the gravity vector in the base frame.
         """
         self.G = G
     
