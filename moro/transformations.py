@@ -7,7 +7,7 @@ using SymPy as base library.
 # import matplotlib.pyplot as plt
 # from mpl_toolkits.mplot3d import Axes3D
 from sympy import sin,cos,atan2,acos,sqrt,pi
-from sympy.matrices import Matrix,eye
+from sympy.matrices import Matrix,eye,zeros
 from moro.abc import *
 from moro.util import *
 

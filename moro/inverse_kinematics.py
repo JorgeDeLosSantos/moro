@@ -6,6 +6,20 @@ using SymPy as base library.
 """
 import sympy as sp
 import random
+from scipy.optimize import least_squares
+
+def solve_inverse_kinematics_2(equations,
+                             variables,
+                             initial_guesses,
+                             joint_limits,
+                             method="nsolve",
+                             max_steps=10):
+    sci_eqs = sp.lambdify(variables, equations, "numpy")
+    feqs = lambda x: sci_eqs(*tuple(x)).flatten()
+    solution = least_squares(feqs, 
+                             initial_guesses, 
+                             bounds=tuple(zip(*joint_limits)))
+    return solution
 
 def solve_inverse_kinematics(equations,
                              variables,

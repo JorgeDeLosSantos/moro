@@ -691,7 +691,7 @@ class Robot(object):
             else:
                 initial_guesses = q0
             # print(eqs, variables, initial_guesses, joint_limits)
-            ikin_sol = ikin.solve_inverse_kinematics(eqs, variables, initial_guesses, joint_limits, method="GD")
+            ikin_sol = ikin.solve_inverse_kinematics_2(eqs, variables, initial_guesses, joint_limits, method="GD")
         if is_SE3(pose) and self.dof == 6:
             variables = self.qs # all joint variables
             joint_limits = self.__numerical_joint_limits # all joint limits
