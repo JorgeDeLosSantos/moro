@@ -286,7 +286,7 @@ class Robot(object):
         self.inertia_tensors = []
         if tensors is None: # Default assumption
             for k in range(dof):
-                Istr = f"I_{{x_{k}x_{k}}}, I_{{y_{k}y_{k}}} I_{{z_{k}z_{k}}}"
+                Istr = f"I_{{x_{k+1}x_{k+1}}}, I_{{y_{k+1}y_{k+1}}} I_{{z_{k+1}z_{k+1}}}"
                 Ix,Iy,Iz = symbols(Istr)
                 self.inertia_tensors.append( diag(Ix,Iy,Iz) )
         else:
