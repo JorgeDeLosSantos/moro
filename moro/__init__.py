@@ -1,5 +1,5 @@
 """
-Numython R&D, (c) 2024
+Numython R&D, (c) 2025
 Moro is a Python library for kinematic and dynamic modeling of serial robots. 
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
@@ -15,7 +15,9 @@ from .transformations import *
 from .util import *
 
 # import sympy functions
-from sympy import solve, symbols, pi, simplify, nsimplify, trigsimp
+from sympy import (solve, symbols, pi, 
+                   simplify, nsimplify, 
+                   trigsimp, expand, factor)
 from sympy import sin,cos,tan,sqrt,atan2
 from sympy.matrices import Matrix, eye, zeros, ones
 from sympy.physics.mechanics import init_vprinting

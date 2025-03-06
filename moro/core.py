@@ -611,7 +611,7 @@ class Robot(object):
             
     def kin_i(self,i):
         """
-        Returns the kinetic energy of i-th link
+        Returns the kinetic energy of i-th link 
         """
         idx = i - 1
         mi = self.masses[idx]
