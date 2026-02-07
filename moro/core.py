@@ -73,6 +73,12 @@ class Robot(object):
             else:
                 self.qs.append(k[2])
         self._dof = len(args) # Degree of freedom
+
+        # Dynamic parameters (initially set to None, but they can be set using the corresponding methods)
+        self.masses = None
+        self.inertia_tensors = None
+        self.cm_locations = None
+        self.G = None
         self.__set_default_joint_limits() # set default joint-limits on create
     
     def z(self,i):
@@ -371,6 +377,10 @@ class Robot(object):
         `sympy.matrices.dense.MutableDenseMatrix`
             A column vector
         """
+        if self.cm_locations is None:
+            raise ValueError("Center of mass locations are not defined. " \
+            "Please set them using the set_cm_locations() method.")  
+
         idx = i - 1
         rcm_ii = Matrix( self.cm_locations[idx] )
         rcm_i = ( self.T_i0(i) * vector_in_hcoords( rcm_ii ) )[:3,:]
@@ -587,6 +597,10 @@ class Robot(object):
         sympy.matrices.dense.MutableDenseMatrix
             Inertia tensor of the [i]-link w.r.t. {0}-Frame.
         """
+        if self.inertia_tensors is None:
+            raise ValueError("Inertia tensors are not defined. Please set them using the " \
+            "set_inertia_tensors() method.")
+
         if i == 0:
             raise ValueError("i must be greater than 0")
         idx = i - 1
@@ -627,6 +641,9 @@ class Robot(object):
         i: int  
             Link number.
         """
+        if self.masses is None:
+            raise ValueError("Link masses are not defined. Please set them using " \
+            "the set_masses() method.")
         return self.masses[i-1]
         
     def get_inertia_matrix(self):
@@ -768,6 +785,10 @@ class Robot(object):
         -------
         
         """
+        if self.G is None:
+            raise ValueError("Gravity vector is not defined. Please set it using " \
+            "the set_gravity_vector() method.") 
+
         idx = i - 1
         mi = self.masses[idx]
         G = Matrix( self.G )
