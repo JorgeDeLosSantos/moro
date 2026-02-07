@@ -1,5 +1,5 @@
 """
-Numython R&D, (c) 2024
+Numython R&D, (c) 2026
 Moro is a Python library for kinematic and dynamic modeling of serial robots. 
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
@@ -452,7 +452,7 @@ def rot2eul(R, seq="zxz", deg=False):
     elif seq in ("ZYZ","zyz"):
         return _rot2zyz(R, deg)
     else:
-        raise ValueError("Currently only ZXZ and ZYZ sequence is supported")
+        raise ValueError("Currently only ZXZ and ZYZ sequence are supported")
 
 def _rot2zxz(R, deg=False):
     """
@@ -469,8 +469,8 @@ def _rot2zxz(R, deg=False):
         solution = [(phi1,theta1,psi1), (phi2,theta2,psi2)]
     elif r33==1:
         theta = 0
-        phi = 0
-        psi = atan2(r21, r11)
+        psi = 0
+        phi = atan2(r21, r11)
         solution = [(phi,theta,psi)]
     elif r33==-1:
         theta = pi
@@ -501,8 +501,8 @@ def _rot2zyz(R, deg=False):
         solution = [(phi1,theta1,psi1), (phi2,theta2,psi2)]
     elif r33==1:
         theta = 0
-        phi = 0
-        psi = atan2(r21, r11)
+        psi = 0
+        phi = atan2(r21, r11)
         solution = [(phi,theta,psi)]
     elif r33==-1:
         theta = pi

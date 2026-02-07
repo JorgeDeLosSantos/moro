@@ -1,6 +1,6 @@
 """
 
-Numython R&D, (c) 2024
+Numython R&D, (c) 2026 
 Moro is a Python library for kinematic and dynamic modeling of serial robots. 
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
@@ -194,7 +194,7 @@ class Robot(object):
 
         """
         fig = plt.figure()
-        ax = fig.gca(projection='3d')
+        ax = fig.add_subplot(111,projection='3d')
         
         # Ts = self.Ts
         points = []
@@ -225,6 +225,19 @@ class Robot(object):
         plt.show()
     
     def _draw_uvw(self,H,ax,sz=1):
+        """
+        Draw the u,v,w axes of a frame defined by the homogeneous transformation matrix H.
+
+        Parameters
+        ----------
+
+        H: sympy.matrices.dense.MutableDenseMatrix
+            Homogeneous transformation matrix that defines the frame to be drawn.
+        ax: matplotlib.axes._subplots.Axes3DSubplot
+            The 3D axis where the frame will be drawn.
+        sz: float
+            The length of the axes to be drawn.
+        """
         u = H[:3,0]
         v = H[:3,1]
         w = H[:3,2]
@@ -237,6 +250,12 @@ class Robot(object):
     def qi(self, i):
         """
         Get the i-th articular variable.
+
+        Parameters
+        ----------
+
+        i: int
+            Joint number (starting from 1)
         """
         idx = i - 1
         return self.qs[idx]
@@ -364,7 +383,12 @@ class Robot(object):
     
     def _J_cm_i(self,i):
         """
-        Geometric Jacobian matrix
+        Geometric Jacobian matrix of the center of mass of the i-th link.
+
+        Parameters
+        ----------
+        i : int
+            Link number.
         """
         n = self.dof
         M_ = zeros(6,n)
@@ -385,9 +409,25 @@ class Robot(object):
         return simplify(M_)
     
     def Jv_cm_i(self,i):
+        """
+        Return the linear velocity Jacobian matrix of the center of mass of the i-th link.
+
+        Parameters
+        ----------
+        i : int
+            Link number.
+        """
         return self._J_cm_i(i)[:3,:]
     
     def Jw_cm_i(self,i):
+        """
+        Return the angular velocity Jacobian matrix of the center of mass of the i-th link.
+
+        Parameters
+        ----------
+        i : int
+            Link number.
+        """
         return self._J_cm_i(i)[3:,:]
     
     def J_cm_i(self,i):
@@ -564,16 +604,43 @@ class Robot(object):
         return Iii
     
     def m_i(self,i):
-        return self.masses[i-1]
+        """
+        Return the mass of the i-th link. 
 
+        Parameters
+        ----------
+
+        i: int  
+            Link number.
+        """
+        return self.masses[i-1]
+        
     def get_inertia_matrix(self):
+        """
+        Return the inertia (mass) matrix
+
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Inertia matrix M(q)
+        """
         n = self.dof
         M = zeros(n)
-        for i in range(1, n+1):
-            M += self.m_i(i) * self.Jv_cm_i(i).T * self.Jv_cm_i(i) 
-            M += self.Jw_cm_i(i).T * self.R_i0(i) * self.I_ii(i) * self.R_i0(i).T * self.Jw_cm_i(i)
+
+        # Precompute Jacobians, Rotations, Inertia tensors, Masses
+        Jv = [self.Jv_cm_i(i+1) for i in range(n)]
+        Jw = [self.Jw_cm_i(i+1) for i in range(n)]
+        R  = [self.R_i0(i+1)    for i in range(n)]
+        I  = [self.I_ii(i+1)    for i in range(n)]
+        m  = [self.m_i(i+1)     for i in range(n)]
+
+        # Compute inertia matrix
+        for i in range(n):
+            M += m[i] * Jv[i].T * Jv[i]
+            M += Jw[i].T * R[i] * I[i] * R[i].T * Jw[i]
+
         return simplify(M)
-        
+
     def get_coriolis_matrix(self):
         n = self.dof
         M = self.get_inertia_matrix()
@@ -582,11 +649,18 @@ class Robot(object):
             for j in range(1,n+1):
                 C[i-1,j-1] = 0
                 for k in range(1,n+1):
-                    C[i-1,j-1] += self.christoffel_symbols(i,j,k) * self.qs[k-1].diff()
+                    C[i-1,j-1] += self.christoffel_symbols(i,j,k,M) * self.qs[k-1].diff()
         return nsimplify(C)
         
-    def christoffel_symbols(self,i,j,k):
-        M = self.get_inertia_matrix()
+    def christoffel_symbols(self,i,j,k,M):
+        """
+        Return the Christoffel symbol of the first kind:
+
+        .. math::
+            c_{{i,j,k}} = \\frac{1}{2} \\left( \\frac{{\\partial M_{{i,j}}}}{{\\partial q_k}} + \\frac{{\\partial M_{{i,k}}}}{{\\partial q_j}} - \\frac{{\\partial M_{{j,k}}}}{{\\partial q_i}} \\right)
+
+        """
+        # M = self.get_inertia_matrix()
         q = self.qs
         idx_i, idx_j, idx_k = i-1, j-1, k-1 
         mij = M[idx_i, idx_j]
@@ -595,12 +669,76 @@ class Robot(object):
         cijk = (1/2)*( mij.diff(q[idx_k]) + mik.diff(q[idx_j]) - mjk.diff(q[idx_i]) )
         return cijk
     
+    
+    def get_coriolis_matrix_v2(self):
+        """
+        Calcula la matriz de Coriolis de manera completamente vectorial, sin bucles,
+        y asegurando la correcta implementación de las derivadas cruzadas.
+        """
+        n = self.dof
+        qs = self.qs                   # Coordenadas generalizadas
+        qds = Matrix([q.diff() for q in qs])  # Derivadas de las coordenadas generalizadas (velocidades)
+        M = self.get_inertia_matrix()   # Matriz de inercia n x n
+        
+        # Derivadas de la matriz de inercia respecto a cada q_k (matrices n x n)
+        dM = [M.diff(q) for q in qs]  # Lista de derivadas de M respecto a q_k
+        
+        # Transpuestas de las derivadas de M
+        dM_transpose = [dM_k.T for dM_k in dM]  # Transpuestas de las derivadas
+        
+        # Creamos la matriz de Coriolis usando la fórmula vectorial:
+        # C_ij = 0.5 * sum_k( (dM/dq_k + dM/dq_k^T - dM_jk/dq_i) * qds_k )
+        
+        # Inicializamos la matriz C
+        C = Matrix.zeros(n)
+        
+        for k in range(n):  # Iteramos solo sobre k
+            # Multiplicamos cada término de la matriz derivada por la velocidad correspondiente
+            # Aseguramos que las derivadas cruzadas se calculen correctamente
+            term = 0.5 * (dM[k] + dM_transpose[k] - dM_transpose[k].T)
+            C += term * qds[k]
+
+        # Aseguramos que la matriz sea antisimétrica (esto es una propiedad de la matriz de Coriolis)
+        C = (C - C.T) / 2
+
+        return nsimplify(C)
+
+    def christoffel_symbols_v2(self, i, j, k):
+        M = self.get_inertia_matrix()
+        q = self.qs
+        # Ajuste de índices para Python
+        idx_i, idx_j, idx_k = i-1, j-1, k-1
+        mij = M[idx_i, idx_j]
+        mik = M[idx_i, idx_k]
+        mjk = M[idx_j, idx_k]
+        
+        # Fórmula de los símbolos de Christoffel
+        cijk = (1/2) * (mij.diff(q[idx_k]) + mik.diff(q[idx_j]) - mjk.diff(q[idx_i]))
+        return cijk
+    
     def get_gravity_torque_vector(self):
+        """
+        Return the gravity torque vector G(q).
+
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Gravity torque vector G(q)
+        """
         pot = self.get_potential_energy()
         gv = [nsimplify(pot.diff(k)) for k in self.qs]
         return Matrix(gv)
     
     def get_dynamic_model_matrix_form(self):
+        """
+        Return the dynamic model of the robot in matrix form:
+
+        M(q) q'' + C(q,q') q' + G(q) = tau
+
+        where M(q) is the inertia matrix, C(q,q') is the Coriolis matrix, 
+        G(q) is the gravity torque vector, and tau is the vector of joint torques.
+
+        """
         M = self.get_inertia_matrix()
         C = self.get_coriolis_matrix()
         G = self.get_gravity_torque_vector()
@@ -611,7 +749,16 @@ class Robot(object):
             
     def kin_i(self,i):
         """
-        Returns the kinetic energy of i-th link 
+        Returns the kinetic energy of i-th link.
+
+        .. math::
+        
+            K_i = \\frac{1}{2} m_i \\mathbf{v}_{G_i}^T \\mathbf{v}_{G_i} + \\frac{1}{2} \\boldsymbol{\\omega}_i^T I_i \\boldsymbol{\\omega}_i
+
+        Parameters
+        ----------
+        i: int
+            Link number.
         """
         idx = i - 1
         mi = self.masses[idx]
@@ -649,7 +796,7 @@ class Robot(object):
         
     def get_kinetic_energy(self):
         """
-        Returns the kinetic energy of the robot
+        Returns the total kinetic energy of the robot
         """
         K = Matrix([0])
         for i in range(self.dof):
@@ -658,7 +805,7 @@ class Robot(object):
         
     def get_potential_energy(self):
         """
-        Returns the potential energy of the robot
+        Returns the total potential energy of the robot
         """
         U = Matrix([0])
         for i in range(self.dof):
@@ -667,7 +814,15 @@ class Robot(object):
         
     def get_dynamic_model(self):
         """
-        Returns the dynamic model of the robot
+        Returns the dynamic model of the robot 
+        using the Euler-Lagrange formulation. The returned value is a list of equations,
+        one for each joint, of the form:
+
+        .. math::   
+            \\frac{d}{dt} \\left( \\frac{\\partial L}{\\partial \\dot{{q}}_i} \\right) - \\frac{\\partial L}{\\partial q_i} = \\tau_i
+        
+        where L is the Lagrangian of the system, defined as L = K - P, where K 
+        is the kinetic energy and P is the potential energy.
         """
         K = self.get_kinetic_energy()
         U = self.get_potential_energy()
@@ -734,8 +889,329 @@ class Robot(object):
         joint_limits = self.joint_limits 
         joint_limits_num = [(float(a), float(b)) for (a,b) in joint_limits] 
         return joint_limits_num
-            
+    
+    def __str__(self):
+        repr = "".join( self.joint_types ).upper()
+        return f"Robot {repr}"
+    
+    def __repr__(self):
+        repr = "".join( self.joint_types ).upper()
+        return f"Robot {repr}"
+    
+    def plot_diagram_threejs(self, num_vals, width=800, height=600):
+        """
+        Dibuja el diagrama cinemático del robot usando Three.js en Jupyter.
         
+        Parameters
+        ----------
+        num_vals : dict
+            Diccionario con valores numéricos para las variables simbólicas
+        width : int
+            Ancho del canvas en pixels
+        height : int
+            Alto del canvas en pixels
+        """
+        from IPython.display import HTML
+        import json
+        import uuid
+        
+        # Generar ID único para evitar conflictos
+        unique_id = str(uuid.uuid4())[:8]
+        
+        # Extraer posiciones de joints
+        joints = []
+        frames = []
+        
+        # Frame base
+        joints.append([0.0, 0.0, 0.0])
+        frames.append({
+            'position': [0.0, 0.0, 0.0],
+            'x': [1.0, 0.0, 0.0],
+            'y': [0.0, 1.0, 0.0],
+            'z': [0.0, 0.0, 1.0]
+        })
+        
+        # Para cada joint del robot
+        for i in range(self.dof):
+            Ti = self.T_i0(i + 1).subs(num_vals)
+            
+            # Posición del joint
+            pos = [float(Ti[j, 3]) for j in range(3)]
+            joints.append(pos)
+            
+            # Orientación del frame (ejes x, y, z)
+            frames.append({
+                'position': pos,
+                'x': [float(Ti[j, 0]) for j in range(3)],
+                'y': [float(Ti[j, 1]) for j in range(3)],
+                'z': [float(Ti[j, 2]) for j in range(3)]
+            })
+        
+        # Calcular dimensión para escalar la vista
+        all_coords = [coord for joint in joints for coord in joint]
+        max_coord = max(abs(c) for c in all_coords) if all_coords else 100
+        dim = max(max_coord * 1.5, 50)
+        
+        robot_data = {
+            'joints': joints,
+            'frames': frames,
+            'dimension': float(dim)
+        }
+        
+        # Convertir a JSON
+        robot_json = json.dumps(robot_data)
+        
+        # Template HTML con Three.js usando IDs únicos
+        html_template = f"""
+        <div id="container-{unique_id}" style="width: {width}px; height: {height}px; border: 1px solid #ccc; position: relative;">
+            <div id="controls-{unique_id}" style="position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.95); padding: 10px; border-radius: 5px; font-family: Arial, sans-serif; font-size: 12px; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                <button onclick="window.robot_{unique_id}.toggleRotation()" style="margin: 2px; padding: 5px 10px; cursor: pointer; border: none; background: #4CAF50; color: white; border-radius: 3px;">⏯ Rotar</button>
+                <button onclick="window.robot_{unique_id}.resetView()" style="margin: 2px; padding: 5px 10px; cursor: pointer; border: none; background: #4CAF50; color: white; border-radius: 3px;">🔄 Reset</button>
+                <div id="status-{unique_id}" style="margin-top: 5px; padding: 5px; font-size: 10px; color: #666;">Cargando...</div>
+            </div>
+        </div>
+        
+        <script>
+        (function() {{
+            // Verificar si THREE ya está cargado
+            if (typeof THREE !== 'undefined') {{
+                initRobot_{unique_id}();
+            }} else {{
+                // Cargar Three.js
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+                script.onload = function() {{
+                    initRobot_{unique_id}();
+                }};
+                script.onerror = function() {{
+                    document.getElementById('status-{unique_id}').innerHTML = 'Error cargando Three.js ✗';
+                    document.getElementById('status-{unique_id}').style.color = 'red';
+                }};
+                document.head.appendChild(script);
+            }}
+            
+            function initRobot_{unique_id}() {{
+                const robotData = {robot_json};
+                const container = document.getElementById('container-{unique_id}');
+                
+                // Variables locales para este robot
+                let scene, camera, renderer, robotGroup;
+                let isRotating = false;
+                let isDragging = false;
+                let previousMousePosition = {{ x: 0, y: 0 }};
+                
+                try {{
+                    // Escena
+                    scene = new THREE.Scene();
+                    scene.background = new THREE.Color(0xf5f5f5);
+                    
+                    // Cámara
+                    camera = new THREE.PerspectiveCamera(
+                        50,
+                        {width} / {height},
+                        0.1,
+                        robotData.dimension * 10
+                    );
+                    const camDist = robotData.dimension * 2;
+                    camera.position.set(camDist, camDist, camDist);
+                    camera.lookAt(0, 0, robotData.dimension / 2);
+                    
+                    // Renderer
+                    renderer = new THREE.WebGLRenderer({{ antialias: true }});
+                    renderer.setSize({width}, {height});
+                    renderer.setPixelRatio(window.devicePixelRatio);
+                    container.appendChild(renderer.domElement);
+                    
+                    // Luces
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                    scene.add(ambientLight);
+                    
+                    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.5);
+                    dirLight1.position.set(robotData.dimension, robotData.dimension, robotData.dimension);
+                    scene.add(dirLight1);
+                    
+                    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+                    dirLight2.position.set(-robotData.dimension, -robotData.dimension, -robotData.dimension);
+                    scene.add(dirLight2);
+                    
+                    // Grid
+                    const gridSize = robotData.dimension * 2;
+                    const gridHelper = new THREE.GridHelper(gridSize, 20, 0x888888, 0xcccccc);
+                    scene.add(gridHelper);
+                    
+                    // Ejes principales
+                    const axesHelper = new THREE.AxesHelper(robotData.dimension / 4);
+                    scene.add(axesHelper);
+                    
+                    // Grupo del robot
+                    robotGroup = new THREE.Group();
+                    scene.add(robotGroup);
+                    
+                    // Dibujar robot
+                    drawRobot();
+                    
+                    // Event listeners
+                    renderer.domElement.addEventListener('mousedown', onMouseDown);
+                    renderer.domElement.addEventListener('mousemove', onMouseMove);
+                    renderer.domElement.addEventListener('mouseup', onMouseUp);
+                    renderer.domElement.addEventListener('mouseleave', onMouseUp);
+                    renderer.domElement.addEventListener('wheel', onWheel, {{ passive: false }});
+                    
+                    // Animación
+                    function animate() {{
+                        requestAnimationFrame(animate);
+                        
+                        if (isRotating && robotGroup) {{
+                            robotGroup.rotation.y += 0.005;
+                        }}
+                        
+                        renderer.render(scene, camera);
+                    }}
+                    animate();
+                    
+                    document.getElementById('status-{unique_id}').innerHTML = 
+                        'Listo - Arrastra para rotar | Scroll para zoom';
+                    document.getElementById('status-{unique_id}').style.color = 'green';
+                    
+                }} catch(error) {{
+                    console.error('Error:', error);
+                    document.getElementById('status-{unique_id}').innerHTML = 
+                        'Error: ' + error.message;
+                    document.getElementById('status-{unique_id}').style.color = 'red';
+                }}
+                
+                function drawRobot() {{
+                    const {{ joints, frames }} = robotData;
+                    
+                    // Material para links
+                    const linkMaterial = new THREE.MeshPhongMaterial({{
+                        color: 0x778877,
+                        shininess: 30,
+                        side: THREE.DoubleSide
+                    }});
+                    
+                    // Dibujar links
+                    for (let i = 0; i < joints.length - 1; i++) {{
+                        const start = new THREE.Vector3(...joints[i]);
+                        const end = new THREE.Vector3(...joints[i + 1]);
+                        
+                        const direction = new THREE.Vector3().subVectors(end, start);
+                        const length = direction.length();
+                        
+                        if (length > 0.001) {{
+                            const radius = Math.max(robotData.dimension * 0.015, 1);
+                            const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
+                            const link = new THREE.Mesh(geometry, linkMaterial);
+                            
+                            const midpoint = start.clone().add(direction.clone().multiplyScalar(0.5));
+                            link.position.copy(midpoint);
+                            
+                            const axis = new THREE.Vector3(0, 1, 0);
+                            link.quaternion.setFromUnitVectors(axis, direction.clone().normalize());
+                            
+                            robotGroup.add(link);
+                        }}
+                    }}
+                    
+                    // Dibujar joints
+                    joints.forEach((joint, index) => {{
+                        const radius = index === 0 ? 
+                            Math.max(robotData.dimension * 0.03, 2) : 
+                            Math.max(robotData.dimension * 0.025, 1.5);
+                        const geometry = new THREE.SphereGeometry(radius, 16, 16);
+                        const material = new THREE.MeshPhongMaterial({{
+                            color: index === 0 ? 0xff00ff : 0xff1493,
+                            shininess: 50
+                        }});
+                        const sphere = new THREE.Mesh(geometry, material);
+                        sphere.position.set(...joint);
+                        robotGroup.add(sphere);
+                    }});
+                    
+                    // Dibujar sistemas de coordenadas
+                    const arrowLength = Math.max(robotData.dimension / 5, 10);
+                    const arrowHeadLength = arrowLength * 0.2;
+                    const arrowHeadWidth = arrowLength * 0.15;
+                    
+                    frames.forEach((frame) => {{
+                        const origin = new THREE.Vector3(...frame.position);
+                        
+                        // Eje X (rojo)
+                        const xDir = new THREE.Vector3(...frame.x).normalize();
+                        const xArrow = new THREE.ArrowHelper(
+                            xDir, origin, arrowLength, 0xff0000, 
+                            arrowHeadLength, arrowHeadWidth
+                        );
+                        robotGroup.add(xArrow);
+                        
+                        // Eje Y (verde)
+                        const yDir = new THREE.Vector3(...frame.y).normalize();
+                        const yArrow = new THREE.ArrowHelper(
+                            yDir, origin, arrowLength, 0x00ff00,
+                            arrowHeadLength, arrowHeadWidth
+                        );
+                        robotGroup.add(yArrow);
+                        
+                        // Eje Z (azul)
+                        const zDir = new THREE.Vector3(...frame.z).normalize();
+                        const zArrow = new THREE.ArrowHelper(
+                            zDir, origin, arrowLength, 0x0000ff,
+                            arrowHeadLength, arrowHeadWidth
+                        );
+                        robotGroup.add(zArrow);
+                    }});
+                }}
+                
+                function onMouseDown(event) {{
+                    isDragging = true;
+                    previousMousePosition = {{ x: event.clientX, y: event.clientY }};
+                }}
+                
+                function onMouseMove(event) {{
+                    if (!isDragging || !robotGroup) return;
+                    
+                    const deltaX = event.clientX - previousMousePosition.x;
+                    const deltaY = event.clientY - previousMousePosition.y;
+                    
+                    robotGroup.rotation.y += deltaX * 0.01;
+                    robotGroup.rotation.x += deltaY * 0.01;
+                    
+                    previousMousePosition = {{ x: event.clientX, y: event.clientY }};
+                }}
+                
+                function onMouseUp() {{
+                    isDragging = false;
+                }}
+                
+                function onWheel(event) {{
+                    event.preventDefault();
+                    if (camera) {{
+                        const delta = event.deltaY * 0.001;
+                        const scale = 1 + delta;
+                        camera.position.multiplyScalar(scale);
+                    }}
+                }}
+                
+                // Exponer funciones públicas
+                window.robot_{unique_id} = {{
+                    toggleRotation: function() {{
+                        isRotating = !isRotating;
+                    }},
+                    resetView: function() {{
+                        const camDist = robotData.dimension * 2;
+                        camera.position.set(camDist, camDist, camDist);
+                        camera.lookAt(0, 0, robotData.dimension / 2);
+                        robotGroup.rotation.set(0, 0, 0);
+                    }}
+                }};
+            }}
+        }})();
+        </script>
+        """
+        
+        return HTML(html_template)
+
+            
 
 
 #### RigidBody2D
@@ -789,30 +1265,15 @@ class RigidBody2D(object):
         """
         Rotates the rigid body around z-axis.
         """
-        R = htmrot(angle, axis="z") # Aplicando rotación
+        R = htmrot(angle, axis="z") # Applying rotation
         self.Hs.append(R)
     
     def move(self,q):
         """
         Moves the rigid body
         """
-        D = htmtra(q) # Aplicando traslación
+        D = htmtra(q) # Applying translation
         self.Hs.append(D)
-        
-    def __scale(self,sf):
-        """
-        Escala el cuerpo rígido
-        """
-        # ~ S = self.scale_matrix(sf) # Aplicando escalado
-        # ~ self.Hs.append(S)
-        pass # nothing to do here
-
-    def __scale_matrix(self,sf):
-        M = Matrix([[sf,0,0,0],
-                      [0,sf,0,0],
-                      [0,0,sf,0],
-                      [0,0,0,sf]])
-        return M
         
     def draw(self,color="r",kaxis=None):
         """
@@ -855,24 +1316,26 @@ class RigidBody2D(object):
 
 
 def test_robot():
-    ABB = Robot((0,pi/2,330,q1), 
-                (320,0,0,q2), 
-                (0,pi/2,0,q3), 
-                (0,-pi/2,300,q4), 
-                (0,pi/2,0,q5), 
-                (0,0,80,q6))
+    # ABB = Robot((0,pi/2,330,q1), 
+    #             (320,0,0,q2), 
+    #             (0,pi/2,0,q3), 
+    #             (0,-pi/2,300,q4), 
+    #             (0,pi/2,0,q5), 
+    #             (0,0,80,q6))
     r = Robot((0,pi/2,d1,q1),(l2,0,0,q2), (l3,0,0,q3))
-    # r.plot_diagram({q1:0, q2:0, q3:0, d1:100, l2:100, l3:100})
-    ABB.plot_diagram(
-        {
-            q1:deg2rad(33.69),
-            q2:deg2rad(-26.13),
-            q3:deg2rad(191.99),
-            q4:deg2rad(180),
-            q5:deg2rad(165.87),
-            q6:deg2rad(-146.31)
-        }
-    )
+    RRP = Robot((0,pi/2,d1,q1), (0,pi/2,0,q2), (0,0,q3,0))
+    # r.plot_diagram({q1:0, q2:pi/4, q3:0, d1:100, l2:100, l3:100})
+    RRP.plot_diagram({q1:0, q2:pi/2, q3:250, d1:100})
+    # ABB.plot_diagram(
+    #     {
+    #         q1:deg2rad(33.69),
+    #         q2:deg2rad(-26.13),
+    #         q3:deg2rad(191.99),
+    #         q4:deg2rad(180),
+    #         q5:deg2rad(165.87),
+    #         q6:deg2rad(-146.31)
+    #     }
+    # )
     
     
 def test_rb2():
@@ -889,5 +1352,16 @@ def test_rb2():
 
 
 if __name__=="__main__":
-    test_robot()
-    
+    # test_robot()
+    robot = Robot((l1, 0, 0, q1), (l2, 0, 0, q2), (l3, 0, 0, q3))
+
+    # Visualizar directamente en Jupyter!
+    print(robot.plot_diagram_threejs({
+        q1: pi/6,
+        q2: pi/4,
+        q3: -pi/6,
+        l1: 100,
+        l2: 80,
+        l3: 60
+    }))
+        

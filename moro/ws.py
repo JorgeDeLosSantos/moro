@@ -12,7 +12,7 @@ from moro.core import *
 __all__ = [""]
 
 
-def __alpha_shape(points, alpha, only_outer=True):
+def alpha_shape(points, alpha, only_outer=True):
     """
     Compute the alpha shape (concave hull) of a set of points.
     :param points: np.array of shape (n,2) points.
@@ -48,7 +48,7 @@ def __alpha_shape(points, alpha, only_outer=True):
     return edges
 
 
-def __add_edge(edges, i, j, only_outer):
+def add_edge(edges, i, j, only_outer):
     """
     Add an edge between the i-th and j-th points,
     if not in the list already
@@ -63,7 +63,7 @@ def __add_edge(edges, i, j, only_outer):
     edges.add((i, j))
 
 
-def __RR_Example():
+def RR_Example():
     from numpy import sin,cos
     l1,l2 = 100,50
     X, Y = [],[]
