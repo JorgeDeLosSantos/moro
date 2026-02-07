@@ -1,29 +1,26 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en">
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>The core module &mdash; moro 0.3.0.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b76e3c8a" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=cbbe7d37"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="The transformations module" href="transformations.html" />
-    <link rel="prev" title="Examples" href="examples.html" /> 
+    <link rel="prev" title="Installation" href="installation.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -37,9 +34,6 @@
           <a href="index.html" class="icon icon-home">
             moro
           </a>
-              <div class="version">
-                0.3
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -51,11 +45,63 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#moro.core.RigidBody2D"><code class="docutils literal notranslate"><span class="pre">RigidBody2D</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.H"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.H</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.draw"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.draw()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.get_centroid"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.get_centroid()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.move"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.move()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.points"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.points</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.restart"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.restart()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.rotate"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.rotate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.core.Robot"><code class="docutils literal notranslate"><span class="pre">Robot</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.I_i"><code class="docutils literal notranslate"><span class="pre">Robot.I_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.I_ii"><code class="docutils literal notranslate"><span class="pre">Robot.I_ii()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.J"><code class="docutils literal notranslate"><span class="pre">Robot.J</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.J_cm_i"><code class="docutils literal notranslate"><span class="pre">Robot.J_cm_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.J_point"><code class="docutils literal notranslate"><span class="pre">Robot.J_point()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.Jv_cm_i"><code class="docutils literal notranslate"><span class="pre">Robot.Jv_cm_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.Jw_cm_i"><code class="docutils literal notranslate"><span class="pre">Robot.Jw_cm_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.R_i0"><code class="docutils literal notranslate"><span class="pre">Robot.R_i0()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.T"><code class="docutils literal notranslate"><span class="pre">Robot.T</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.T_i0"><code class="docutils literal notranslate"><span class="pre">Robot.T_i0()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.T_ij"><code class="docutils literal notranslate"><span class="pre">Robot.T_ij()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.christoffel_symbols"><code class="docutils literal notranslate"><span class="pre">Robot.christoffel_symbols()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.christoffel_symbols_v2"><code class="docutils literal notranslate"><span class="pre">Robot.christoffel_symbols_v2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.dof"><code class="docutils literal notranslate"><span class="pre">Robot.dof</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.get_coriolis_matrix"><code class="docutils literal notranslate"><span class="pre">Robot.get_coriolis_matrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.get_coriolis_matrix_v2"><code class="docutils literal notranslate"><span class="pre">Robot.get_coriolis_matrix_v2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.get_dynamic_model"><code class="docutils literal notranslate"><span class="pre">Robot.get_dynamic_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.get_dynamic_model_matrix_form"><code class="docutils literal notranslate"><span class="pre">Robot.get_dynamic_model_matrix_form()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.get_gravity_torque_vector"><code class="docutils literal notranslate"><span class="pre">Robot.get_gravity_torque_vector()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.get_inertia_matrix"><code class="docutils literal notranslate"><span class="pre">Robot.get_inertia_matrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.get_kinetic_energy"><code class="docutils literal notranslate"><span class="pre">Robot.get_kinetic_energy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.get_potential_energy"><code class="docutils literal notranslate"><span class="pre">Robot.get_potential_energy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.joint_limits"><code class="docutils literal notranslate"><span class="pre">Robot.joint_limits</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.kin_i"><code class="docutils literal notranslate"><span class="pre">Robot.kin_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.m_i"><code class="docutils literal notranslate"><span class="pre">Robot.m_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.p"><code class="docutils literal notranslate"><span class="pre">Robot.p()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.plot_diagram"><code class="docutils literal notranslate"><span class="pre">Robot.plot_diagram()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.plot_diagram_threejs"><code class="docutils literal notranslate"><span class="pre">Robot.plot_diagram_threejs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.pot_i"><code class="docutils literal notranslate"><span class="pre">Robot.pot_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.qi"><code class="docutils literal notranslate"><span class="pre">Robot.qi()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.qis_range"><code class="docutils literal notranslate"><span class="pre">Robot.qis_range</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.rcm_i"><code class="docutils literal notranslate"><span class="pre">Robot.rcm_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.set_cm_locations"><code class="docutils literal notranslate"><span class="pre">Robot.set_cm_locations()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.set_gravity_vector"><code class="docutils literal notranslate"><span class="pre">Robot.set_gravity_vector()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.set_inertia_tensors"><code class="docutils literal notranslate"><span class="pre">Robot.set_inertia_tensors()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.set_masses"><code class="docutils literal notranslate"><span class="pre">Robot.set_masses()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.solve_inverse_kinematics"><code class="docutils literal notranslate"><span class="pre">Robot.solve_inverse_kinematics()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.vcm_i"><code class="docutils literal notranslate"><span class="pre">Robot.vcm_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.w_i"><code class="docutils literal notranslate"><span class="pre">Robot.w_i()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.w_ijj"><code class="docutils literal notranslate"><span class="pre">Robot.w_ijj()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.z"><code class="docutils literal notranslate"><span class="pre">Robot.z()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -83,19 +129,19 @@
            <div itemprop="articleBody">
              
   <section id="module-moro.core">
-<span id="the-core-module"></span><h1>The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module<a class="headerlink" href="#module-moro.core" title="Permalink to this heading"></a></h1>
-<p>Numython R&amp;D, (c) 2024
+<span id="the-core-module"></span><h1>The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module<a class="headerlink" href="#module-moro.core" title="Link to this heading"></a></h1>
+<p>Numython R&amp;D, (c) 2026 
 Moro is a Python library for kinematic and dynamic modeling of serial robots. 
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="moro.core.RigidBody2D">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">moro.core.</span></span><span class="sig-name descname"><span class="pre">RigidBody2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">moro.core.</span></span><span class="sig-name descname"><span class="pre">RigidBody2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Defines a rigid body (two-dimensional) through a series of points that 
 make it up.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>points: list, tuple</strong></dt><dd><p>A list of 2-lists (or list of 2-tuples) containing the 
 N-points that make up the rigid body.</p>
@@ -109,7 +155,7 @@ N-points that make up the rigid body.</p>
 </pre></div>
 </div>
 <dl class="field-list simple">
-<dt class="field-odd">Attributes</dt>
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>H</strong></dt><dd></dd>
 <dt><strong>points</strong></dt><dd></dd>
@@ -118,10 +164,6 @@ N-points that make up the rigid body.</p>
 </dl>
 <p class="rubric">Methods</p>
 <table class="autosummary longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.RigidBody2D.draw" title="moro.core.RigidBody2D.draw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw</span></code></a>([color, kaxis])</p></td>
 <td><p>Draw the rigid body</p></td>
@@ -142,41 +184,41 @@ N-points that make up the rigid body.</p>
 </table>
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.RigidBody2D.H">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">H</span></span><a class="headerlink" href="#moro.core.RigidBody2D.H" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">H</span></span><a class="headerlink" href="#moro.core.RigidBody2D.H" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.RigidBody2D.draw">
-<span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kaxis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.draw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.draw" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kaxis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.draw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.draw" title="Link to this definition"></a></dt>
 <dd><p>Draw the rigid body</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.RigidBody2D.get_centroid">
-<span class="sig-name descname"><span class="pre">get_centroid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.get_centroid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.get_centroid" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_centroid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.get_centroid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.get_centroid" title="Link to this definition"></a></dt>
 <dd><p>Return the centroid of the rigid body</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.RigidBody2D.move">
-<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.move"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.move" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.move"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.move" title="Link to this definition"></a></dt>
 <dd><p>Moves the rigid body</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.RigidBody2D.points">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#moro.core.RigidBody2D.points" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#moro.core.RigidBody2D.points" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.RigidBody2D.restart">
-<span class="sig-name descname"><span class="pre">restart</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.restart"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.restart" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">restart</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.restart"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.restart" title="Link to this definition"></a></dt>
 <dd><p>Restart to initial coordinates of the rigid body</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.RigidBody2D.rotate">
-<span class="sig-name descname"><span class="pre">rotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.rotate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.rotate" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">rotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.rotate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.rotate" title="Link to this definition"></a></dt>
 <dd><p>Rotates the rigid body around z-axis.</p>
 </dd></dl>
 
@@ -184,7 +226,7 @@ N-points that make up the rigid body.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="moro.core.Robot">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">moro.core.</span></span><span class="sig-name descname"><span class="pre">Robot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">moro.core.</span></span><span class="sig-name descname"><span class="pre">Robot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Define a robot-serial-arm given the Denavit-Hartenberg parameters 
 and the joint type, as tuples (or lists). Each tuple must have the form:</p>
@@ -201,7 +243,7 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 </pre></div>
 </div>
 <dl class="field-list simple">
-<dt class="field-odd">Attributes</dt>
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><a class="reference internal" href="#moro.core.Robot.J" title="moro.core.Robot.J"><code class="xref py py-obj docutils literal notranslate"><span class="pre">J</span></code></a></dt><dd><p>Get the geometric jacobian matrix of the end-effector.</p>
 </dd>
@@ -216,10 +258,6 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 </dl>
 <p class="rubric">Methods</p>
 <table class="autosummary longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.I_i" title="moro.core.Robot.I_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">I_i</span></code></a>(i)</p></td>
 <td><p>Return the inertia tensor of [i-th] link w.r.t.</p></td>
@@ -233,6 +271,12 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.J_point" title="moro.core.Robot.J_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">J_point</span></code></a>(point, i)</p></td>
 <td><p>Compute the jacobian matrix of a specific point in the manipulator.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.Jv_cm_i" title="moro.core.Robot.Jv_cm_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Jv_cm_i</span></code></a>(i)</p></td>
+<td><p>Return the linear velocity Jacobian matrix of the center of mass of the i-th link.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.Jw_cm_i" title="moro.core.Robot.Jw_cm_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Jw_cm_i</span></code></a>(i)</p></td>
+<td><p>Return the angular velocity Jacobian matrix of the center of mass of the i-th link.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.R_i0" title="moro.core.Robot.R_i0"><code class="xref py py-obj docutils literal notranslate"><span class="pre">R_i0</span></code></a>(i)</p></td>
 <td><p>Get the rotation matrix of {i}-Frame w.r.t.</p></td>
 </tr>
@@ -242,17 +286,35 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.T_ij" title="moro.core.Robot.T_ij"><code class="xref py py-obj docutils literal notranslate"><span class="pre">T_ij</span></code></a>(i, j)</p></td>
 <td><p>Get the homogeneous transformation matrix of {i}-Frame w.r.t.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.christoffel_symbols" title="moro.core.Robot.christoffel_symbols"><code class="xref py py-obj docutils literal notranslate"><span class="pre">christoffel_symbols</span></code></a>(i, j, k, M)</p></td>
+<td><p>Return the Christoffel symbol of the first kind:</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.get_coriolis_matrix_v2" title="moro.core.Robot.get_coriolis_matrix_v2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_coriolis_matrix_v2</span></code></a>()</p></td>
+<td><p>Calcula la matriz de Coriolis de manera completamente vectorial, sin bucles, y asegurando la correcta implementación de las derivadas cruzadas.</p></td>
+</tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.get_dynamic_model" title="moro.core.Robot.get_dynamic_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_dynamic_model</span></code></a>()</p></td>
-<td><p>Returns the dynamic model of the robot</p></td>
+<td><p>Returns the dynamic model of the robot  using the Euler-Lagrange formulation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.get_kinetic_energy" title="moro.core.Robot.get_kinetic_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_kinetic_energy</span></code></a>()</p></td>
-<td><p>Returns the kinetic energy of the robot</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.get_dynamic_model_matrix_form" title="moro.core.Robot.get_dynamic_model_matrix_form"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_dynamic_model_matrix_form</span></code></a>()</p></td>
+<td><p>Return the dynamic model of the robot in matrix form:</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.get_potential_energy" title="moro.core.Robot.get_potential_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_potential_energy</span></code></a>()</p></td>
-<td><p>Returns the potential energy of the robot</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.get_gravity_torque_vector" title="moro.core.Robot.get_gravity_torque_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_gravity_torque_vector</span></code></a>()</p></td>
+<td><p>Return the gravity torque vector G(q).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.kin_i" title="moro.core.Robot.kin_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kin_i</span></code></a>(i)</p></td>
-<td><p>Returns the kinetic energy of i-th link</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.get_inertia_matrix" title="moro.core.Robot.get_inertia_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_inertia_matrix</span></code></a>()</p></td>
+<td><p>Return the inertia (mass) matrix</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.get_kinetic_energy" title="moro.core.Robot.get_kinetic_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_kinetic_energy</span></code></a>()</p></td>
+<td><p>Returns the total kinetic energy of the robot</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.get_potential_energy" title="moro.core.Robot.get_potential_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_potential_energy</span></code></a>()</p></td>
+<td><p>Returns the total potential energy of the robot</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.kin_i" title="moro.core.Robot.kin_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kin_i</span></code></a>(i)</p></td>
+<td><p>Returns the kinetic energy of i-th link.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.m_i" title="moro.core.Robot.m_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">m_i</span></code></a>(i)</p></td>
+<td><p>Return the mass of the i-th link.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.p" title="moro.core.Robot.p"><code class="xref py py-obj docutils literal notranslate"><span class="pre">p</span></code></a>(i)</p></td>
 <td><p>Get the position (of the origin of coordinates) of the {i}-Frame w.r.t.</p></td>
@@ -260,69 +322,50 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.plot_diagram" title="moro.core.Robot.plot_diagram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_diagram</span></code></a>(num_vals)</p></td>
 <td><p>Draw a simple wire-diagram or kinematic-diagram of the manipulator.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.pot_i" title="moro.core.Robot.pot_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pot_i</span></code></a>(i)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.plot_diagram_threejs" title="moro.core.Robot.plot_diagram_threejs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_diagram_threejs</span></code></a>(num_vals[, width, height])</p></td>
+<td><p>Dibuja el diagrama cinemático del robot usando Three.js en Jupyter.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.pot_i" title="moro.core.Robot.pot_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pot_i</span></code></a>(i)</p></td>
 <td><p>Returns the potential energy of the [i-th] link.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.qi" title="moro.core.Robot.qi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qi</span></code></a>(i)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.qi" title="moro.core.Robot.qi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qi</span></code></a>(i)</p></td>
 <td><p>Get the i-th articular variable.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.rcm_i" title="moro.core.Robot.rcm_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rcm_i</span></code></a>(i)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.rcm_i" title="moro.core.Robot.rcm_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rcm_i</span></code></a>(i)</p></td>
 <td><p>Return the position of the center of mass of the  i-th link w.r.t.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.set_cm_locations" title="moro.core.Robot.set_cm_locations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_cm_locations</span></code></a>(cmlocs)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.set_cm_locations" title="moro.core.Robot.set_cm_locations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_cm_locations</span></code></a>(cmlocs)</p></td>
 <td><p>Set the positions of the center of mass for each  link.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.set_gravity_vector" title="moro.core.Robot.set_gravity_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_gravity_vector</span></code></a>(G)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.set_gravity_vector" title="moro.core.Robot.set_gravity_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_gravity_vector</span></code></a>(G)</p></td>
 <td><p>Set the gravity vector in the base frame.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.set_inertia_tensors" title="moro.core.Robot.set_inertia_tensors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_inertia_tensors</span></code></a>([tensors])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.set_inertia_tensors" title="moro.core.Robot.set_inertia_tensors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_inertia_tensors</span></code></a>([tensors])</p></td>
 <td><p>Inertia tensor w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.set_masses" title="moro.core.Robot.set_masses"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_masses</span></code></a>(masses)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.set_masses" title="moro.core.Robot.set_masses"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_masses</span></code></a>(masses)</p></td>
 <td><p>Set mass for each link using a list like: [m1, m2, ..., mn], where  m1, m2, ..., mn, are numeric or symbolic values.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.vcm_i" title="moro.core.Robot.vcm_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vcm_i</span></code></a>(i)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.vcm_i" title="moro.core.Robot.vcm_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vcm_i</span></code></a>(i)</p></td>
 <td><p>Return the velocity of the center of mass of the  i-th link w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.w_i" title="moro.core.Robot.w_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">w_i</span></code></a>(i)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.w_i" title="moro.core.Robot.w_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">w_i</span></code></a>(i)</p></td>
 <td><p>Compute the angular velocity of the [i]-link w.r.t.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.w_ijj" title="moro.core.Robot.w_ijj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">w_ijj</span></code></a>(i)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.w_ijj" title="moro.core.Robot.w_ijj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">w_ijj</span></code></a>(i)</p></td>
 <td><p>Return the angular velocity of the [i]-link w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.z" title="moro.core.Robot.z"><code class="xref py py-obj docutils literal notranslate"><span class="pre">z</span></code></a>(i)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.z" title="moro.core.Robot.z"><code class="xref py py-obj docutils literal notranslate"><span class="pre">z</span></code></a>(i)</p></td>
 <td><p>Get the z_i axis direction w.r.t.</p></td>
 </tr>
 </tbody>
 </table>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 77%" />
-<col style="width: 23%" />
-</colgroup>
 <tbody>
-<tr class="row-odd"><td><p><strong>Jv_cm_i</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>Jw_cm_i</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><strong>christoffel_symbols</strong></p></td>
+<tr class="row-odd"><td><p><strong>christoffel_symbols_v2</strong></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><strong>get_coriolis_matrix</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><strong>get_dynamic_model_matrix_form</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>get_gravity_torque_vector</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><strong>get_inertia_matrix</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>m_i</strong></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><strong>solve_inverse_kinematics</strong></p></td>
@@ -332,16 +375,16 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 </table>
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.I_i">
-<span class="sig-name descname"><span class="pre">I_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.I_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.I_i" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">I_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.I_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.I_i" title="Link to this definition"></a></dt>
 <dd><p>Return the inertia tensor of [i-th] link w.r.t. base frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i: int</strong></dt><dd><p>Link number.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Inertia tensor of the [i]-link w.r.t. {0}-Frame.</p>
 </dd>
@@ -352,18 +395,18 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.I_ii">
-<span class="sig-name descname"><span class="pre">I_ii</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.I_ii"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.I_ii" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">I_ii</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.I_ii"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.I_ii" title="Link to this definition"></a></dt>
 <dd><p>Return the inertia tensor of i-th link w.r.t. {i}’ frame 
 (located in the center of mass of link [i] and aligned with 
 the {i}-Frame).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i: int</strong></dt><dd><p>Link number.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Inertia tensor of the [i]-link w.r.t. {i}’-Frame.</p>
 </dd>
@@ -374,10 +417,10 @@ the {i}-Frame).</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.Robot.J">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">J</span></span><a class="headerlink" href="#moro.core.Robot.J" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">J</span></span><a class="headerlink" href="#moro.core.Robot.J" title="Link to this definition"></a></dt>
 <dd><p>Get the geometric jacobian matrix of the end-effector.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Get the geometric jacobian matrix of the end-effector.</p>
 </dd>
@@ -388,17 +431,17 @@ the {i}-Frame).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.J_cm_i">
-<span class="sig-name descname"><span class="pre">J_cm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.J_cm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.J_cm_i" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">J_cm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.J_cm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.J_cm_i" title="Link to this definition"></a></dt>
 <dd><p>Compute the jacobian matrix of the center of mass of 
 the i-th link.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i</strong><span class="classifier">int</span></dt><dd><p>Link number.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Jacobian matrix of i-th CoM.</p>
 </dd>
@@ -409,10 +452,10 @@ the i-th link.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.J_point">
-<span class="sig-name descname"><span class="pre">J_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.J_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.J_point" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">J_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.J_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.J_point" title="Link to this definition"></a></dt>
 <dd><p>Compute the jacobian matrix of a specific point in the manipulator.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>point</strong><span class="classifier">list</span></dt><dd><p>Coordinates of the point w.r.t. {i}-Frame.</p>
 </dd>
@@ -420,7 +463,7 @@ the i-th link.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Jacobian matrix of the point.</p>
 </dd>
@@ -431,22 +474,40 @@ the i-th link.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.Jv_cm_i">
-<span class="sig-name descname"><span class="pre">Jv_cm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.Jv_cm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.Jv_cm_i" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">Jv_cm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.Jv_cm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.Jv_cm_i" title="Link to this definition"></a></dt>
+<dd><p>Return the linear velocity Jacobian matrix of the center of mass of the i-th link.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>i</strong><span class="classifier">int</span></dt><dd><p>Link number.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.Jw_cm_i">
-<span class="sig-name descname"><span class="pre">Jw_cm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.Jw_cm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.Jw_cm_i" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">Jw_cm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.Jw_cm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.Jw_cm_i" title="Link to this definition"></a></dt>
+<dd><p>Return the angular velocity Jacobian matrix of the center of mass of the i-th link.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>i</strong><span class="classifier">int</span></dt><dd><p>Link number.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.R_i0">
-<span class="sig-name descname"><span class="pre">R_i0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.R_i0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.R_i0" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">R_i0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.R_i0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.R_i0" title="Link to this definition"></a></dt>
 <dd><p>Get the rotation matrix of {i}-Frame w.r.t. {0}-Frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Returns R_i^0</p>
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Returns <span class="math notranslate nohighlight">\(R_i^0\)</span></p>
 </dd>
 </dl>
 </dd>
@@ -455,11 +516,11 @@ the i-th link.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.Robot.T">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">T</span></span><a class="headerlink" href="#moro.core.Robot.T" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">T</span></span><a class="headerlink" href="#moro.core.Robot.T" title="Link to this definition"></a></dt>
 <dd><p>Get the homogeneous transformation matrix of {N}-Frame (end-effector)
 w.r.t. {0}-Frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>T_n^0</p>
 </dd>
@@ -470,10 +531,10 @@ w.r.t. {0}-Frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.T_i0">
-<span class="sig-name descname"><span class="pre">T_i0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.T_i0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.T_i0" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">T_i0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.T_i0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.T_i0" title="Link to this definition"></a></dt>
 <dd><p>Get the homogeneous transformation matrix of {i}-Frame w.r.t. {0}-Frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Returns T_i^0</p>
 </dd>
@@ -484,10 +545,10 @@ w.r.t. {0}-Frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.T_ij">
-<span class="sig-name descname"><span class="pre">T_ij</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.T_ij"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.T_ij" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">T_ij</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.T_ij"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.T_ij" title="Link to this definition"></a></dt>
 <dd><p>Get the homogeneous transformation matrix of {i}-Frame w.r.t. {j}-Frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>T_i^j</p>
 </dd>
@@ -498,15 +559,23 @@ w.r.t. {0}-Frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.christoffel_symbols">
-<span class="sig-name descname"><span class="pre">christoffel_symbols</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.christoffel_symbols"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.christoffel_symbols" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">christoffel_symbols</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.christoffel_symbols"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.christoffel_symbols" title="Link to this definition"></a></dt>
+<dd><p>Return the Christoffel symbol of the first kind:</p>
+<div class="math notranslate nohighlight">
+\[c_{{i,j,k}} = \frac{1}{2} \left( \frac{{\partial M_{{i,j}}}}{{\partial q_k}} + \frac{{\partial M_{{i,k}}}}{{\partial q_j}} - \frac{{\partial M_{{j,k}}}}{{\partial q_i}} \right)\]</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moro.core.Robot.christoffel_symbols_v2">
+<span class="sig-name descname"><span class="pre">christoffel_symbols_v2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.christoffel_symbols_v2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.christoffel_symbols_v2" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.Robot.dof">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dof</span></span><a class="headerlink" href="#moro.core.Robot.dof" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dof</span></span><a class="headerlink" href="#moro.core.Robot.dof" title="Link to this definition"></a></dt>
 <dd><p>Get the degrees of freedom of the robot.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>int</dt><dd><p>Degrees of freedom of the robot</p>
 </dd>
@@ -517,70 +586,124 @@ w.r.t. {0}-Frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.get_coriolis_matrix">
-<span class="sig-name descname"><span class="pre">get_coriolis_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_coriolis_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_coriolis_matrix" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_coriolis_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_coriolis_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_coriolis_matrix" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moro.core.Robot.get_coriolis_matrix_v2">
+<span class="sig-name descname"><span class="pre">get_coriolis_matrix_v2</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_coriolis_matrix_v2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_coriolis_matrix_v2" title="Link to this definition"></a></dt>
+<dd><p>Calcula la matriz de Coriolis de manera completamente vectorial, sin bucles,
+y asegurando la correcta implementación de las derivadas cruzadas.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.get_dynamic_model">
-<span class="sig-name descname"><span class="pre">get_dynamic_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_dynamic_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_dynamic_model" title="Permalink to this definition"></a></dt>
-<dd><p>Returns the dynamic model of the robot</p>
+<span class="sig-name descname"><span class="pre">get_dynamic_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_dynamic_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_dynamic_model" title="Link to this definition"></a></dt>
+<dd><p>Returns the dynamic model of the robot 
+using the Euler-Lagrange formulation. The returned value is a list of equations,
+one for each joint, of the form:</p>
+<div class="math notranslate nohighlight">
+\[\frac{d}{dt} \left( \frac{\partial L}{\partial \dot{{q}}_i} \right) - \frac{\partial L}{\partial q_i} = \tau_i\]</div>
+<p>where L is the Lagrangian of the system, defined as L = K - P, where K 
+is the kinetic energy and P is the potential energy.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.get_dynamic_model_matrix_form">
-<span class="sig-name descname"><span class="pre">get_dynamic_model_matrix_form</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_dynamic_model_matrix_form"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_dynamic_model_matrix_form" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">get_dynamic_model_matrix_form</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_dynamic_model_matrix_form"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_dynamic_model_matrix_form" title="Link to this definition"></a></dt>
+<dd><p>Return the dynamic model of the robot in matrix form:</p>
+<p>M(q) q’’ + C(q,q’) q’ + G(q) = tau</p>
+<p>where M(q) is the inertia matrix, C(q,q’) is the Coriolis matrix, 
+G(q) is the gravity torque vector, and tau is the vector of joint torques.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.get_gravity_torque_vector">
-<span class="sig-name descname"><span class="pre">get_gravity_torque_vector</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_gravity_torque_vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_gravity_torque_vector" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">get_gravity_torque_vector</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_gravity_torque_vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_gravity_torque_vector" title="Link to this definition"></a></dt>
+<dd><p>Return the gravity torque vector G(q).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Gravity torque vector G(q)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.get_inertia_matrix">
-<span class="sig-name descname"><span class="pre">get_inertia_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_inertia_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_inertia_matrix" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">get_inertia_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_inertia_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_inertia_matrix" title="Link to this definition"></a></dt>
+<dd><p>Return the inertia (mass) matrix</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Inertia matrix M(q)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.get_kinetic_energy">
-<span class="sig-name descname"><span class="pre">get_kinetic_energy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_kinetic_energy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_kinetic_energy" title="Permalink to this definition"></a></dt>
-<dd><p>Returns the kinetic energy of the robot</p>
+<span class="sig-name descname"><span class="pre">get_kinetic_energy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_kinetic_energy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_kinetic_energy" title="Link to this definition"></a></dt>
+<dd><p>Returns the total kinetic energy of the robot</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.get_potential_energy">
-<span class="sig-name descname"><span class="pre">get_potential_energy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_potential_energy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_potential_energy" title="Permalink to this definition"></a></dt>
-<dd><p>Returns the potential energy of the robot</p>
+<span class="sig-name descname"><span class="pre">get_potential_energy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.get_potential_energy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.get_potential_energy" title="Link to this definition"></a></dt>
+<dd><p>Returns the total potential energy of the robot</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.Robot.joint_limits">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">joint_limits</span></span><a class="headerlink" href="#moro.core.Robot.joint_limits" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">joint_limits</span></span><a class="headerlink" href="#moro.core.Robot.joint_limits" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.kin_i">
-<span class="sig-name descname"><span class="pre">kin_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.kin_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.kin_i" title="Permalink to this definition"></a></dt>
-<dd><p>Returns the kinetic energy of i-th link</p>
+<span class="sig-name descname"><span class="pre">kin_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.kin_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.kin_i" title="Link to this definition"></a></dt>
+<dd><p>Returns the kinetic energy of i-th link.</p>
+<div class="math notranslate nohighlight">
+\[K_i = \frac{1}{2} m_i \mathbf{v}_{G_i}^T \mathbf{v}_{G_i} + \frac{1}{2} \boldsymbol{\omega}_i^T I_i \boldsymbol{\omega}_i\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>i: int</strong></dt><dd><p>Link number.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.m_i">
-<span class="sig-name descname"><span class="pre">m_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.m_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.m_i" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">m_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.m_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.m_i" title="Link to this definition"></a></dt>
+<dd><p>Return the mass of the i-th link.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>i: int</strong></dt><dd><p>Link number.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.p">
-<span class="sig-name descname"><span class="pre">p</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.p"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.p" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">p</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.p"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.p" title="Link to this definition"></a></dt>
 <dd><p>Get the position (of the origin of coordinates) of the {i}-Frame w.r.t. {0}-Frame</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i: int</strong></dt><dd><p>{i}-th Frame</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>The position of {i}-Frame as a 3-component vector.</p>
 </dd>
@@ -591,10 +714,10 @@ w.r.t. {0}-Frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.plot_diagram">
-<span class="sig-name descname"><span class="pre">plot_diagram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_vals</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.plot_diagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.plot_diagram" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">plot_diagram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_vals</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.plot_diagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.plot_diagram" title="Link to this definition"></a></dt>
 <dd><p>Draw a simple wire-diagram or kinematic-diagram of the manipulator.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>num_vals</strong><span class="classifier">dict</span></dt><dd><p>Dictionary like: {svar1: nvalue1, svar2: nvalue2, …}, 
 where svar1, svar2, … are symbolic variables that are 
@@ -607,47 +730,73 @@ are the numerical values that will substitute these variables.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moro.core.Robot.plot_diagram_threejs">
+<span class="sig-name descname"><span class="pre">plot_diagram_threejs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_vals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">800</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">600</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.plot_diagram_threejs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.plot_diagram_threejs" title="Link to this definition"></a></dt>
+<dd><p>Dibuja el diagrama cinemático del robot usando Three.js en Jupyter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>num_vals</strong><span class="classifier">dict</span></dt><dd><p>Diccionario con valores numéricos para las variables simbólicas</p>
+</dd>
+<dt><strong>width</strong><span class="classifier">int</span></dt><dd><p>Ancho del canvas en pixels</p>
+</dd>
+<dt><strong>height</strong><span class="classifier">int</span></dt><dd><p>Alto del canvas en pixels</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.pot_i">
-<span class="sig-name descname"><span class="pre">pot_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.pot_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.pot_i" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">pot_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.pot_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.pot_i" title="Link to this definition"></a></dt>
 <dd><p>Returns the potential energy of the [i-th] link.</p>
 <div class="math notranslate nohighlight">
 \[P_i = - m_i \mathbf{g}^T \mathbf{r}_{G_i} \]</div>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i: int</strong></dt><dd><p>Link number.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"></dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.qi">
-<span class="sig-name descname"><span class="pre">qi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.qi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.qi" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">qi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.qi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.qi" title="Link to this definition"></a></dt>
 <dd><p>Get the i-th articular variable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>i: int</strong></dt><dd><p>Joint number (starting from 1)</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.Robot.qis_range">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qis_range</span></span><a class="headerlink" href="#moro.core.Robot.qis_range" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qis_range</span></span><a class="headerlink" href="#moro.core.Robot.qis_range" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.rcm_i">
-<span class="sig-name descname"><span class="pre">rcm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.rcm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.rcm_i" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">rcm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.rcm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.rcm_i" title="Link to this definition"></a></dt>
 <dd><p>Return the position of the center of mass of the 
 i-th link w.r.t. the base frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i: int</strong></dt><dd><p>Link number</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt><cite>sympy.matrices.dense.MutableDenseMatrix</cite></dt><dd><p>A column vector</p>
 </dd>
@@ -658,11 +807,11 @@ i-th link w.r.t. the base frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.set_cm_locations">
-<span class="sig-name descname"><span class="pre">set_cm_locations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cmlocs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_cm_locations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.set_cm_locations" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">set_cm_locations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cmlocs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_cm_locations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.set_cm_locations" title="Link to this definition"></a></dt>
 <dd><p>Set the positions of the center of mass for each 
 link.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>cmlocs: list, tuple</strong></dt><dd><p>A list of lists (or tuples) or a tuple of tuples (or lists) containing 
 each center of mass position w.r.t. its reference frame.</p>
@@ -679,10 +828,10 @@ each center of mass position w.r.t. its reference frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.set_gravity_vector">
-<span class="sig-name descname"><span class="pre">set_gravity_vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_gravity_vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.set_gravity_vector" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">set_gravity_vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_gravity_vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.set_gravity_vector" title="Link to this definition"></a></dt>
 <dd><p>Set the gravity vector in the base frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>G: list, tuple</strong></dt><dd><p>A list or tuple of three elements that define 
 the gravity vector in the base frame.</p>
@@ -694,7 +843,7 @@ the gravity vector in the base frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.set_inertia_tensors">
-<span class="sig-name descname"><span class="pre">set_inertia_tensors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_inertia_tensors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.set_inertia_tensors" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">set_inertia_tensors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_inertia_tensors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.set_inertia_tensors" title="Link to this definition"></a></dt>
 <dd><p>Inertia tensor w.r.t. {i}’-Frame. Consider that the reference 
 frame {i}’ is located at the center of mass of link [i] 
 and oriented in the same way as {i}-Frame. By default (if tensors argument
@@ -702,7 +851,7 @@ is not passed), it is assumed that each link is symmetrical to,
 at least, two planes of the reference frame located in its center of mass, 
 then products of inertia are zero.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>tensors: sympy.matrices.dense.MutableDenseMatrix</strong></dt><dd><p>A list containinig <cite>sympy.matrices.dense.MutableDenseMatrix</cite> that 
 corresponds to each inertia tensor w.r.t. {i}’-Frame.</p>
@@ -714,11 +863,11 @@ corresponds to each inertia tensor w.r.t. {i}’-Frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.set_masses">
-<span class="sig-name descname"><span class="pre">set_masses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masses</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_masses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.set_masses" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">set_masses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masses</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.set_masses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.set_masses" title="Link to this definition"></a></dt>
 <dd><p>Set mass for each link using a list like: [m1, m2, …, mn], where 
 m1, m2, …, mn, are numeric or symbolic values.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>masses: list, tuple</strong></dt><dd><p>A list of numerical or symbolic values that correspond to link masses.</p>
 </dd>
@@ -729,22 +878,22 @@ m1, m2, …, mn, are numeric or symbolic values.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.solve_inverse_kinematics">
-<span class="sig-name descname"><span class="pre">solve_inverse_kinematics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pose</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.solve_inverse_kinematics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.solve_inverse_kinematics" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">solve_inverse_kinematics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pose</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.solve_inverse_kinematics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.solve_inverse_kinematics" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.vcm_i">
-<span class="sig-name descname"><span class="pre">vcm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.vcm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.vcm_i" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">vcm_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.vcm_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.vcm_i" title="Link to this definition"></a></dt>
 <dd><p>Return the velocity of the center of mass of the 
 i-th link w.r.t. the base frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i: int</strong></dt><dd><p>Link number</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt><cite>sympy.matrices.dense.MutableDenseMatrix</cite></dt><dd><p>A column vector</p>
 </dd>
@@ -755,16 +904,16 @@ i-th link w.r.t. the base frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.w_i">
-<span class="sig-name descname"><span class="pre">w_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.w_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.w_i" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">w_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.w_i"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.w_i" title="Link to this definition"></a></dt>
 <dd><p>Compute the angular velocity of the [i]-link w.r.t. {0}-Frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i: int</strong></dt><dd><p>Link number.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Angular velocity of the [i]-link w.r.t. {0}-Frame.</p>
 </dd>
@@ -795,7 +944,7 @@ i-th link w.r.t. the base frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.w_ijj">
-<span class="sig-name descname"><span class="pre">w_ijj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.w_ijj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.w_ijj" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">w_ijj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.w_ijj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.w_ijj" title="Link to this definition"></a></dt>
 <dd><p>Return the angular velocity of the [i]-link w.r.t. [j]-link, 
 described in {j}-Frame, where j = i - 1.</p>
 <p>Since we are using Denavit-Hartenberg frames, then:</p>
@@ -806,7 +955,7 @@ described in {j}-Frame, where j = i - 1.</p>
 \[\begin{split}\omega_{{i-i,i}}^{{i-1}} = \begin{bmatrix} 0 \\ 0 \\ 0 \end{bmatrix}\end{split}\]</div>
 <p>If the i-th joint is a prismatic.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i</strong><span class="classifier">int</span></dt><dd><p>Link number.</p>
 </dd>
@@ -817,16 +966,16 @@ described in {j}-Frame, where j = i - 1.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.z">
-<span class="sig-name descname"><span class="pre">z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.z"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.z" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.z"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.z" title="Link to this definition"></a></dt>
 <dd><p>Get the z_i axis direction w.r.t. {0}-Frame.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>i: int</strong></dt><dd><p>{i}-th Frame</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>The direction of z_i axis</p>
 </dd>
@@ -843,8 +992,7 @@ described in {j}-Frame, where j = i - 1.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="transformations.html" class="btn btn-neutral float-right" title="The transformations module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

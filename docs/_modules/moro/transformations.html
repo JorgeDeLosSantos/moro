@@ -1,22 +1,20 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en">
+<html class="writer-html5" lang="en" data-content_root="../../">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>moro.transformations &mdash; moro 0.3.0.dev1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b76e3c8a" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-        <script src="../../_static/jquery.js"></script>
-        <script src="../../_static/underscore.js"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script src="../../_static/doctools.js"></script>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=cbbe7d37"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,9 +31,6 @@
           <a href="../../index.html" class="icon icon-home">
             moro
           </a>
-              <div class="version">
-                0.3
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -47,11 +42,7 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
 </ul>
 
         </div>
@@ -80,7 +71,7 @@
              
   <h1>Source code for moro.transformations</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Numython R&amp;D, (c) 2024</span>
+<span class="sd">Numython R&amp;D, (c) 2026</span>
 <span class="sd">Moro is a Python library for kinematic and dynamic modeling of serial robots. </span>
 <span class="sd">This library has been designed, mainly, for academic and research purposes, </span>
 <span class="sd">using SymPy as base library. </span>
@@ -88,7 +79,7 @@
 <span class="c1"># import matplotlib.pyplot as plt</span>
 <span class="c1"># from mpl_toolkits.mplot3d import Axes3D</span>
 <span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">sin</span><span class="p">,</span><span class="n">cos</span><span class="p">,</span><span class="n">atan2</span><span class="p">,</span><span class="n">acos</span><span class="p">,</span><span class="n">sqrt</span><span class="p">,</span><span class="n">pi</span>
-<span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">eye</span>
+<span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">eye</span><span class="p">,</span><span class="n">zeros</span>
 <span class="kn">from</span> <span class="nn">moro.abc</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">moro.util</span> <span class="kn">import</span> <span class="o">*</span>
 
@@ -113,7 +104,9 @@
 <span class="c1"># ~ ==========================================</span>
 <span class="c1"># ~ Transformation operations</span>
 <span class="c1"># ~ ==========================================</span>
-<div class="viewcode-block" id="rot"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rot">[docs]</a><span class="k">def</span> <span class="nf">rot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="rot">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.rot">[docs]</a>
+<span class="k">def</span> <span class="nf">rot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="n">axis</span> <span class="o">=</span> <span class="n">axis</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">axis</span><span class="o">==</span><span class="s2">&quot;x&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">rotx</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
@@ -124,7 +117,10 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">axis</span><span class="si">}</span><span class="s2"> is not a valid axis of rotation.&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="rotz"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rotz">[docs]</a><span class="k">def</span> <span class="nf">rotz</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+<div class="viewcode-block" id="rotz">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.rotz">[docs]</a>
+<span class="k">def</span> <span class="nf">rotz</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculates the rotation matrix about the z-axis</span>
 
@@ -183,7 +179,10 @@
     <span class="k">return</span> <span class="n">R</span></div>
 
 
-<div class="viewcode-block" id="roty"><a class="viewcode-back" href="../../transformations.html#moro.transformations.roty">[docs]</a><span class="k">def</span> <span class="nf">roty</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+<div class="viewcode-block" id="roty">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.roty">[docs]</a>
+<span class="k">def</span> <span class="nf">roty</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculates the rotation matrix about the y-axis</span>
 
@@ -232,7 +231,10 @@
     <span class="k">return</span> <span class="n">R</span></div>
 
 
-<div class="viewcode-block" id="rotx"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rotx">[docs]</a><span class="k">def</span> <span class="nf">rotx</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+<div class="viewcode-block" id="rotx">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.rotx">[docs]</a>
+<span class="k">def</span> <span class="nf">rotx</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculates the rotation matrix about the x-axis</span>
 
@@ -275,6 +277,7 @@
     <span class="k">return</span> <span class="n">R</span></div>
 
 
+
 <span class="k">def</span> <span class="nf">_rot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">axis</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;X&quot;</span><span class="p">,</span><span class="s2">&quot;x&quot;</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;1&quot;</span><span class="p">):</span>
         <span class="n">R</span> <span class="o">=</span> <span class="n">rotx</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
@@ -287,7 +290,9 @@
     <span class="k">return</span> <span class="n">R</span>
     
 
-<div class="viewcode-block" id="compose_rotations"><a class="viewcode-back" href="../../transformations.html#moro.transformations.compose_rotations">[docs]</a><span class="k">def</span> <span class="nf">compose_rotations</span><span class="p">(</span><span class="o">*</span><span class="n">rotations</span><span class="p">):</span>
+<div class="viewcode-block" id="compose_rotations">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.compose_rotations">[docs]</a>
+<span class="k">def</span> <span class="nf">compose_rotations</span><span class="p">(</span><span class="o">*</span><span class="n">rotations</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Composes rotation matrices w.r.t. fixed or movable frames</span>
 <span class="sd">    </span>
@@ -328,7 +333,10 @@
     <span class="k">return</span> <span class="n">R</span></div>
 
 
-<div class="viewcode-block" id="dh"><a class="viewcode-back" href="../../transformations.html#moro.transformations.dh">[docs]</a><span class="k">def</span> <span class="nf">dh</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">alpha</span><span class="p">,</span><span class="n">d</span><span class="p">,</span><span class="n">theta</span><span class="p">):</span>
+
+<div class="viewcode-block" id="dh">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.dh">[docs]</a>
+<span class="k">def</span> <span class="nf">dh</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">alpha</span><span class="p">,</span><span class="n">d</span><span class="p">,</span><span class="n">theta</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculates Denavit-Hartenberg matrix given the four parameters.</span>
 
@@ -385,9 +393,12 @@
                   <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">sin</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span><span class="n">cos</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span><span class="n">d</span><span class="p">],</span>
                   <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]])</span>
     <span class="k">return</span> <span class="n">H</span></div>
+
     
     
-<div class="viewcode-block" id="eul2htm"><a class="viewcode-back" href="../../transformations.html#moro.transformations.eul2htm">[docs]</a><span class="k">def</span> <span class="nf">eul2htm</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">,</span><span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="eul2htm">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.eul2htm">[docs]</a>
+<span class="k">def</span> <span class="nf">eul2htm</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">,</span><span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a set of Euler Angles (phi,theta,psi) for specific </span>
 <span class="sd">    sequence this function returns the homogeneous transformation </span>
@@ -459,9 +470,12 @@
     <span class="n">H</span> <span class="o">=</span> <span class="n">htmrot</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">axis1</span><span class="p">)</span> <span class="o">*</span> <span class="n">htmrot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span><span class="n">axis2</span><span class="p">)</span> <span class="o">*</span> <span class="n">htmrot</span><span class="p">(</span><span class="n">psi</span><span class="p">,</span><span class="n">axis3</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">H</span></div>
+
     
     
-<div class="viewcode-block" id="htm2eul"><a class="viewcode-back" href="../../transformations.html#moro.transformations.htm2eul">[docs]</a><span class="k">def</span> <span class="nf">htm2eul</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="htm2eul">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.htm2eul">[docs]</a>
+<span class="k">def</span> <span class="nf">htm2eul</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a homogeneous transformation matrix this function </span>
 <span class="sd">    return the equivalent set of Euler Angles. </span>
@@ -498,6 +512,7 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Currently only ZXZ sequence is supported&quot;</span><span class="p">)</span></div>
 
 
+
 <span class="k">def</span> <span class="nf">_htm2zxz</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculates ZXZ Euler Angles from a homogeneous transformation matrix</span>
@@ -527,13 +542,16 @@
     <span class="k">return</span> <span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span>
 
 
-<div class="viewcode-block" id="rot2eul"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rot2eul">[docs]</a><span class="k">def</span> <span class="nf">rot2eul</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="rot2eul">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.rot2eul">[docs]</a>
+<span class="k">def</span> <span class="nf">rot2eul</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ZXZ&quot;</span><span class="p">,</span><span class="s2">&quot;zxz&quot;</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_rot2zxz</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ZYZ&quot;</span><span class="p">,</span><span class="s2">&quot;zyz&quot;</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_rot2zyz</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Currently only ZXZ and ZYZ sequence is supported&quot;</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Currently only ZXZ and ZYZ sequence are supported&quot;</span><span class="p">)</span></div>
+
 
 <span class="k">def</span> <span class="nf">_rot2zxz</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -550,8 +568,8 @@
         <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi1</span><span class="p">,</span><span class="n">theta1</span><span class="p">,</span><span class="n">psi1</span><span class="p">),</span> <span class="p">(</span><span class="n">phi2</span><span class="p">,</span><span class="n">theta2</span><span class="p">,</span><span class="n">psi2</span><span class="p">)]</span>
     <span class="k">elif</span> <span class="n">r33</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">phi</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">psi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
+        <span class="n">psi</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
         <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">)]</span>
     <span class="k">elif</span> <span class="n">r33</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="n">pi</span>
@@ -582,8 +600,8 @@
         <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi1</span><span class="p">,</span><span class="n">theta1</span><span class="p">,</span><span class="n">psi1</span><span class="p">),</span> <span class="p">(</span><span class="n">phi2</span><span class="p">,</span><span class="n">theta2</span><span class="p">,</span><span class="n">psi2</span><span class="p">)]</span>
     <span class="k">elif</span> <span class="n">r33</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">phi</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">psi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
+        <span class="n">psi</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
         <span class="n">solution</span> <span class="o">=</span> <span class="p">[(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">)]</span>
     <span class="k">elif</span> <span class="n">r33</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="n">pi</span>
@@ -598,7 +616,9 @@
         
     <span class="k">return</span> <span class="n">solution</span>
 
-<div class="viewcode-block" id="eul2rot"><a class="viewcode-back" href="../../transformations.html#moro.transformations.eul2rot">[docs]</a><span class="k">def</span> <span class="nf">eul2rot</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">,</span><span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="eul2rot">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.eul2rot">[docs]</a>
+<span class="k">def</span> <span class="nf">eul2rot</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">,</span><span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">deg</span><span class="p">:</span> <span class="c1"># If angles are given in degrees -&gt; convert to radians</span>
         <span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span> <span class="o">=</span> <span class="n">deg2rad</span><span class="p">(</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">]),</span> <span class="n">evalf</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">seq</span> <span class="o">=</span> <span class="n">seq</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
@@ -612,7 +632,10 @@
     <span class="n">R</span> <span class="o">=</span> <span class="n">rot</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">axis1</span><span class="p">)</span> <span class="o">*</span> <span class="n">rot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span><span class="n">axis2</span><span class="p">)</span> <span class="o">*</span> <span class="n">rot</span><span class="p">(</span><span class="n">psi</span><span class="p">,</span><span class="n">axis3</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">R</span></div>
 
-<div class="viewcode-block" id="htmtra"><a class="viewcode-back" href="../../transformations.html#moro.transformations.htmtra">[docs]</a><span class="k">def</span> <span class="nf">htmtra</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+<div class="viewcode-block" id="htmtra">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.htmtra">[docs]</a>
+<span class="k">def</span> <span class="nf">htmtra</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate the homogeneous transformation matrix of a translation</span>
 <span class="sd">    </span>
@@ -696,9 +719,12 @@
                 <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">dz</span><span class="p">],</span>
                 <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]])</span>
     <span class="k">return</span> <span class="n">M</span></div>
+
     
 
-<div class="viewcode-block" id="htmrot"><a class="viewcode-back" href="../../transformations.html#moro.transformations.htmrot">[docs]</a><span class="k">def</span> <span class="nf">htmrot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="htmrot">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.htmrot">[docs]</a>
+<span class="k">def</span> <span class="nf">htmrot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return a homogeneous transformation matrix that represents a </span>
 <span class="sd">    rotation &quot;theta&quot; about &quot;axis&quot;. </span>
@@ -772,6 +798,7 @@
     <span class="k">return</span> <span class="n">H</span></div>
 
 
+
 <span class="k">def</span> <span class="nf">_rot2htm</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a SO(3) matrix return a SE(3) homogeneous </span>
@@ -782,7 +809,9 @@
     <span class="k">return</span> <span class="n">H</span>
     
 
-<div class="viewcode-block" id="rot2axa"><a class="viewcode-back" href="../../transformations.html#moro.transformations.rot2axa">[docs]</a><span class="k">def</span> <span class="nf">rot2axa</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="rot2axa">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.rot2axa">[docs]</a>
+<span class="k">def</span> <span class="nf">rot2axa</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a SO(3) matrix return the axis-angle representation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -796,8 +825,11 @@
     <span class="k">if</span> <span class="n">deg</span><span class="p">:</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">k</span><span class="p">,</span><span class="n">theta</span></div>
+
     
-<div class="viewcode-block" id="axa2rot"><a class="viewcode-back" href="../../transformations.html#moro.transformations.axa2rot">[docs]</a><span class="k">def</span> <span class="nf">axa2rot</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="n">theta</span><span class="p">):</span>
+<div class="viewcode-block" id="axa2rot">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.axa2rot">[docs]</a>
+<span class="k">def</span> <span class="nf">axa2rot</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="n">theta</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a R^3 vector (k) and an angle (theta), return </span>
 <span class="sd">    the SO(3) matrix associated.</span>
@@ -819,9 +851,12 @@
     <span class="n">r33</span> <span class="o">=</span> <span class="n">kz</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">vt</span> <span class="o">+</span> <span class="n">ct</span> 
     <span class="n">R</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([[</span><span class="n">r11</span><span class="p">,</span><span class="n">r12</span><span class="p">,</span><span class="n">r13</span><span class="p">],[</span><span class="n">r21</span><span class="p">,</span><span class="n">r22</span><span class="p">,</span><span class="n">r23</span><span class="p">],[</span><span class="n">r31</span><span class="p">,</span><span class="n">r32</span><span class="p">,</span><span class="n">r33</span><span class="p">]])</span>
     <span class="k">return</span> <span class="n">R</span></div>
+
     
 
-<div class="viewcode-block" id="skew"><a class="viewcode-back" href="../../transformations.html#moro.transformations.skew">[docs]</a><span class="k">def</span> <span class="nf">skew</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+<div class="viewcode-block" id="skew">
+<a class="viewcode-back" href="../../transformations.html#moro.transformations.skew">[docs]</a>
+<span class="k">def</span> <span class="nf">skew</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return skew-symmetric matrix associated to u vector </span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -832,6 +867,7 @@
                 <span class="p">[</span><span class="n">uz</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">ux</span><span class="p">],</span> 
                 <span class="p">[</span><span class="o">-</span><span class="n">uy</span><span class="p">,</span> <span class="n">ux</span><span class="p">,</span> <span class="mi">0</span><span class="p">]])</span>
     <span class="k">return</span> <span class="n">S</span></div>
+
     
 
 <span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
