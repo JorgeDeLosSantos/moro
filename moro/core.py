@@ -1,10 +1,8 @@
 """
-
 Numython R&D, (c) 2026 
 Moro is a Python library for kinematic and dynamic modeling of serial robots. 
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
-
 """
 import matplotlib.pyplot as plt
 # from mpl_toolkits.mplot3d import Axes3D
@@ -287,12 +285,6 @@ class Robot(object):
     @qis_range.setter
     def qis_range(self, *args):
         self._qis_range = args
-        
-    def __plot_workspace(self):
-        """ 
-        TODO 
-        """
-        pass
         
     def set_masses(self,masses):
         """
@@ -1003,42 +995,6 @@ class RigidBody2D(object):
         cy = sy/n
         return cx,cy
 
-
-
-def test_robot():
-    # ABB = Robot((0,pi/2,330,q1), 
-    #             (320,0,0,q2), 
-    #             (0,pi/2,0,q3), 
-    #             (0,-pi/2,300,q4), 
-    #             (0,pi/2,0,q5), 
-    #             (0,0,80,q6))
-    r = Robot((0,pi/2,d1,q1),(l2,0,0,q2), (l3,0,0,q3))
-    RRP = Robot((0,pi/2,d1,q1), (0,pi/2,0,q2), (0,0,q3,0))
-    # r.plot_diagram({q1:0, q2:pi/4, q3:0, d1:100, l2:100, l3:100})
-    RRP.plot_diagram({q1:0, q2:pi/2, q3:250, d1:100})
-    # ABB.plot_diagram(
-    #     {
-    #         q1:deg2rad(33.69),
-    #         q2:deg2rad(-26.13),
-    #         q3:deg2rad(191.99),
-    #         q4:deg2rad(180),
-    #         q5:deg2rad(165.87),
-    #         q6:deg2rad(-146.31)
-    #     }
-    # )
-    
-    
-def test_rb2():
-    points = [(0,0),(3,0),(0,1)]
-    rb = RigidBody2D(points)
-    rb.draw("r")
-    rb.move([10,0,0])
-    rb.draw("g")
-    rb.rotate(pi/2)
-    rb.move([5,0,0])
-    rb.draw("b")
-    plt.show()
-    print(rb.Hs)
 
 
 if __name__=="__main__":
