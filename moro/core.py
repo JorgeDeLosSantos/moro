@@ -167,7 +167,7 @@ class Robot(object):
         Returns
         -------
         sympy.matrices.dense.MutableDenseMatrix
-            T_i^j
+            Returns :math:`T_i^j`
         """
         if i == j: return eye(4)
         return simplify(functools.reduce(operator.mul, self.Ts[j:i]))
@@ -179,7 +179,7 @@ class Robot(object):
         Returns
         -------
         sympy.matrices.dense.MutableDenseMatrix
-            Returns T_i^0
+            Returns :math:`T_i^0`
         """
         if i == 0: # If i is 0, then T_i^0 is the identity matrix
             return eye(4)
@@ -286,7 +286,7 @@ class Robot(object):
     def qis_range(self, *args):
         self._qis_range = args
         
-    def set_masses(self,masses):
+    def set_masses(self,masses=None):
         """
         Set mass for each link using a list like: [m1, m2, ..., mn], where 
         m1, m2, ..., mn, are numeric or symbolic values.
@@ -296,7 +296,13 @@ class Robot(object):
         masses: list, tuple
             A list of numerical or symbolic values that correspond to link masses.
         """
-        self.masses = masses
+        if len(masses) != self.dof:
+            raise ValueError(f"Number of masses must be equal to the number of links ({self.dof}).")
+
+        if masses is None:
+            self.masses = [ symbols(f"m_{i+1}") for i in range(self.dof) ]
+        else:
+            self.masses = masses
         
     def set_inertia_tensors(self,tensors=None):
         """
