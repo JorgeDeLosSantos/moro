@@ -183,10 +183,10 @@ class Robot(object):
         sympy.matrices.dense.MutableDenseMatrix
             Returns T_i^0
         """
-        if i == 0:
+        if i == 0: # If i is 0, then T_i^0 is the identity matrix
             return eye(4)
-        else:
-            return self.T_ij(i,0) 
+        
+        return self.T_ij(i,0) 
         
     def R_i0(self,i):
         """
@@ -1042,16 +1042,4 @@ def test_rb2():
 
 
 if __name__=="__main__":
-    # test_robot()
-    robot = Robot((l1, 0, 0, q1), (l2, 0, 0, q2), (l3, 0, 0, q3))
-
-    # Visualizar directamente en Jupyter!
-    print(robot.plot_diagram_threejs({
-        q1: pi/6,
-        q2: pi/4,
-        q3: -pi/6,
-        l1: 100,
-        l2: 80,
-        l3: 60
-    }))
-        
+    pass
