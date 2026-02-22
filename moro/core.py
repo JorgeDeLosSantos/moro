@@ -285,11 +285,11 @@ class Robot(object):
         masses: list, tuple
             A list of numerical or symbolic values that correspond to link masses.
         """
+        if masses is None:
+            masses = [ symbols(f"m_{i+1}") for i in range(self.dof) ]
+
         if len(masses) != self.dof:
             raise ValueError(f"Number of masses must be equal to the number of links ({self.dof}).")
-
-        if masses is None:
-            self.masses = [ symbols(f"m_{i+1}") for i in range(self.dof) ]
         else:
             self.masses = masses
         
@@ -540,37 +540,6 @@ class Robot(object):
             jp = jp.col_join(jo)
             M_[:,idx] = jp
         return simplify(M_)
-        
-    def w_ijj(self,i):
-        """
-        Return the angular velocity of the [i]-link w.r.t. [j]-link, 
-        described in {j}-Frame, where j = i - 1. 
-        
-        Since we are using Denavit-Hartenberg frames, then:
-        
-        .. math:: 
-            
-            \\omega_{{i-i,i}}^{{i-1}} = \\begin{bmatrix} 0 \\\\ 0 \\\\ \\dot{{q}}_i \\end{bmatrix}
-            
-        If the i-th joint is revolute, or:
-        
-        .. math:: 
-            
-            \\omega_{{i-i,i}}^{{i-1}} = \\begin{bmatrix} 0 \\\\ 0 \\\\ 0 \\end{bmatrix}
-        
-        If the i-th joint is a prismatic.
-        
-        Parameters
-        ----------
-        i : int
-            Link number.
-        """
-        idx = i - 1 
-        if self.joint_types[idx] == "r":
-            wijj = Matrix([0,0,self.qs[idx].diff()])
-        else:
-            wijj = Matrix([0,0,0])
-        return wijj
     
     def joint_type(self,i):
         """
@@ -721,7 +690,12 @@ class Robot(object):
         
     def get_inertia_matrix(self):
         """
-        Return the inertia (mass) matrix
+        Return the inertia matrix M(q) of the robot. The inertia matrix is computed as:
+
+        .. math::
+            M(q) = \\sum_{{i=1}}^n m_i J_{v_i}^T J_{v_i} + J_{w_i}^T R_i I_i R_i^T J_{w_i}
+
+        where :math:`m_i` is the mass of the i-th link, :math:`J_{v_i}` is the linear velocity Jacobian matrix of the center of mass of the i-th link, :math:`J_{w_i}` is the angular velocity Jacobian matrix of the center of mass of the i-th link, :math:`R_i` is the rotation matrix of the i-th link w.r.t. the base frame, and :math:`I_i` is the inertia tensor of the i-th link w.r.t. a frame located in its center of mass and aligned with the base frame.
 
         Returns
         -------
@@ -735,8 +709,8 @@ class Robot(object):
         Jv = [self.Jv_cm_i(i+1) for i in range(n)]
         Jw = [self.Jw_cm_i(i+1) for i in range(n)]
         R  = [self.R_i0(i+1)    for i in range(n)]
-        I  = [self.I_ii(i+1)    for i in range(n)]
-        m  = [self.m_i(i+1)     for i in range(n)]
+        I  = [self.I_cm0(i+1)    for i in range(n)]
+        m  = [self.m(i+1)     for i in range(n)]
 
         # Compute inertia matrix
         for i in range(n):
@@ -746,6 +720,14 @@ class Robot(object):
         return simplify(M)
 
     def get_coriolis_matrix(self):
+        """
+        Return the Coriolis matrix C(q,q').
+        The Coriolis matrix is computed using the Christoffel symbols of the first kind:
+        .. math::
+        
+            C_{{i,j}} = \\sum_{{k=1}}^n c_{{i,j,k}} \\dot{{q}}_k
+            
+        """
         n = self.dof
         M = self.get_inertia_matrix()
         C = zeros(n)
@@ -764,7 +746,6 @@ class Robot(object):
             c_{{i,j,k}} = \\frac{1}{2} \\left( \\frac{{\\partial M_{{i,j}}}}{{\\partial q_k}} + \\frac{{\\partial M_{{i,k}}}}{{\\partial q_j}} - \\frac{{\\partial M_{{j,k}}}}{{\\partial q_i}} \\right)
 
         """
-        # M = self.get_inertia_matrix()
         q = self.qs
         idx_i, idx_j, idx_k = i-1, j-1, k-1 
         mij = M[idx_i, idx_j]
@@ -772,23 +753,13 @@ class Robot(object):
         mjk = M[idx_j, idx_k]
         cijk = (1/2)*( mij.diff(q[idx_k]) + mik.diff(q[idx_j]) - mjk.diff(q[idx_i]) )
         return cijk
-
-    def christoffel_symbols_v2(self, i, j, k):
-        M = self.get_inertia_matrix()
-        q = self.qs
-        # Indices for zero-based indexing
-        idx_i, idx_j, idx_k = i-1, j-1, k-1
-        mij = M[idx_i, idx_j]
-        mik = M[idx_i, idx_k]
-        mjk = M[idx_j, idx_k]
-        
-        # Calculate the Christoffel symbol using the formula
-        cijk = (1/2) * (mij.diff(q[idx_k]) + mik.diff(q[idx_j]) - mjk.diff(q[idx_i]))
-        return cijk
     
     def get_gravity_torque_vector(self):
         """
-        Return the gravity torque vector G(q).
+        Compute the gravity torque vector G(q). The gravity torque vector is computed as the gradient of the potential energy of the system:
+
+        .. math::
+            G(q) = \\nabla U(q) = \\left[ \\frac{{\\partial U}}{{\\partial q_1}}, \\frac{{\\partial U}}{{\\partial q_2}}, ..., \\frac{{\\partial U}}{{\\partial q_n}} \\right]^T
 
         Returns
         -------
@@ -803,10 +774,11 @@ class Robot(object):
         """
         Return the dynamic model of the robot in matrix form:
 
-        M(q) q'' + C(q,q') q' + G(q) = tau
+        .. math::
+            M(q) \\ddot{{q}} + C(q,\\dot{{q}}) \\dot{{q}} + G(q) = \\tau
 
-        where M(q) is the inertia matrix, C(q,q') is the Coriolis matrix, 
-        G(q) is the gravity torque vector, and tau is the vector of joint torques.
+        where :math:`M(q)` is the inertia matrix, :math:`C(q,q')` is the Coriolis matrix, 
+        :math:`G(q)` is the gravity torque vector, and :math:`\\tau` is the vector of joint torques.
 
         """
         M = self.get_inertia_matrix()
@@ -861,9 +833,7 @@ class Robot(object):
             raise ValueError("Gravity vector is not defined. Please set it using " \
             "the set_gravity_vector() method.") 
         
-        mi = self.m(i)
-        rcm_i = self.rcm_i(i)
-        return - mi * self.G.T * self.r_cm(i)
+        return - self.m(i) * self.G.T * self.r_cm(i)
         
     def get_kinetic_energy(self):
         """
@@ -871,7 +841,7 @@ class Robot(object):
         """
         K = Matrix([0])
         for i in range(self.dof):
-            K += self.kin_i(i+1) 
+            K += self.kin(i+1)
         return nsimplify(K)
         
     def get_potential_energy(self):
@@ -880,7 +850,7 @@ class Robot(object):
         """
         U = Matrix([0])
         for i in range(self.dof):
-            U += self.pot_i(i+1) 
+            U += self.pot(i+1) 
         return nsimplify(U)
         
     def get_dynamic_model(self):
