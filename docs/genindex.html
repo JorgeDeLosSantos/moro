@@ -107,8 +107,6 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.christoffel_symbols_v2">christoffel_symbols_v2() (moro.core.Robot method)</a>
-</li>
       <li><a href="transformations.html#moro.transformations.compose_rotations">compose_rotations() (in module moro.transformations)</a>
 </li>
   </ul></td>
@@ -149,14 +147,12 @@
 </li>
       <li><a href="core.html#moro.core.Robot.get_coriolis_matrix">get_coriolis_matrix() (moro.core.Robot method)</a>
 </li>
-      <li><a href="core.html#moro.core.Robot.get_coriolis_matrix_v2">get_coriolis_matrix_v2() (moro.core.Robot method)</a>
-</li>
       <li><a href="core.html#moro.core.Robot.get_dynamic_model">get_dynamic_model() (moro.core.Robot method)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.get_dynamic_model_matrix_form">get_dynamic_model_matrix_form() (moro.core.Robot method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.get_dynamic_model_matrix_form">get_dynamic_model_matrix_form() (moro.core.Robot method)</a>
-</li>
       <li><a href="core.html#moro.core.Robot.get_gravity_torque_vector">get_gravity_torque_vector() (moro.core.Robot method)</a>
 </li>
       <li><a href="core.html#moro.core.Robot.get_inertia_matrix">get_inertia_matrix() (moro.core.Robot method)</a>
@@ -187,9 +183,9 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.I_i">I_i() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.I_cm">I_cm() (moro.core.Robot method)</a>
 </li>
-      <li><a href="core.html#moro.core.Robot.I_ii">I_ii() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.I_cm0">I_cm0() (moro.core.Robot method)</a>
 </li>
       <li><a href="util.html#moro.util.is_position_vector">is_position_vector() (in module moro.util)</a>
 </li>
@@ -223,6 +219,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="core.html#moro.core.Robot.joint_limits">joint_limits (moro.core.Robot property)</a>
 </li>
+      <li><a href="core.html#moro.core.Robot.joint_type">joint_type() (moro.core.Robot method)</a>
+</li>
       <li><a href="core.html#moro.core.Robot.Jv_cm_i">Jv_cm_i() (moro.core.Robot method)</a>
 </li>
       <li><a href="core.html#moro.core.Robot.Jw_cm_i">Jw_cm_i() (moro.core.Robot method)</a>
@@ -233,7 +231,7 @@
 <h2 id="K">K</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.kin_i">kin_i() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.kin">kin() (moro.core.Robot method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -241,7 +239,7 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.m_i">m_i() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.m">m() (moro.core.Robot method)</a>
 </li>
       <li>
     module
@@ -285,17 +283,13 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.p">p() (moro.core.Robot method)</a>
-</li>
       <li><a href="core.html#moro.core.Robot.plot_diagram">plot_diagram() (moro.core.Robot method)</a>
 </li>
-      <li><a href="core.html#moro.core.Robot.plot_diagram_threejs">plot_diagram_threejs() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.RigidBody2D.points">points (moro.core.RigidBody2D property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.RigidBody2D.points">points (moro.core.RigidBody2D property)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.pot_i">pot_i() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.pot">pot() (moro.core.Robot method)</a>
 </li>
       <li><a href="util.html#moro.util.pprint">pprint() (in module moro.util)</a>
 </li>
@@ -305,10 +299,12 @@
 <h2 id="Q">Q</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.qi">qi() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.q_dot">q_dot() (moro.core.Robot method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="core.html#moro.core.Robot.qi">qi() (moro.core.Robot method)</a>
+</li>
       <li><a href="core.html#moro.core.Robot.qis_range">qis_range (moro.core.Robot property)</a>
 </li>
   </ul></td>
@@ -317,11 +313,13 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="core.html#moro.core.Robot.r_cm">r_cm() (moro.core.Robot method)</a>
+</li>
       <li><a href="core.html#moro.core.Robot.R_i0">R_i0() (moro.core.Robot method)</a>
 </li>
-      <li><a href="util.html#moro.util.rad2deg">rad2deg() (in module moro.util)</a>
+      <li><a href="core.html#moro.core.Robot.r_o">r_o() (moro.core.Robot method)</a>
 </li>
-      <li><a href="core.html#moro.core.Robot.rcm_i">rcm_i() (moro.core.Robot method)</a>
+      <li><a href="util.html#moro.util.rad2deg">rad2deg() (in module moro.util)</a>
 </li>
       <li><a href="core.html#moro.core.RigidBody2D.restart">restart() (moro.core.RigidBody2D method)</a>
 </li>
@@ -389,7 +387,7 @@
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.vcm_i">vcm_i() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.v_cm">v_cm() (moro.core.Robot method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -401,11 +399,11 @@
 <h2 id="W">W</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.w_i">w_i() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.w">w() (moro.core.Robot method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.w_ijj">w_ijj() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.w_rel0">w_rel0() (moro.core.Robot method)</a>
 </li>
   </ul></td>
 </tr></table>

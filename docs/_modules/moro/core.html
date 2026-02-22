@@ -71,24 +71,36 @@
              
   <h1>Source code for moro.core</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
-
 <span class="sd">Numython R&amp;D, (c) 2026 </span>
 <span class="sd">Moro is a Python library for kinematic and dynamic modeling of serial robots. </span>
 <span class="sd">This library has been designed, mainly, for academic and research purposes, </span>
 <span class="sd">using SymPy as base library. </span>
-
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="c1"># from mpl_toolkits.mplot3d import Axes3D</span>
 <span class="kn">import</span> <span class="nn">operator</span><span class="o">,</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sp</span>
-<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">pi</span>
-<span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">eye</span><span class="p">,</span><span class="n">diag</span><span class="p">,</span><span class="n">zeros</span>
-<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">simplify</span><span class="p">,</span> <span class="n">nsimplify</span>
-<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">Eq</span><span class="p">,</span><span class="n">MatAdd</span><span class="p">,</span><span class="n">MatMul</span>
-<span class="kn">from</span> <span class="nn">moro.abc</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">moro.transformations</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">moro.util</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">pi</span><span class="p">,</span>
+    <span class="n">symbols</span><span class="p">,</span>
+    <span class="n">Matrix</span><span class="p">,</span>
+    <span class="n">eye</span><span class="p">,</span>
+    <span class="n">diag</span><span class="p">,</span>
+    <span class="n">zeros</span><span class="p">,</span>
+    <span class="n">simplify</span><span class="p">,</span>
+    <span class="n">nsimplify</span><span class="p">,</span>
+    <span class="n">Eq</span><span class="p">,</span>
+    <span class="n">MatAdd</span><span class="p">,</span>
+    <span class="n">MatMul</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># Moro core dependencies</span>
+<span class="kn">from</span> <span class="nn">moro.transformations</span> <span class="kn">import</span> <span class="n">dh</span><span class="p">,</span> <span class="n">htmrot</span><span class="p">,</span> <span class="n">htmtra</span>
+<span class="kn">from</span> <span class="nn">moro.util</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">vector_in_hcoords</span><span class="p">,</span>
+    <span class="n">is_position_vector</span><span class="p">,</span>
+    <span class="n">is_SE3</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">moro.abc</span> <span class="kn">import</span> <span class="n">t</span>
 <span class="kn">import</span> <span class="nn">moro.inverse_kinematics</span> <span class="k">as</span> <span class="nn">ikin</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Robot&quot;</span><span class="p">,</span> <span class="s2">&quot;RigidBody2D&quot;</span><span class="p">]</span>
@@ -133,6 +145,12 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_dof</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="c1"># Degree of freedom</span>
+
+        <span class="c1"># Dynamic parameters (initially set to None, but they can be set using the corresponding methods)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">masses</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inertia_tensors</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cm_locations</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__set_default_joint_limits</span><span class="p">()</span> <span class="c1"># set default joint-limits on create</span>
     
 <div class="viewcode-block" id="Robot.z">
@@ -154,9 +172,9 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span></div>
 
     
-<div class="viewcode-block" id="Robot.p">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.p">[docs]</a>
-    <span class="k">def</span> <span class="nf">p</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Robot.r_o">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.r_o">[docs]</a>
+    <span class="k">def</span> <span class="nf">r_o</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the position (of the origin of coordinates) of the {i}-Frame w.r.t. {0}-Frame</span>
 <span class="sd">        </span>
@@ -176,26 +194,15 @@
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">J</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get the geometric jacobian matrix of the end-effector.</span>
+<span class="sd">        Get the geometric jacobian matrix of the end-effector. </span>
 <span class="sd">        </span>
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            Get the geometric jacobian matrix of the end-effector.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
-        <span class="n">M_</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="n">n</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-            <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;r&#39;</span><span class="p">:</span> <span class="c1"># If i-th joint is revolute</span>
-                <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
-                <span class="n">jo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span> <span class="c1"># If i-th joint is prismatic</span>
-                <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-                <span class="n">jo</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
-            <span class="n">jp</span> <span class="o">=</span> <span class="n">jp</span><span class="o">.</span><span class="n">col_join</span><span class="p">(</span><span class="n">jo</span><span class="p">)</span>
-            <span class="n">M_</span><span class="p">[:,</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">jp</span>
-        <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span><span class="n">M_</span><span class="p">)</span>
+        <span class="c1"># Jacobian of the end-effector (point located at the origin of {n}-Frame)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">J_point</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span> 
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">dof</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -231,7 +238,7 @@
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
-<span class="sd">            T_i^j</span>
+<span class="sd">            Returns :math:`T_i^j`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span><span class="p">:</span> <span class="k">return</span> <span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span><span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ts</span><span class="p">[</span><span class="n">j</span><span class="p">:</span><span class="n">i</span><span class="p">]))</span></div>
@@ -246,12 +253,12 @@
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
-<span class="sd">            Returns T_i^0</span>
+<span class="sd">            Returns :math:`T_i^0`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="c1"># If i is 0, then T_i^0 is the identity matrix</span>
             <span class="k">return</span> <span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ij</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> </div>
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ij</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> </div>
 
         
 <div class="viewcode-block" id="Robot.R_i0">
@@ -363,15 +370,9 @@
     <span class="k">def</span> <span class="nf">qis_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_qis_range</span> <span class="o">=</span> <span class="n">args</span>
         
-    <span class="k">def</span> <span class="nf">__plot_workspace</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; </span>
-<span class="sd">        TODO </span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">pass</span>
-        
 <div class="viewcode-block" id="Robot.set_masses">
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.set_masses">[docs]</a>
-    <span class="k">def</span> <span class="nf">set_masses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">masses</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">set_masses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">masses</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set mass for each link using a list like: [m1, m2, ..., mn], where </span>
 <span class="sd">        m1, m2, ..., mn, are numeric or symbolic values.</span>
@@ -381,7 +382,13 @@
 <span class="sd">        masses: list, tuple</span>
 <span class="sd">            A list of numerical or symbolic values that correspond to link masses.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">masses</span> <span class="o">=</span> <span class="n">masses</span></div>
+        <span class="k">if</span> <span class="n">masses</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">masses</span> <span class="o">=</span> <span class="p">[</span> <span class="n">symbols</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;m_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span> <span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">masses</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of masses must be equal to the number of links (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">masses</span> <span class="o">=</span> <span class="n">masses</span></div>
 
         
 <div class="viewcode-block" id="Robot.set_inertia_tensors">
@@ -390,10 +397,13 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Inertia tensor w.r.t. {i}&#39;-Frame. Consider that the reference </span>
 <span class="sd">        frame {i}&#39; is located at the center of mass of link [i] </span>
-<span class="sd">        and oriented in the same way as {i}-Frame. By default (if tensors argument</span>
+<span class="sd">        and oriented in the same way as {i}-Frame. By default (if `tensors` argument</span>
 <span class="sd">        is not passed), it is assumed that each link is symmetrical to, </span>
 <span class="sd">        at least, two planes of the reference frame located in its center of mass, </span>
-<span class="sd">        then products of inertia are zero.</span>
+<span class="sd">        then the inertia tensor of each link is defined as a diagonal matrix with </span>
+<span class="sd">        the moments of inertia as diagonal elements, and the products of inertia as zero. </span>
+<span class="sd">        The moments of inertia are defined as symbolic variables of the form: </span>
+<span class="sd">        I_{x_ix_i}, I_{y_iy_i}, I_{z_iz_i}, where i is the link number.</span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -401,6 +411,9 @@
 <span class="sd">            A list containinig `sympy.matrices.dense.MutableDenseMatrix` that </span>
 <span class="sd">            corresponds to each inertia tensor w.r.t. {i}&#39;-Frame.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">tensors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">tensors</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of inertia tensors must be equal to the number of links (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+
         <span class="n">dof</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">inertia_tensors</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="n">tensors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># Default assumption</span>
@@ -415,14 +428,16 @@
             
 <div class="viewcode-block" id="Robot.set_cm_locations">
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.set_cm_locations">[docs]</a>
-    <span class="k">def</span> <span class="nf">set_cm_locations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">cmlocs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">set_cm_locations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">cm_locations</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set the positions of the center of mass for each </span>
-<span class="sd">        link.</span>
+<span class="sd">        link. The position of the center of mass of the i-th link must be </span>
+<span class="sd">        defined as a list or tuple of three elements that correspond to the x, y, z </span>
+<span class="sd">        coordinates of the center of mass w.r.t. {i}-Frame.</span>
 <span class="sd">    </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        cmlocs: list, tuple</span>
+<span class="sd">        cm_locations: list, tuple</span>
 <span class="sd">            A list of lists (or tuples) or a tuple of tuples (or lists) containing </span>
 <span class="sd">            each center of mass position w.r.t. its reference frame.</span>
 <span class="sd">        </span>
@@ -431,27 +446,76 @@
 <span class="sd">        &gt;&gt;&gt; RR = Robot((l1,0,0,q1,&quot;r&quot;), (l2,0,0,q2,&quot;r&quot;))</span>
 <span class="sd">        &gt;&gt;&gt; RR.set_cm_locations([(-lc1,0,0), (-lc2,0,0)])</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cm_locations</span> <span class="o">=</span> <span class="n">cmlocs</span></div>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cm_locations</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of center of mass locations must be equal to the number of links (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Validate that each center of mass location is a 3-element list or tuple</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">cm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cm_locations</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_position_vector</span><span class="p">(</span><span class="n">cm</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Center of mass location for link </span><span class="si">{</span><span class="n">idx</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> must be a list or tuple of three elements (x, y, z).&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Convert each center of mass location to a sympy Matrix if it&#39;s a list or tuple</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">cm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cm_locations</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cm</span><span class="p">,</span> <span class="n">Matrix</span><span class="p">):</span>
+                <span class="n">cm_locations</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cm_locations</span> <span class="o">=</span> <span class="n">cm_locations</span></div>
 
 
 <div class="viewcode-block" id="Robot.set_gravity_vector">
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.set_gravity_vector">[docs]</a>
     <span class="k">def</span> <span class="nf">set_gravity_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">G</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Set the gravity vector in the base frame.</span>
+<span class="sd">        Set the gravity vector in the base frame. The gravity vector </span>
+<span class="sd">        must be defined as a list or tuple of three elements that </span>
+<span class="sd">        correspond to the x, y, z components of the gravity vector in the base frame. </span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        G: list, tuple</span>
 <span class="sd">            A list or tuple of three elements that define </span>
 <span class="sd">            the gravity vector in the base frame.</span>
+<span class="sd">        </span>
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; RR = Robot((l1,0,0,q1,&quot;r&quot;), (l2,0,0,q2,&quot;r&quot;))</span>
+<span class="sd">        &gt;&gt;&gt; RR.set_gravity_vector((0,-g,0))</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">G</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Gravity vector must have three components (x, y, z).&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Convert G to a sympy Matrix if it&#39;s a list or tuple</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">Matrix</span><span class="p">):</span>
+            <span class="n">G</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="o">=</span> <span class="n">G</span></div>
 
+
+    <span class="k">def</span> <span class="nf">_r_cm_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the position of the center of mass of the i-th link w.r.t. {i}-Frame.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        i: int</span>
+<span class="sd">            Link number</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">            A column vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;link&quot;</span><span class="p">)</span> 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm_locations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Center of mass locations are not defined. &quot;</span> \
+                             <span class="s2">&quot;Please set them using the set_cm_locations() method.&quot;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm_locations</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
     
-<div class="viewcode-block" id="Robot.rcm_i">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.rcm_i">[docs]</a>
-    <span class="k">def</span> <span class="nf">rcm_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Robot.r_cm">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.r_cm">[docs]</a>
+    <span class="k">def</span> <span class="nf">r_cm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the position of the center of mass of the </span>
 <span class="sd">        i-th link w.r.t. the base frame.</span>
@@ -466,15 +530,19 @@
 <span class="sd">        `sympy.matrices.dense.MutableDenseMatrix`</span>
 <span class="sd">            A column vector</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="n">rcm_ii</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm_locations</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="p">)</span>
-        <span class="n">rcm_i</span> <span class="o">=</span> <span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">vector_in_hcoords</span><span class="p">(</span> <span class="n">rcm_ii</span> <span class="p">)</span> <span class="p">)[:</span><span class="mi">3</span><span class="p">,:]</span>
-        <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span> <span class="n">rcm_i</span> <span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;link&quot;</span><span class="p">)</span> 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cm_locations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Center of mass locations are not defined. &quot;</span> \
+            <span class="s2">&quot;Please set them using the set_cm_locations() method.&quot;</span><span class="p">)</span>  
+
+        <span class="n">r_cm_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_r_cm_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">r_cm</span> <span class="o">=</span> <span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">vector_in_hcoords</span><span class="p">(</span> <span class="n">r_cm_i</span> <span class="p">)</span> <span class="p">)[:</span><span class="mi">3</span><span class="p">,:]</span>
+        <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span> <span class="n">r_cm</span> <span class="p">)</span></div>
 
         
-<div class="viewcode-block" id="Robot.vcm_i">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.vcm_i">[docs]</a>
-    <span class="k">def</span> <span class="nf">vcm_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Robot.v_cm">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.v_cm">[docs]</a>
+    <span class="k">def</span> <span class="nf">v_cm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the velocity of the center of mass of the </span>
 <span class="sd">        i-th link w.r.t. the base frame.</span>
@@ -489,7 +557,8 @@
 <span class="sd">        `sympy.matrices.dense.MutableDenseMatrix`</span>
 <span class="sd">            A column vector</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">rcm_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rcm_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;link&quot;</span><span class="p">)</span>
+        <span class="n">rcm_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_cm</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="n">vcm_i</span> <span class="o">=</span> <span class="n">rcm_i</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span> <span class="n">vcm_i</span> <span class="p">)</span></div>
 
@@ -503,23 +572,7 @@
 <span class="sd">        i : int</span>
 <span class="sd">            Link number.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
-        <span class="n">M_</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="n">n</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-            <span class="n">idx</span> <span class="o">=</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span>
-            <span class="k">if</span> <span class="n">j</span> <span class="o">&lt;=</span> <span class="n">i</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;r&#39;</span><span class="p">:</span>
-                    <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rcm_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
-                    <span class="n">jo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-                    <span class="n">jo</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">jp</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
-                <span class="n">jo</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
-            <span class="n">jp</span> <span class="o">=</span> <span class="n">jp</span><span class="o">.</span><span class="n">col_join</span><span class="p">(</span><span class="n">jo</span><span class="p">)</span>
-            <span class="n">M_</span><span class="p">[:,</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">jp</span>
-        <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span><span class="n">M_</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">J_point</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cm_locations</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">i</span><span class="p">)</span>
     
 <div class="viewcode-block" id="Robot.Jv_cm_i">
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.Jv_cm_i">[docs]</a>
@@ -589,6 +642,7 @@
 <span class="sd">            Jacobian matrix of the point.</span>
 <span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
         <span class="n">point_wrt_i</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span> <span class="n">point</span> <span class="p">)</span>
         <span class="n">point_wrt_0</span> <span class="o">=</span> <span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">vector_in_hcoords</span><span class="p">(</span> <span class="n">point_wrt_i</span> <span class="p">)</span> <span class="p">)[:</span><span class="mi">3</span><span class="p">,:]</span>
@@ -599,7 +653,7 @@
             <span class="n">idx</span> <span class="o">=</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span>
             <span class="k">if</span> <span class="n">j</span> <span class="o">&lt;=</span> <span class="n">i</span><span class="p">:</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;r&#39;</span><span class="p">:</span>
-                    <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">point_wrt_0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+                    <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">point_wrt_0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_o</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
                     <span class="n">jo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
@@ -611,25 +665,55 @@
             <span class="n">M_</span><span class="p">[:,</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">jp</span>
         <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span><span class="n">M_</span><span class="p">)</span></div>
 
-        
-<div class="viewcode-block" id="Robot.w_ijj">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.w_ijj">[docs]</a>
-    <span class="k">def</span> <span class="nf">w_ijj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+    
+<div class="viewcode-block" id="Robot.joint_type">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.joint_type">[docs]</a>
+    <span class="k">def</span> <span class="nf">joint_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the angular velocity of the [i]-link w.r.t. [j]-link, </span>
-<span class="sd">        described in {j}-Frame, where j = i - 1. </span>
+<span class="sd">        Return the type of the i-th joint. &quot;r&quot; for revolute, &quot;p&quot; for prismatic.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        i : int</span>
+<span class="sd">            Joint number.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
+
+    
+<div class="viewcode-block" id="Robot.q_dot">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.q_dot">[docs]</a>
+    <span class="k">def</span> <span class="nf">q_dot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the time derivative of the i-th joint variable.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        i : int</span>
+<span class="sd">            Joint number.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="Robot.w_rel0">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.w_rel0">[docs]</a>
+    <span class="k">def</span> <span class="nf">w_rel0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the angular velocity of the [i]-link w.r.t. [i-1]-link, </span>
+<span class="sd">        described in {0}-Frame.</span>
 <span class="sd">        </span>
 <span class="sd">        Since we are using Denavit-Hartenberg frames, then:</span>
 <span class="sd">        </span>
 <span class="sd">        .. math:: </span>
 <span class="sd">            </span>
-<span class="sd">            \\omega_{{i-i,i}}^{{i-1}} = \\begin{bmatrix} 0 \\\\ 0 \\\\ \\dot{{q}}_i \\end{bmatrix}</span>
+<span class="sd">            \\omega_{{i-i,i}} = \\dot{{q}}_i \\mathbf{z}_{i-1}</span>
 <span class="sd">            </span>
 <span class="sd">        If the i-th joint is revolute, or:</span>
 <span class="sd">        </span>
 <span class="sd">        .. math:: </span>
 <span class="sd">            </span>
-<span class="sd">            \\omega_{{i-i,i}}^{{i-1}} = \\begin{bmatrix} 0 \\\\ 0 \\\\ 0 \\end{bmatrix}</span>
+<span class="sd">            \\omega_{{i-i,i}} = \\mathbf{0}</span>
 <span class="sd">        </span>
 <span class="sd">        If the i-th joint is a prismatic.</span>
 <span class="sd">        </span>
@@ -638,20 +722,25 @@
 <span class="sd">        i : int</span>
 <span class="sd">            Link number.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span> 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span>
-            <span class="n">wijj</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">()])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_type</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span>
+            <span class="n">w_rel0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">q_dot</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">wijj</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">wijj</span></div>
+            <span class="n">w_rel0</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">w_rel0</span></div>
 
-            
-        
-<div class="viewcode-block" id="Robot.w_i">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.w_i">[docs]</a>
-    <span class="k">def</span> <span class="nf">w_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+    
+<div class="viewcode-block" id="Robot.w">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.w">[docs]</a>
+    <span class="k">def</span> <span class="nf">w</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Compute the angular velocity of the [i]-link w.r.t. {0}-Frame.</span>
+<span class="sd">        Compute the angular velocity of the [i]-link w.r.t. base {0}-Frame. </span>
+<span class="sd">        The angular velocity of the [i]-link w.r.t. base {0}-Frame can be </span>
+<span class="sd">        computed as the sum of the relative angular velocities of each link </span>
+<span class="sd">        w.r.t. its previous link, described in the base frame: </span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">            \\boldsymbol{\\omega}_i = \\sum_{{k=1}}^i \\boldsymbol{\\omega}_{{k-1,k}}</span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -662,39 +751,20 @@
 <span class="sd">        -------</span>
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            Angular velocity of the [i]-link w.r.t. {0}-Frame.</span>
-<span class="sd">        </span>
-<span class="sd">        Examples</span>
-<span class="sd">        --------</span>
-<span class="sd">        &gt;&gt;&gt; RR = Robot((l1,0,0,q1,&quot;r&quot;), (l2,0,0,q2,&quot;r&quot;))</span>
-<span class="sd">        &gt;&gt;&gt; pprint(RR.w_i(1))</span>
-<span class="sd">        ⎡    0    ⎤</span>
-<span class="sd">        ⎢         ⎥</span>
-<span class="sd">        ⎢    0    ⎥</span>
-<span class="sd">        ⎢         ⎥</span>
-<span class="sd">        ⎢d        ⎥</span>
-<span class="sd">        ⎢──(q₁(t))⎥</span>
-<span class="sd">        ⎣dt       ⎦</span>
-<span class="sd">        &gt;&gt;&gt; pprint(RR.w_i(2))</span>
-<span class="sd">        ⎡          0          ⎤</span>
-<span class="sd">        ⎢                     ⎥</span>
-<span class="sd">        ⎢          0          ⎥</span>
-<span class="sd">        ⎢                     ⎥</span>
-<span class="sd">        ⎢d           d        ⎥</span>
-<span class="sd">        ⎢──(q₁(t)) + ──(q₂(t))⎥</span>
-<span class="sd">        ⎣dt          dt       ⎦</span>
-<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">wi</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-            <span class="n">wi</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_i0</span><span class="p">(</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">w_ijj</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="n">wi</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w_rel0</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">wi</span></div>
 
+    
         
-<div class="viewcode-block" id="Robot.I_i">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.I_i">[docs]</a>
-    <span class="k">def</span> <span class="nf">I_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Robot.I_cm0">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.I_cm0">[docs]</a>
+    <span class="k">def</span> <span class="nf">I_cm0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the inertia tensor of [i-th] link w.r.t. base frame.</span>
+<span class="sd">        Return the inertia tensor of [i-th] link w.r.t. a frame </span>
+<span class="sd">        located in the center of mass of link [i] and aligned with the base frame.</span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -706,18 +776,21 @@
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            Inertia tensor of the [i]-link w.r.t. {0}-Frame.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_tensors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inertia tensors are not defined. Please set them using the &quot;</span> \
+            <span class="s2">&quot;set_inertia_tensors() method.&quot;</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;i must be greater than 0&quot;</span><span class="p">)</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="c1"># self.set_inertia_tensors()</span>
         <span class="n">Iii</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_tensors</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
         <span class="n">Ii</span> <span class="o">=</span> <span class="n">simplify</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">Iii</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="p">)</span>
         <span class="k">return</span> <span class="n">Ii</span></div>
 
     
-<div class="viewcode-block" id="Robot.I_ii">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.I_ii">[docs]</a>
-    <span class="k">def</span> <span class="nf">I_ii</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Robot.I_cm">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.I_cm">[docs]</a>
+    <span class="k">def</span> <span class="nf">I_cm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the inertia tensor of i-th link w.r.t. {i}&#39; frame </span>
 <span class="sd">        (located in the center of mass of link [i] and aligned with </span>
@@ -733,16 +806,19 @@
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            Inertia tensor of the [i]-link w.r.t. {i}&#39;-Frame.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;i must be greater than 0&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_tensors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inertia tensors are not defined. Please set them using the &quot;</span> \
+            <span class="s2">&quot;set_inertia_tensors() method.&quot;</span><span class="p">)</span> 
+        
         <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="n">Iii</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_tensors</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">Iii</span></div>
+        <span class="n">I_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_tensors</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">I_cm</span></div>
 
     
-<div class="viewcode-block" id="Robot.m_i">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.m_i">[docs]</a>
-    <span class="k">def</span> <span class="nf">m_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Robot.m">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.m">[docs]</a>
+    <span class="k">def</span> <span class="nf">m</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the mass of the i-th link. </span>
 
@@ -752,6 +828,9 @@
 <span class="sd">        i: int  </span>
 <span class="sd">            Link number.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">masses</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Link masses are not defined. Please set them using &quot;</span> \
+            <span class="s2">&quot;the set_masses() method.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">masses</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
 
         
@@ -759,7 +838,12 @@
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.get_inertia_matrix">[docs]</a>
     <span class="k">def</span> <span class="nf">get_inertia_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the inertia (mass) matrix</span>
+<span class="sd">        Return the inertia matrix M(q) of the robot. The inertia matrix is computed as:</span>
+
+<span class="sd">        .. math::</span>
+<span class="sd">            M(q) = \\sum_{{i=1}}^n m_i J_{v_i}^T J_{v_i} + J_{w_i}^T R_i I_i R_i^T J_{w_i}</span>
+
+<span class="sd">        where :math:`m_i` is the mass of the i-th link, :math:`J_{v_i}` is the linear velocity Jacobian matrix of the center of mass of the i-th link, :math:`J_{w_i}` is the angular velocity Jacobian matrix of the center of mass of the i-th link, :math:`R_i` is the rotation matrix of the i-th link w.r.t. the base frame, and :math:`I_i` is the inertia tensor of the i-th link w.r.t. a frame located in its center of mass and aligned with the base frame.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -773,8 +857,8 @@
         <span class="n">Jv</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">Jv_cm_i</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
         <span class="n">Jw</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">Jw_cm_i</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
         <span class="n">R</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">R_i0</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
-        <span class="n">I</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">I_ii</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
-        <span class="n">m</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">m_i</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+        <span class="n">I</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">I_cm0</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+        <span class="n">m</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
 
         <span class="c1"># Compute inertia matrix</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
@@ -787,6 +871,14 @@
 <div class="viewcode-block" id="Robot.get_coriolis_matrix">
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.get_coriolis_matrix">[docs]</a>
     <span class="k">def</span> <span class="nf">get_coriolis_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the Coriolis matrix C(q,q&#39;).</span>
+<span class="sd">        The Coriolis matrix is computed using the Christoffel symbols of the first kind:</span>
+<span class="sd">        .. math::</span>
+<span class="sd">        </span>
+<span class="sd">            C_{{i,j}} = \\sum_{{k=1}}^n c_{{i,j,k}} \\dot{{q}}_k</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
         <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_inertia_matrix</span><span class="p">()</span>
         <span class="n">C</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
@@ -808,7 +900,6 @@
 <span class="sd">            c_{{i,j,k}} = \\frac{1}{2} \\left( \\frac{{\\partial M_{{i,j}}}}{{\\partial q_k}} + \\frac{{\\partial M_{{i,k}}}}{{\\partial q_j}} - \\frac{{\\partial M_{{j,k}}}}{{\\partial q_i}} \\right)</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># M = self.get_inertia_matrix()</span>
         <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span>
         <span class="n">idx_i</span><span class="p">,</span> <span class="n">idx_j</span><span class="p">,</span> <span class="n">idx_k</span> <span class="o">=</span> <span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="o">-</span><span class="mi">1</span> 
         <span class="n">mij</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="n">idx_i</span><span class="p">,</span> <span class="n">idx_j</span><span class="p">]</span>
@@ -818,64 +909,14 @@
         <span class="k">return</span> <span class="n">cijk</span></div>
 
     
-    
-<div class="viewcode-block" id="Robot.get_coriolis_matrix_v2">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.get_coriolis_matrix_v2">[docs]</a>
-    <span class="k">def</span> <span class="nf">get_coriolis_matrix_v2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Calcula la matriz de Coriolis de manera completamente vectorial, sin bucles,</span>
-<span class="sd">        y asegurando la correcta implementación de las derivadas cruzadas.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
-        <span class="n">qs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span>                   <span class="c1"># Coordenadas generalizadas</span>
-        <span class="n">qds</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="n">q</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">qs</span><span class="p">])</span>  <span class="c1"># Derivadas de las coordenadas generalizadas (velocidades)</span>
-        <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_inertia_matrix</span><span class="p">()</span>   <span class="c1"># Matriz de inercia n x n</span>
-        
-        <span class="c1"># Derivadas de la matriz de inercia respecto a cada q_k (matrices n x n)</span>
-        <span class="n">dM</span> <span class="o">=</span> <span class="p">[</span><span class="n">M</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">qs</span><span class="p">]</span>  <span class="c1"># Lista de derivadas de M respecto a q_k</span>
-        
-        <span class="c1"># Transpuestas de las derivadas de M</span>
-        <span class="n">dM_transpose</span> <span class="o">=</span> <span class="p">[</span><span class="n">dM_k</span><span class="o">.</span><span class="n">T</span> <span class="k">for</span> <span class="n">dM_k</span> <span class="ow">in</span> <span class="n">dM</span><span class="p">]</span>  <span class="c1"># Transpuestas de las derivadas</span>
-        
-        <span class="c1"># Creamos la matriz de Coriolis usando la fórmula vectorial:</span>
-        <span class="c1"># C_ij = 0.5 * sum_k( (dM/dq_k + dM/dq_k^T - dM_jk/dq_i) * qds_k )</span>
-        
-        <span class="c1"># Inicializamos la matriz C</span>
-        <span class="n">C</span> <span class="o">=</span> <span class="n">Matrix</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-        
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>  <span class="c1"># Iteramos solo sobre k</span>
-            <span class="c1"># Multiplicamos cada término de la matriz derivada por la velocidad correspondiente</span>
-            <span class="c1"># Aseguramos que las derivadas cruzadas se calculen correctamente</span>
-            <span class="n">term</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">dM</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="n">dM_transpose</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">-</span> <span class="n">dM_transpose</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
-            <span class="n">C</span> <span class="o">+=</span> <span class="n">term</span> <span class="o">*</span> <span class="n">qds</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
-
-        <span class="c1"># Aseguramos que la matriz sea antisimétrica (esto es una propiedad de la matriz de Coriolis)</span>
-        <span class="n">C</span> <span class="o">=</span> <span class="p">(</span><span class="n">C</span> <span class="o">-</span> <span class="n">C</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-
-        <span class="k">return</span> <span class="n">nsimplify</span><span class="p">(</span><span class="n">C</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="Robot.christoffel_symbols_v2">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.christoffel_symbols_v2">[docs]</a>
-    <span class="k">def</span> <span class="nf">christoffel_symbols_v2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
-        <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_inertia_matrix</span><span class="p">()</span>
-        <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span>
-        <span class="c1"># Ajuste de índices para Python</span>
-        <span class="n">idx_i</span><span class="p">,</span> <span class="n">idx_j</span><span class="p">,</span> <span class="n">idx_k</span> <span class="o">=</span> <span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="o">-</span><span class="mi">1</span>
-        <span class="n">mij</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="n">idx_i</span><span class="p">,</span> <span class="n">idx_j</span><span class="p">]</span>
-        <span class="n">mik</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="n">idx_i</span><span class="p">,</span> <span class="n">idx_k</span><span class="p">]</span>
-        <span class="n">mjk</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="n">idx_j</span><span class="p">,</span> <span class="n">idx_k</span><span class="p">]</span>
-        
-        <span class="c1"># Fórmula de los símbolos de Christoffel</span>
-        <span class="n">cijk</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">mij</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="n">idx_k</span><span class="p">])</span> <span class="o">+</span> <span class="n">mik</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="n">idx_j</span><span class="p">])</span> <span class="o">-</span> <span class="n">mjk</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="n">idx_i</span><span class="p">]))</span>
-        <span class="k">return</span> <span class="n">cijk</span></div>
-
-    
 <div class="viewcode-block" id="Robot.get_gravity_torque_vector">
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.get_gravity_torque_vector">[docs]</a>
     <span class="k">def</span> <span class="nf">get_gravity_torque_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the gravity torque vector G(q).</span>
+<span class="sd">        Compute the gravity torque vector G(q). The gravity torque vector is computed as the gradient of the potential energy of the system:</span>
+
+<span class="sd">        .. math::</span>
+<span class="sd">            G(q) = \\nabla U(q) = \\left[ \\frac{{\\partial U}}{{\\partial q_1}}, \\frac{{\\partial U}}{{\\partial q_2}}, ..., \\frac{{\\partial U}}{{\\partial q_n}} \\right]^T</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -893,10 +934,11 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the dynamic model of the robot in matrix form:</span>
 
-<span class="sd">        M(q) q&#39;&#39; + C(q,q&#39;) q&#39; + G(q) = tau</span>
+<span class="sd">        .. math::</span>
+<span class="sd">            M(q) \\ddot{{q}} + C(q,\\dot{{q}}) \\dot{{q}} + G(q) = \\tau</span>
 
-<span class="sd">        where M(q) is the inertia matrix, C(q,q&#39;) is the Coriolis matrix, </span>
-<span class="sd">        G(q) is the gravity torque vector, and tau is the vector of joint torques.</span>
+<span class="sd">        where :math:`M(q)` is the inertia matrix, :math:`C(q,q&#39;)` is the Coriolis matrix, </span>
+<span class="sd">        :math:`G(q)` is the gravity torque vector, and :math:`\\tau` is the vector of joint torques.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_inertia_matrix</span><span class="p">()</span>
@@ -908,9 +950,9 @@
         <span class="k">return</span> <span class="n">Eq</span><span class="p">(</span><span class="n">MatAdd</span><span class="p">(</span> <span class="n">MatMul</span><span class="p">(</span><span class="n">M</span><span class="p">,</span><span class="n">qpp</span><span class="p">),</span> <span class="n">MatMul</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="n">qp</span><span class="p">),</span>  <span class="n">G</span><span class="p">)</span> <span class="p">,</span> <span class="n">tau</span><span class="p">)</span></div>
 
             
-<div class="viewcode-block" id="Robot.kin_i">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.kin_i">[docs]</a>
-    <span class="k">def</span> <span class="nf">kin_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Robot.kin">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.kin">[docs]</a>
+    <span class="k">def</span> <span class="nf">kin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns the kinetic energy of i-th link.</span>
 
@@ -923,11 +965,10 @@
 <span class="sd">        i: int</span>
 <span class="sd">            Link number.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="n">mi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">masses</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="n">vi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcm_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-        <span class="n">wi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-        <span class="n">Ii</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">I_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">mi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">vi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_cm</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">wi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">Ii</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">I_cm0</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         
         <span class="n">Ktra_i</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">mi</span> <span class="o">*</span> <span class="n">vi</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">vi</span>
         <span class="n">Krot_i</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">wi</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">Ii</span> <span class="o">*</span> <span class="n">wi</span>
@@ -935,9 +976,9 @@
         <span class="k">return</span> <span class="n">Ki</span></div>
 
         
-<div class="viewcode-block" id="Robot.pot_i">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.pot_i">[docs]</a>
-    <span class="k">def</span> <span class="nf">pot_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Robot.pot">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.pot">[docs]</a>
+    <span class="k">def</span> <span class="nf">pot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns the potential energy of the [i-th] link.</span>
 <span class="sd">        </span>
@@ -954,11 +995,11 @@
 <span class="sd">        -------</span>
 <span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="n">mi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">masses</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="n">G</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="p">)</span>
-        <span class="n">rcm_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rcm_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-        <span class="k">return</span> <span class="o">-</span> <span class="n">mi</span> <span class="o">*</span> <span class="n">G</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">rcm_i</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Gravity vector is not defined. Please set it using &quot;</span> \
+            <span class="s2">&quot;the set_gravity_vector() method.&quot;</span><span class="p">)</span> 
+        
+        <span class="k">return</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_cm</span><span class="p">(</span><span class="n">i</span><span class="p">)</span></div>
 
         
 <div class="viewcode-block" id="Robot.get_kinetic_energy">
@@ -969,7 +1010,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">K</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">):</span>
-            <span class="n">K</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_i</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> 
+            <span class="n">K</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">nsimplify</span><span class="p">(</span><span class="n">K</span><span class="p">)</span></div>
 
         
@@ -979,10 +1020,10 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns the total potential energy of the robot</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">U</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">):</span>
-            <span class="n">U</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pot_i</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> 
-        <span class="k">return</span> <span class="n">nsimplify</span><span class="p">(</span><span class="n">U</span><span class="p">)</span></div>
+            <span class="n">P</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pot</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> 
+        <span class="k">return</span> <span class="n">nsimplify</span><span class="p">(</span><span class="n">P</span><span class="p">)</span></div>
 
         
 <div class="viewcode-block" id="Robot.get_dynamic_model">
@@ -996,7 +1037,7 @@
 <span class="sd">        .. math::   </span>
 <span class="sd">            \\frac{d}{dt} \\left( \\frac{\\partial L}{\\partial \\dot{{q}}_i} \\right) - \\frac{\\partial L}{\\partial q_i} = \\tau_i</span>
 <span class="sd">        </span>
-<span class="sd">        where L is the Lagrangian of the system, defined as L = K - P, where K </span>
+<span class="sd">        where :math:`L` is the Lagrangian of the system, defined as :math:`\\mathbb{L} = K - P`, where K </span>
 <span class="sd">        is the kinetic energy and P is the potential energy.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_kinetic_energy</span><span class="p">()</span>
@@ -1076,323 +1117,14 @@
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">repr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span> <span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Robot </span><span class="si">{</span><span class="nb">repr</span><span class="si">}</span><span class="s2">&quot;</span>
-    
-<div class="viewcode-block" id="Robot.plot_diagram_threejs">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.plot_diagram_threejs">[docs]</a>
-    <span class="k">def</span> <span class="nf">plot_diagram_threejs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_vals</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">600</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Dibuja el diagrama cinemático del robot usando Three.js en Jupyter.</span>
-<span class="sd">        </span>
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        num_vals : dict</span>
-<span class="sd">            Diccionario con valores numéricos para las variables simbólicas</span>
-<span class="sd">        width : int</span>
-<span class="sd">            Ancho del canvas en pixels</span>
-<span class="sd">        height : int</span>
-<span class="sd">            Alto del canvas en pixels</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
-        <span class="kn">import</span> <span class="nn">json</span>
-        <span class="kn">import</span> <span class="nn">uuid</span>
-        
-        <span class="c1"># Generar ID único para evitar conflictos</span>
-        <span class="n">unique_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())[:</span><span class="mi">8</span><span class="p">]</span>
-        
-        <span class="c1"># Extraer posiciones de joints</span>
-        <span class="n">joints</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">frames</span> <span class="o">=</span> <span class="p">[]</span>
-        
-        <span class="c1"># Frame base</span>
-        <span class="n">joints</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
-        <span class="n">frames</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-            <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
-            <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
-            <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
-            <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
-        <span class="p">})</span>
-        
-        <span class="c1"># Para cada joint del robot</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">):</span>
-            <span class="n">Ti</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">subs</span><span class="p">(</span><span class="n">num_vals</span><span class="p">)</span>
-            
-            <span class="c1"># Posición del joint</span>
-            <span class="n">pos</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">Ti</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
-            <span class="n">joints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
-            
-            <span class="c1"># Orientación del frame (ejes x, y, z)</span>
-            <span class="n">frames</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="n">pos</span><span class="p">,</span>
-                <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">Ti</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)],</span>
-                <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">Ti</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)],</span>
-                <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">Ti</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
-            <span class="p">})</span>
-        
-        <span class="c1"># Calcular dimensión para escalar la vista</span>
-        <span class="n">all_coords</span> <span class="o">=</span> <span class="p">[</span><span class="n">coord</span> <span class="k">for</span> <span class="n">joint</span> <span class="ow">in</span> <span class="n">joints</span> <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">joint</span><span class="p">]</span>
-        <span class="n">max_coord</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">all_coords</span><span class="p">)</span> <span class="k">if</span> <span class="n">all_coords</span> <span class="k">else</span> <span class="mi">100</span>
-        <span class="n">dim</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_coord</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
-        
-        <span class="n">robot_data</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;joints&#39;</span><span class="p">:</span> <span class="n">joints</span><span class="p">,</span>
-            <span class="s1">&#39;frames&#39;</span><span class="p">:</span> <span class="n">frames</span><span class="p">,</span>
-            <span class="s1">&#39;dimension&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
-        <span class="p">}</span>
-        
-        <span class="c1"># Convertir a JSON</span>
-        <span class="n">robot_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">robot_data</span><span class="p">)</span>
-        
-        <span class="c1"># Template HTML con Three.js usando IDs únicos</span>
-        <span class="n">html_template</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">        &lt;div id=&quot;container-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&quot; style=&quot;width: </span><span class="si">{</span><span class="n">width</span><span class="si">}</span><span class="s2">px; height: </span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s2">px; border: 1px solid #ccc; position: relative;&quot;&gt;</span>
-<span class="s2">            &lt;div id=&quot;controls-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&quot; style=&quot;position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.95); padding: 10px; border-radius: 5px; font-family: Arial, sans-serif; font-size: 12px; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);&quot;&gt;</span>
-<span class="s2">                &lt;button onclick=&quot;window.robot_</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">.toggleRotation()&quot; style=&quot;margin: 2px; padding: 5px 10px; cursor: pointer; border: none; background: #4CAF50; color: white; border-radius: 3px;&quot;&gt;⏯ Rotar&lt;/button&gt;</span>
-<span class="s2">                &lt;button onclick=&quot;window.robot_</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">.resetView()&quot; style=&quot;margin: 2px; padding: 5px 10px; cursor: pointer; border: none; background: #4CAF50; color: white; border-radius: 3px;&quot;&gt;🔄 Reset&lt;/button&gt;</span>
-<span class="s2">                &lt;div id=&quot;status-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&quot; style=&quot;margin-top: 5px; padding: 5px; font-size: 10px; color: #666;&quot;&gt;Cargando...&lt;/div&gt;</span>
-<span class="s2">            &lt;/div&gt;</span>
-<span class="s2">        &lt;/div&gt;</span>
-<span class="s2">        </span>
-<span class="s2">        &lt;script&gt;</span>
-<span class="s2">        (function() </span><span class="se">{{</span>
-<span class="s2">            // Verificar si THREE ya está cargado</span>
-<span class="s2">            if (typeof THREE !== &#39;undefined&#39;) </span><span class="se">{{</span>
-<span class="s2">                initRobot_</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">();</span>
-<span class="s2">            </span><span class="se">}}</span><span class="s2"> else </span><span class="se">{{</span>
-<span class="s2">                // Cargar Three.js</span>
-<span class="s2">                const script = document.createElement(&#39;script&#39;);</span>
-<span class="s2">                script.src = &#39;https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js&#39;;</span>
-<span class="s2">                script.onload = function() </span><span class="se">{{</span>
-<span class="s2">                    initRobot_</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">();</span>
-<span class="s2">                </span><span class="se">}}</span><span class="s2">;</span>
-<span class="s2">                script.onerror = function() </span><span class="se">{{</span>
-<span class="s2">                    document.getElementById(&#39;status-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&#39;).innerHTML = &#39;Error cargando Three.js ✗&#39;;</span>
-<span class="s2">                    document.getElementById(&#39;status-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&#39;).style.color = &#39;red&#39;;</span>
-<span class="s2">                </span><span class="se">}}</span><span class="s2">;</span>
-<span class="s2">                document.head.appendChild(script);</span>
-<span class="s2">            </span><span class="se">}}</span>
-<span class="s2">            </span>
-<span class="s2">            function initRobot_</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">() </span><span class="se">{{</span>
-<span class="s2">                const robotData = </span><span class="si">{</span><span class="n">robot_json</span><span class="si">}</span><span class="s2">;</span>
-<span class="s2">                const container = document.getElementById(&#39;container-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&#39;);</span>
-<span class="s2">                </span>
-<span class="s2">                // Variables locales para este robot</span>
-<span class="s2">                let scene, camera, renderer, robotGroup;</span>
-<span class="s2">                let isRotating = false;</span>
-<span class="s2">                let isDragging = false;</span>
-<span class="s2">                let previousMousePosition = </span><span class="se">{{</span><span class="s2"> x: 0, y: 0 </span><span class="se">}}</span><span class="s2">;</span>
-<span class="s2">                </span>
-<span class="s2">                try </span><span class="se">{{</span>
-<span class="s2">                    // Escena</span>
-<span class="s2">                    scene = new THREE.Scene();</span>
-<span class="s2">                    scene.background = new THREE.Color(0xf5f5f5);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Cámara</span>
-<span class="s2">                    camera = new THREE.PerspectiveCamera(</span>
-<span class="s2">                        50,</span>
-<span class="s2">                        </span><span class="si">{</span><span class="n">width</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s2">,</span>
-<span class="s2">                        0.1,</span>
-<span class="s2">                        robotData.dimension * 10</span>
-<span class="s2">                    );</span>
-<span class="s2">                    const camDist = robotData.dimension * 2;</span>
-<span class="s2">                    camera.position.set(camDist, camDist, camDist);</span>
-<span class="s2">                    camera.lookAt(0, 0, robotData.dimension / 2);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Renderer</span>
-<span class="s2">                    renderer = new THREE.WebGLRenderer(</span><span class="se">{{</span><span class="s2"> antialias: true </span><span class="se">}}</span><span class="s2">);</span>
-<span class="s2">                    renderer.setSize(</span><span class="si">{</span><span class="n">width</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s2">);</span>
-<span class="s2">                    renderer.setPixelRatio(window.devicePixelRatio);</span>
-<span class="s2">                    container.appendChild(renderer.domElement);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Luces</span>
-<span class="s2">                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);</span>
-<span class="s2">                    scene.add(ambientLight);</span>
-<span class="s2">                    </span>
-<span class="s2">                    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.5);</span>
-<span class="s2">                    dirLight1.position.set(robotData.dimension, robotData.dimension, robotData.dimension);</span>
-<span class="s2">                    scene.add(dirLight1);</span>
-<span class="s2">                    </span>
-<span class="s2">                    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);</span>
-<span class="s2">                    dirLight2.position.set(-robotData.dimension, -robotData.dimension, -robotData.dimension);</span>
-<span class="s2">                    scene.add(dirLight2);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Grid</span>
-<span class="s2">                    const gridSize = robotData.dimension * 2;</span>
-<span class="s2">                    const gridHelper = new THREE.GridHelper(gridSize, 20, 0x888888, 0xcccccc);</span>
-<span class="s2">                    scene.add(gridHelper);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Ejes principales</span>
-<span class="s2">                    const axesHelper = new THREE.AxesHelper(robotData.dimension / 4);</span>
-<span class="s2">                    scene.add(axesHelper);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Grupo del robot</span>
-<span class="s2">                    robotGroup = new THREE.Group();</span>
-<span class="s2">                    scene.add(robotGroup);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Dibujar robot</span>
-<span class="s2">                    drawRobot();</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Event listeners</span>
-<span class="s2">                    renderer.domElement.addEventListener(&#39;mousedown&#39;, onMouseDown);</span>
-<span class="s2">                    renderer.domElement.addEventListener(&#39;mousemove&#39;, onMouseMove);</span>
-<span class="s2">                    renderer.domElement.addEventListener(&#39;mouseup&#39;, onMouseUp);</span>
-<span class="s2">                    renderer.domElement.addEventListener(&#39;mouseleave&#39;, onMouseUp);</span>
-<span class="s2">                    renderer.domElement.addEventListener(&#39;wheel&#39;, onWheel, </span><span class="se">{{</span><span class="s2"> passive: false </span><span class="se">}}</span><span class="s2">);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Animación</span>
-<span class="s2">                    function animate() </span><span class="se">{{</span>
-<span class="s2">                        requestAnimationFrame(animate);</span>
-<span class="s2">                        </span>
-<span class="s2">                        if (isRotating &amp;&amp; robotGroup) </span><span class="se">{{</span>
-<span class="s2">                            robotGroup.rotation.y += 0.005;</span>
-<span class="s2">                        </span><span class="se">}}</span>
-<span class="s2">                        </span>
-<span class="s2">                        renderer.render(scene, camera);</span>
-<span class="s2">                    </span><span class="se">}}</span>
-<span class="s2">                    animate();</span>
-<span class="s2">                    </span>
-<span class="s2">                    document.getElementById(&#39;status-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&#39;).innerHTML = </span>
-<span class="s2">                        &#39;Listo - Arrastra para rotar | Scroll para zoom&#39;;</span>
-<span class="s2">                    document.getElementById(&#39;status-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&#39;).style.color = &#39;green&#39;;</span>
-<span class="s2">                    </span>
-<span class="s2">                </span><span class="se">}}</span><span class="s2"> catch(error) </span><span class="se">{{</span>
-<span class="s2">                    console.error(&#39;Error:&#39;, error);</span>
-<span class="s2">                    document.getElementById(&#39;status-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&#39;).innerHTML = </span>
-<span class="s2">                        &#39;Error: &#39; + error.message;</span>
-<span class="s2">                    document.getElementById(&#39;status-</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2">&#39;).style.color = &#39;red&#39;;</span>
-<span class="s2">                </span><span class="se">}}</span>
-<span class="s2">                </span>
-<span class="s2">                function drawRobot() </span><span class="se">{{</span>
-<span class="s2">                    const </span><span class="se">{{</span><span class="s2"> joints, frames </span><span class="se">}}</span><span class="s2"> = robotData;</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Material para links</span>
-<span class="s2">                    const linkMaterial = new THREE.MeshPhongMaterial(</span><span class="se">{{</span>
-<span class="s2">                        color: 0x778877,</span>
-<span class="s2">                        shininess: 30,</span>
-<span class="s2">                        side: THREE.DoubleSide</span>
-<span class="s2">                    </span><span class="se">}}</span><span class="s2">);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Dibujar links</span>
-<span class="s2">                    for (let i = 0; i &lt; joints.length - 1; i++) </span><span class="se">{{</span>
-<span class="s2">                        const start = new THREE.Vector3(...joints[i]);</span>
-<span class="s2">                        const end = new THREE.Vector3(...joints[i + 1]);</span>
-<span class="s2">                        </span>
-<span class="s2">                        const direction = new THREE.Vector3().subVectors(end, start);</span>
-<span class="s2">                        const length = direction.length();</span>
-<span class="s2">                        </span>
-<span class="s2">                        if (length &gt; 0.001) </span><span class="se">{{</span>
-<span class="s2">                            const radius = Math.max(robotData.dimension * 0.015, 1);</span>
-<span class="s2">                            const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);</span>
-<span class="s2">                            const link = new THREE.Mesh(geometry, linkMaterial);</span>
-<span class="s2">                            </span>
-<span class="s2">                            const midpoint = start.clone().add(direction.clone().multiplyScalar(0.5));</span>
-<span class="s2">                            link.position.copy(midpoint);</span>
-<span class="s2">                            </span>
-<span class="s2">                            const axis = new THREE.Vector3(0, 1, 0);</span>
-<span class="s2">                            link.quaternion.setFromUnitVectors(axis, direction.clone().normalize());</span>
-<span class="s2">                            </span>
-<span class="s2">                            robotGroup.add(link);</span>
-<span class="s2">                        </span><span class="se">}}</span>
-<span class="s2">                    </span><span class="se">}}</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Dibujar joints</span>
-<span class="s2">                    joints.forEach((joint, index) =&gt; </span><span class="se">{{</span>
-<span class="s2">                        const radius = index === 0 ? </span>
-<span class="s2">                            Math.max(robotData.dimension * 0.03, 2) : </span>
-<span class="s2">                            Math.max(robotData.dimension * 0.025, 1.5);</span>
-<span class="s2">                        const geometry = new THREE.SphereGeometry(radius, 16, 16);</span>
-<span class="s2">                        const material = new THREE.MeshPhongMaterial(</span><span class="se">{{</span>
-<span class="s2">                            color: index === 0 ? 0xff00ff : 0xff1493,</span>
-<span class="s2">                            shininess: 50</span>
-<span class="s2">                        </span><span class="se">}}</span><span class="s2">);</span>
-<span class="s2">                        const sphere = new THREE.Mesh(geometry, material);</span>
-<span class="s2">                        sphere.position.set(...joint);</span>
-<span class="s2">                        robotGroup.add(sphere);</span>
-<span class="s2">                    </span><span class="se">}}</span><span class="s2">);</span>
-<span class="s2">                    </span>
-<span class="s2">                    // Dibujar sistemas de coordenadas</span>
-<span class="s2">                    const arrowLength = Math.max(robotData.dimension / 5, 10);</span>
-<span class="s2">                    const arrowHeadLength = arrowLength * 0.2;</span>
-<span class="s2">                    const arrowHeadWidth = arrowLength * 0.15;</span>
-<span class="s2">                    </span>
-<span class="s2">                    frames.forEach((frame) =&gt; </span><span class="se">{{</span>
-<span class="s2">                        const origin = new THREE.Vector3(...frame.position);</span>
-<span class="s2">                        </span>
-<span class="s2">                        // Eje X (rojo)</span>
-<span class="s2">                        const xDir = new THREE.Vector3(...frame.x).normalize();</span>
-<span class="s2">                        const xArrow = new THREE.ArrowHelper(</span>
-<span class="s2">                            xDir, origin, arrowLength, 0xff0000, </span>
-<span class="s2">                            arrowHeadLength, arrowHeadWidth</span>
-<span class="s2">                        );</span>
-<span class="s2">                        robotGroup.add(xArrow);</span>
-<span class="s2">                        </span>
-<span class="s2">                        // Eje Y (verde)</span>
-<span class="s2">                        const yDir = new THREE.Vector3(...frame.y).normalize();</span>
-<span class="s2">                        const yArrow = new THREE.ArrowHelper(</span>
-<span class="s2">                            yDir, origin, arrowLength, 0x00ff00,</span>
-<span class="s2">                            arrowHeadLength, arrowHeadWidth</span>
-<span class="s2">                        );</span>
-<span class="s2">                        robotGroup.add(yArrow);</span>
-<span class="s2">                        </span>
-<span class="s2">                        // Eje Z (azul)</span>
-<span class="s2">                        const zDir = new THREE.Vector3(...frame.z).normalize();</span>
-<span class="s2">                        const zArrow = new THREE.ArrowHelper(</span>
-<span class="s2">                            zDir, origin, arrowLength, 0x0000ff,</span>
-<span class="s2">                            arrowHeadLength, arrowHeadWidth</span>
-<span class="s2">                        );</span>
-<span class="s2">                        robotGroup.add(zArrow);</span>
-<span class="s2">                    </span><span class="se">}}</span><span class="s2">);</span>
-<span class="s2">                </span><span class="se">}}</span>
-<span class="s2">                </span>
-<span class="s2">                function onMouseDown(event) </span><span class="se">{{</span>
-<span class="s2">                    isDragging = true;</span>
-<span class="s2">                    previousMousePosition = </span><span class="se">{{</span><span class="s2"> x: event.clientX, y: event.clientY </span><span class="se">}}</span><span class="s2">;</span>
-<span class="s2">                </span><span class="se">}}</span>
-<span class="s2">                </span>
-<span class="s2">                function onMouseMove(event) </span><span class="se">{{</span>
-<span class="s2">                    if (!isDragging || !robotGroup) return;</span>
-<span class="s2">                    </span>
-<span class="s2">                    const deltaX = event.clientX - previousMousePosition.x;</span>
-<span class="s2">                    const deltaY = event.clientY - previousMousePosition.y;</span>
-<span class="s2">                    </span>
-<span class="s2">                    robotGroup.rotation.y += deltaX * 0.01;</span>
-<span class="s2">                    robotGroup.rotation.x += deltaY * 0.01;</span>
-<span class="s2">                    </span>
-<span class="s2">                    previousMousePosition = </span><span class="se">{{</span><span class="s2"> x: event.clientX, y: event.clientY </span><span class="se">}}</span><span class="s2">;</span>
-<span class="s2">                </span><span class="se">}}</span>
-<span class="s2">                </span>
-<span class="s2">                function onMouseUp() </span><span class="se">{{</span>
-<span class="s2">                    isDragging = false;</span>
-<span class="s2">                </span><span class="se">}}</span>
-<span class="s2">                </span>
-<span class="s2">                function onWheel(event) </span><span class="se">{{</span>
-<span class="s2">                    event.preventDefault();</span>
-<span class="s2">                    if (camera) </span><span class="se">{{</span>
-<span class="s2">                        const delta = event.deltaY * 0.001;</span>
-<span class="s2">                        const scale = 1 + delta;</span>
-<span class="s2">                        camera.position.multiplyScalar(scale);</span>
-<span class="s2">                    </span><span class="se">}}</span>
-<span class="s2">                </span><span class="se">}}</span>
-<span class="s2">                </span>
-<span class="s2">                // Exponer funciones públicas</span>
-<span class="s2">                window.robot_</span><span class="si">{</span><span class="n">unique_id</span><span class="si">}</span><span class="s2"> = </span><span class="se">{{</span>
-<span class="s2">                    toggleRotation: function() </span><span class="se">{{</span>
-<span class="s2">                        isRotating = !isRotating;</span>
-<span class="s2">                    </span><span class="se">}}</span><span class="s2">,</span>
-<span class="s2">                    resetView: function() </span><span class="se">{{</span>
-<span class="s2">                        const camDist = robotData.dimension * 2;</span>
-<span class="s2">                        camera.position.set(camDist, camDist, camDist);</span>
-<span class="s2">                        camera.lookAt(0, 0, robotData.dimension / 2);</span>
-<span class="s2">                        robotGroup.rotation.set(0, 0, 0);</span>
-<span class="s2">                    </span><span class="se">}}</span>
-<span class="s2">                </span><span class="se">}}</span><span class="s2">;</span>
-<span class="s2">            </span><span class="se">}}</span>
-<span class="s2">        </span><span class="se">}}</span><span class="s2">)();</span>
-<span class="s2">        &lt;/script&gt;</span>
-<span class="s2">        &quot;&quot;&quot;</span>
-        
-        <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span><span class="n">html_template</span><span class="p">)</span></div>
-</div>
 
+    <span class="k">def</span> <span class="nf">_check_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Link&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> index must be an integer, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> index </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> out of range. Valid range is 1 to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+    
 
             
 
@@ -1488,15 +1220,16 @@
         <span class="n">O</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
         <span class="n">U</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">V</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">U</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">U</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">kaxis</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">V</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">V</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">1001</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">kaxis</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">U</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">U</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> 
+                   <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">kaxis</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">V</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">V</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> 
+                   <span class="n">color</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">1001</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">kaxis</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span></div>
 
 
     <span class="k">def</span> <span class="nf">_gca</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span>
 
-        
 <div class="viewcode-block" id="RigidBody2D.get_centroid">
 <a class="viewcode-back" href="../../core.html#moro.core.RigidBody2D.get_centroid">[docs]</a>
     <span class="k">def</span> <span class="nf">get_centroid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1516,56 +1249,8 @@
 
 
 
-<span class="k">def</span> <span class="nf">test_robot</span><span class="p">():</span>
-    <span class="c1"># ABB = Robot((0,pi/2,330,q1), </span>
-    <span class="c1">#             (320,0,0,q2), </span>
-    <span class="c1">#             (0,pi/2,0,q3), </span>
-    <span class="c1">#             (0,-pi/2,300,q4), </span>
-    <span class="c1">#             (0,pi/2,0,q5), </span>
-    <span class="c1">#             (0,0,80,q6))</span>
-    <span class="n">r</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span><span class="n">d1</span><span class="p">,</span><span class="n">q1</span><span class="p">),(</span><span class="n">l2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">q2</span><span class="p">),</span> <span class="p">(</span><span class="n">l3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">q3</span><span class="p">))</span>
-    <span class="n">RRP</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span><span class="n">d1</span><span class="p">,</span><span class="n">q1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">q2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">q3</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
-    <span class="c1"># r.plot_diagram({q1:0, q2:pi/4, q3:0, d1:100, l2:100, l3:100})</span>
-    <span class="n">RRP</span><span class="o">.</span><span class="n">plot_diagram</span><span class="p">({</span><span class="n">q1</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="n">q2</span><span class="p">:</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">q3</span><span class="p">:</span><span class="mi">250</span><span class="p">,</span> <span class="n">d1</span><span class="p">:</span><span class="mi">100</span><span class="p">})</span>
-    <span class="c1"># ABB.plot_diagram(</span>
-    <span class="c1">#     {</span>
-    <span class="c1">#         q1:deg2rad(33.69),</span>
-    <span class="c1">#         q2:deg2rad(-26.13),</span>
-    <span class="c1">#         q3:deg2rad(191.99),</span>
-    <span class="c1">#         q4:deg2rad(180),</span>
-    <span class="c1">#         q5:deg2rad(165.87),</span>
-    <span class="c1">#         q6:deg2rad(-146.31)</span>
-    <span class="c1">#     }</span>
-    <span class="c1"># )</span>
-    
-    
-<span class="k">def</span> <span class="nf">test_rb2</span><span class="p">():</span>
-    <span class="n">points</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),(</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">),(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)]</span>
-    <span class="n">rb</span> <span class="o">=</span> <span class="n">RigidBody2D</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
-    <span class="n">rb</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
-    <span class="n">rb</span><span class="o">.</span><span class="n">move</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
-    <span class="n">rb</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">)</span>
-    <span class="n">rb</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">rb</span><span class="o">.</span><span class="n">move</span><span class="p">([</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
-    <span class="n">rb</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">rb</span><span class="o">.</span><span class="n">Hs</span><span class="p">)</span>
-
-
 <span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="c1"># test_robot()</span>
-    <span class="n">robot</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">((</span><span class="n">l1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">q1</span><span class="p">),</span> <span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">q2</span><span class="p">),</span> <span class="p">(</span><span class="n">l3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">q3</span><span class="p">))</span>
-
-    <span class="c1"># Visualizar directamente en Jupyter!</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">plot_diagram_threejs</span><span class="p">({</span>
-        <span class="n">q1</span><span class="p">:</span> <span class="n">pi</span><span class="o">/</span><span class="mi">6</span><span class="p">,</span>
-        <span class="n">q2</span><span class="p">:</span> <span class="n">pi</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span>
-        <span class="n">q3</span><span class="p">:</span> <span class="o">-</span><span class="n">pi</span><span class="o">/</span><span class="mi">6</span><span class="p">,</span>
-        <span class="n">l1</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
-        <span class="n">l2</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span>
-        <span class="n">l3</span><span class="p">:</span> <span class="mi">60</span>
-    <span class="p">}))</span>
-        
+    <span class="k">pass</span>
 </pre></div>
 
            </div>
