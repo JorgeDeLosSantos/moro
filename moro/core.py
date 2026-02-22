@@ -95,7 +95,7 @@ class Robot(object):
         """
         return self.T_i0(i)[:3,2]
     
-    def p(self,i):
+    def r_o(self,i):
         """
         Get the position (of the origin of coordinates) of the {i}-Frame w.r.t. {0}-Frame
         
@@ -114,26 +114,15 @@ class Robot(object):
     @property
     def J(self):
         """
-        Get the geometric jacobian matrix of the end-effector.
+        Get the geometric jacobian matrix of the end-effector. 
         
         Returns
         -------
         sympy.matrices.dense.MutableDenseMatrix
             Get the geometric jacobian matrix of the end-effector.
         """
-        n = self.dof
-        M_ = zeros(6,n)
-        for i in range(1, n+1):
-            idx = i - 1
-            if self.joint_types[idx]=='r': # If i-th joint is revolute
-                jp = self.z(i-1).cross(self.p(n) - self.p(i-1))
-                jo = self.z(i-1)
-            else: # If i-th joint is prismatic
-                jp = self.z(i-1)
-                jo = zeros(3,1)
-            jp = jp.col_join(jo)
-            M_[:,idx] = jp
-        return simplify(M_)
+        # Jacobian of the end-effector (point located at the origin of {n}-Frame)
+        return self.J_point([0,0,0], self.dof) 
 
     @property
     def dof(self):
@@ -308,10 +297,13 @@ class Robot(object):
         """
         Inertia tensor w.r.t. {i}'-Frame. Consider that the reference 
         frame {i}' is located at the center of mass of link [i] 
-        and oriented in the same way as {i}-Frame. By default (if tensors argument
+        and oriented in the same way as {i}-Frame. By default (if `tensors` argument
         is not passed), it is assumed that each link is symmetrical to, 
         at least, two planes of the reference frame located in its center of mass, 
-        then products of inertia are zero.
+        then the inertia tensor of each link is defined as a diagonal matrix with 
+        the moments of inertia as diagonal elements, and the products of inertia as zero. 
+        The moments of inertia are defined as symbolic variables of the form: 
+        I_{x_ix_i}, I_{y_iy_i}, I_{z_iz_i}, where i is the link number.
         
         Parameters
         ----------
@@ -319,6 +311,9 @@ class Robot(object):
             A list containinig `sympy.matrices.dense.MutableDenseMatrix` that 
             corresponds to each inertia tensor w.r.t. {i}'-Frame.
         """
+        if tensors is not None and len(tensors) != self.dof:
+            raise ValueError(f"Number of inertia tensors must be equal to the number of links ({self.dof}).")
+
         dof = self.dof
         self.inertia_tensors = []
         if tensors is None: # Default assumption
@@ -330,14 +325,16 @@ class Robot(object):
             for k in range(dof):
                 self.inertia_tensors.append( tensors[k] )
             
-    def set_cm_locations(self,cmlocs):
+    def set_cm_locations(self,cm_locations):
         """
         Set the positions of the center of mass for each 
-        link.
+        link. The position of the center of mass of the i-th link must be 
+        defined as a list or tuple of three elements that correspond to the x, y, z 
+        coordinates of the center of mass w.r.t. {i}-Frame.
     
         Parameters
         ----------
-        cmlocs: list, tuple
+        cm_locations: list, tuple
             A list of lists (or tuples) or a tuple of tuples (or lists) containing 
             each center of mass position w.r.t. its reference frame.
         
@@ -346,21 +343,70 @@ class Robot(object):
         >>> RR = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
         >>> RR.set_cm_locations([(-lc1,0,0), (-lc2,0,0)])
         """
-        self.cm_locations = cmlocs
+        if len(cm_locations) != self.dof:
+            raise ValueError(f"Number of center of mass locations must be equal to the number of links ({self.dof}).")
+        
+        # Validate that each center of mass location is a 3-element list or tuple
+        for idx, cm in enumerate(cm_locations):
+            if not is_position_vector(cm):
+                raise ValueError(f"Center of mass location for link {idx+1} must be a list or tuple of three elements (x, y, z).")
+        
+        # Convert each center of mass location to a sympy Matrix if it's a list or tuple
+        for idx, cm in enumerate(cm_locations):
+            if not isinstance(cm, Matrix):
+                cm_locations[idx] = Matrix(cm)
+
+        self.cm_locations = cm_locations
 
     def set_gravity_vector(self,G):
         """
-        Set the gravity vector in the base frame.
+        Set the gravity vector in the base frame. The gravity vector 
+        must be defined as a list or tuple of three elements that 
+        correspond to the x, y, z components of the gravity vector in the base frame. 
         
         Parameters
         ----------
         G: list, tuple
             A list or tuple of three elements that define 
             the gravity vector in the base frame.
+        
+        Examples
+        --------
+        >>> RR = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
+        >>> RR.set_gravity_vector((0,-g,0))
         """
+        if len(G) != 3:
+            raise ValueError("Gravity vector must have three components (x, y, z).")
+        
+        # Convert G to a sympy Matrix if it's a list or tuple
+        if not isinstance(G, Matrix):
+            G = Matrix(G)
+
         self.G = G
+
+    def _r_cm_i(self,i):
+        """
+        Return the position of the center of mass of the i-th link w.r.t. {i}-Frame.
+        
+        Parameters
+        ----------
+        i: int
+            Link number
+        
+        Returns
+        -------
+        `sympy.matrices.dense.MutableDenseMatrix`
+            A column vector
+        """
+        self._check_index(i, name="link") 
+        if self.cm_locations is None:
+            raise ValueError("Center of mass locations are not defined. " \
+                             "Please set them using the set_cm_locations() method.")
+        
+        return self.cm_locations[i-1]
+
     
-    def rcm_i(self,i):
+    def r_cm(self,i):
         """
         Return the position of the center of mass of the 
         i-th link w.r.t. the base frame.
@@ -375,16 +421,16 @@ class Robot(object):
         `sympy.matrices.dense.MutableDenseMatrix`
             A column vector
         """
+        self._check_index(i, name="link") 
         if self.cm_locations is None:
             raise ValueError("Center of mass locations are not defined. " \
             "Please set them using the set_cm_locations() method.")  
 
-        idx = i - 1
-        rcm_ii = Matrix( self.cm_locations[idx] )
-        rcm_i = ( self.T_i0(i) * vector_in_hcoords( rcm_ii ) )[:3,:]
-        return simplify( rcm_i )
+        r_cm_i = self._r_cm_i(i)
+        r_cm = ( self.T_i0(i) * vector_in_hcoords( r_cm_i ) )[:3,:]
+        return simplify( r_cm )
         
-    def vcm_i(self,i):
+    def v_cm(self,i):
         """
         Return the velocity of the center of mass of the 
         i-th link w.r.t. the base frame.
@@ -399,7 +445,8 @@ class Robot(object):
         `sympy.matrices.dense.MutableDenseMatrix`
             A column vector
         """
-        rcm_i = self.rcm_i(i)
+        self._check_index(i, name="link")
+        rcm_i = self.r_cm(i)
         vcm_i = rcm_i.diff(t)
         return simplify( vcm_i )
     
@@ -412,23 +459,7 @@ class Robot(object):
         i : int
             Link number.
         """
-        n = self.dof
-        M_ = zeros(6,n)
-        for j in range(1, n+1):
-            idx = j - 1
-            if j <= i:
-                if self.joint_types[idx]=='r':
-                    jp = self.z(j-1).cross(self.rcm_i(i) - self.p(j-1))
-                    jo = self.z(j-1)
-                else:
-                    jp = self.z(j-1)
-                    jo = zeros(3,1)
-            else:
-                jp = zeros(3,1)
-                jo = zeros(3,1)
-            jp = jp.col_join(jo)
-            M_[:,idx] = jp
-        return simplify(M_)
+        return self.J_point(self.cm_locations[i-1], i)
     
     def Jv_cm_i(self,i):
         """
@@ -487,6 +518,7 @@ class Robot(object):
             Jacobian matrix of the point.
         
         """
+        self._check_index(i)
         idx = i - 1
         point_wrt_i = Matrix( point )
         point_wrt_0 = ( self.T_i0(i) * vector_in_hcoords( point_wrt_i ) )[:3,:]
@@ -497,7 +529,7 @@ class Robot(object):
             idx = j - 1
             if j <= i:
                 if self.joint_types[idx]=='r':
-                    jp = self.z(j-1).cross(point_wrt_0 - self.p(j-1))
+                    jp = self.z(j-1).cross(point_wrt_0 - self.r_o(j-1))
                     jo = self.z(j-1)
                 else:
                     jp = self.z(j-1)
@@ -539,11 +571,71 @@ class Robot(object):
         else:
             wijj = Matrix([0,0,0])
         return wijj
-            
-        
-    def w_i(self,i):
+    
+    def joint_type(self,i):
         """
-        Compute the angular velocity of the [i]-link w.r.t. {0}-Frame.
+        Return the type of the i-th joint. "r" for revolute, "p" for prismatic.
+        
+        Parameters
+        ----------
+        i : int
+            Joint number.
+        """
+        idx = i - 1
+        return self.joint_types[idx]
+    
+    def q_dot(self,i):
+        """
+        Return the time derivative of the i-th joint variable.
+        
+        Parameters
+        ----------
+        i : int
+            Joint number.
+        """
+        idx = i - 1
+        return self.qs[idx].diff()
+    
+    def w_rel0(self,i):
+        """
+        Return the angular velocity of the [i]-link w.r.t. [i-1]-link, 
+        described in {0}-Frame.
+        
+        Since we are using Denavit-Hartenberg frames, then:
+        
+        .. math:: 
+            
+            \\omega_{{i-i,i}} = \\dot{{q}}_i \\mathbf{z}_{i-1}
+            
+        If the i-th joint is revolute, or:
+        
+        .. math:: 
+            
+            \\omega_{{i-i,i}} = \\mathbf{0}
+        
+        If the i-th joint is a prismatic.
+        
+        Parameters
+        ----------
+        i : int
+            Link number.
+        """
+        if self.joint_type(i) == "r":
+            w_rel0 = self.z(i-1)*self.q_dot(i)
+        else:
+            w_rel0 = zeros(3,1)
+        return w_rel0
+    
+    def w(self,i):
+        """
+        Compute the angular velocity of the [i]-link w.r.t. base {0}-Frame. 
+        The angular velocity of the [i]-link w.r.t. base {0}-Frame can be 
+        computed as the sum of the relative angular velocities of each link 
+        w.r.t. its previous link, described in the base frame: 
+
+        .. math::
+
+            \\boldsymbol{\\omega}_i = \\sum_{{k=1}}^i \\boldsymbol{\\omega}_{{k-1,k}}
         
         Parameters
         ----------
@@ -554,36 +646,17 @@ class Robot(object):
         -------
         sympy.matrices.dense.MutableDenseMatrix
             Angular velocity of the [i]-link w.r.t. {0}-Frame.
-        
-        Examples
-        --------
-        >>> RR = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
-        >>> pprint(RR.w_i(1))
-        ⎡    0    ⎤
-        ⎢         ⎥
-        ⎢    0    ⎥
-        ⎢         ⎥
-        ⎢d        ⎥
-        ⎢──(q₁(t))⎥
-        ⎣dt       ⎦
-        >>> pprint(RR.w_i(2))
-        ⎡          0          ⎤
-        ⎢                     ⎥
-        ⎢          0          ⎥
-        ⎢                     ⎥
-        ⎢d           d        ⎥
-        ⎢──(q₁(t)) + ──(q₂(t))⎥
-        ⎣dt          dt       ⎦
-        
         """
         wi = Matrix([0,0,0])
         for k in range(1,i+1):
-            wi += self.R_i0(k-1)*self.w_ijj(k)
+            wi += self.w_rel0(k)
         return wi
+    
         
-    def I_i(self,i):
+    def I_cm0(self,i):
         """
-        Return the inertia tensor of [i-th] link w.r.t. base frame.
+        Return the inertia tensor of [i-th] link w.r.t. a frame 
+        located in the center of mass of link [i] and aligned with the base frame.
         
         Parameters
         ----------
@@ -602,12 +675,11 @@ class Robot(object):
         if i == 0:
             raise ValueError("i must be greater than 0")
         idx = i - 1
-        # self.set_inertia_tensors()
         Iii = self.inertia_tensors[idx]
         Ii = simplify( self.R_i0(i) * Iii * self.R_i0(i).T )
         return Ii
     
-    def I_ii(self,i):
+    def I_cm(self,i):
         """
         Return the inertia tensor of i-th link w.r.t. {i}' frame 
         (located in the center of mass of link [i] and aligned with 
@@ -623,13 +695,16 @@ class Robot(object):
         sympy.matrices.dense.MutableDenseMatrix
             Inertia tensor of the [i]-link w.r.t. {i}'-Frame.
         """
-        if i == 0:
-            raise ValueError("i must be greater than 0")
+        self._check_index(i)
+        if self.inertia_tensors is None:
+            raise ValueError("Inertia tensors are not defined. Please set them using the " \
+            "set_inertia_tensors() method.") 
+        
         idx = i - 1
-        Iii = self.inertia_tensors[idx]
-        return Iii
+        I_cm = self.inertia_tensors[idx]
+        return I_cm
     
-    def m_i(self,i):
+    def m(self,i):
         """
         Return the mass of the i-th link. 
 
@@ -742,7 +817,7 @@ class Robot(object):
         tau = Matrix([ symbols(f"tau_{i+1}") for i in range(len(qp))])
         return Eq(MatAdd( MatMul(M,qpp), MatMul(C,qp),  G) , tau)
             
-    def kin_i(self,i):
+    def kin(self,i):
         """
         Returns the kinetic energy of i-th link.
 
@@ -755,18 +830,17 @@ class Robot(object):
         i: int
             Link number.
         """
-        idx = i - 1
-        mi = self.masses[idx]
-        vi = self.vcm_i(i)
-        wi = self.w_i(i)
-        Ii = self.I_i(i)
+        mi = self.m(i)
+        vi = self.v_cm(i)
+        wi = self.w(i)
+        Ii = self.I_cm0(i)
         
         Ktra_i = (1/2) * mi * vi.T * vi
         Krot_i = (1/2) * wi.T * Ii * wi
         Ki = Ktra_i + Krot_i
         return Ki
         
-    def pot_i(self,i):
+    def pot(self,i):
         """
         Returns the potential energy of the [i-th] link.
         
@@ -786,12 +860,10 @@ class Robot(object):
         if self.G is None:
             raise ValueError("Gravity vector is not defined. Please set it using " \
             "the set_gravity_vector() method.") 
-
-        idx = i - 1
-        mi = self.masses[idx]
-        G = Matrix( self.G )
+        
+        mi = self.m(i)
         rcm_i = self.rcm_i(i)
-        return - mi * G.T * rcm_i
+        return - mi * self.G.T * self.r_cm(i)
         
     def get_kinetic_energy(self):
         """
@@ -896,6 +968,12 @@ class Robot(object):
     def __repr__(self):
         repr = "".join( self.joint_types ).upper()
         return f"Robot {repr}"
+
+    def _check_index(self, i, name="Link"):
+        if not isinstance(i, int):
+            raise TypeError(f"{name} index must be an integer, got {type(i)}")
+        if i < 1 or i > self.dof:
+            raise IndexError(f"{name} index {i} out of range. Valid range is 1 to {self.dof}.")
     
 
             
