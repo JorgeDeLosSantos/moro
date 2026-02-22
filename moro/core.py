@@ -695,7 +695,7 @@ class Robot(object):
         .. math::
             M(q) = \\sum_{{i=1}}^n m_i J_{v_i}^T J_{v_i} + J_{w_i}^T R_i I_i R_i^T J_{w_i}
 
-        where :math:`m_i` is the mass of the i-th link, :math:`J_{v_i}` is the linear velocity Jacobian matrix of the center of mass of the i-th link, :math:`J_{w_i}` is the angular velocity Jacobian matrix of the center of mass of the i-th link, :math:`R_i` is the rotation matrix of the i-th link w.r.t. the base frame, and :math:`I_i` is the inertia tensor of the i-th link w.r.t. a frame located in its center of mass and aligned with the base frame.
+        where :math:`m_i` is the mass of the i-th link, :math:`J_{v_i}` is the linear velocity Jacobian matrix of the center of mass of the i-th link, :math:`J_{w_i}` is the angular velocity Jacobian matrix of the center of mass of the i-th link, :math:`R_i` is the rotation matrix of the i-th link w.r.t. the base frame, and :math:`I_i` is the inertia tensor of the i-th link w.r.t. a frame located in its center of mass and aligned with the {i}-Frame.
 
         Returns
         -------
@@ -848,10 +848,10 @@ class Robot(object):
         """
         Returns the total potential energy of the robot
         """
-        U = Matrix([0])
+        P = Matrix([0])
         for i in range(self.dof):
-            U += self.pot(i+1) 
-        return nsimplify(U)
+            P += self.pot(i+1) 
+        return nsimplify(P)
         
     def get_dynamic_model(self):
         """
@@ -862,7 +862,7 @@ class Robot(object):
         .. math::   
             \\frac{d}{dt} \\left( \\frac{\\partial L}{\\partial \\dot{{q}}_i} \\right) - \\frac{\\partial L}{\\partial q_i} = \\tau_i
         
-        where L is the Lagrangian of the system, defined as L = K - P, where K 
+        where :math:`L` is the Lagrangian of the system, defined as :math:`\\mathbb{L} = K - P`, where K 
         is the kinetic energy and P is the potential energy.
         """
         K = self.get_kinetic_energy()
