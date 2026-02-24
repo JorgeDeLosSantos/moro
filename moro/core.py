@@ -14,6 +14,7 @@ from sympy import (
     Matrix,
     eye,
     diag,
+    trigsimp,
     zeros,
     simplify,
     nsimplify,
@@ -55,6 +56,8 @@ class Robot(object):
 
     >>> rr2 = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
     """
+    _CACHE_CATEGORIES = ("kinematics", "dynamics")
+
     def __init__(self,*args):
         self.Ts = [] # Transformation matrices i to i-1
         self.joint_types = [] # Joint type -> "r" revolute, "p" prismatic
@@ -78,6 +81,9 @@ class Robot(object):
         self.cm_locations = None
         self.G = None
         self.__set_default_joint_limits() # set default joint-limits on create
+
+        # Cache for kinematics and dynamics computations
+        self._cache = {category: {} for category in self._CACHE_CATEGORIES}
     
     def z(self,i):
         """
@@ -160,7 +166,7 @@ class Robot(object):
         """
         if i == j: return eye(4)
         return simplify(functools.reduce(operator.mul, self.Ts[j:i]))
-        
+
     def T_i0(self,i):
         """
         Get the homogeneous transformation matrix of {i}-Frame w.r.t. {0}-Frame.
@@ -170,10 +176,14 @@ class Robot(object):
         sympy.matrices.dense.MutableDenseMatrix
             Returns :math:`T_i^0`
         """
-        if i == 0: # If i is 0, then T_i^0 is the identity matrix
+        if i == 0:
             return eye(4)
-        
-        return self.T_ij(i,0) 
+        return self._get_cached(
+            "kinematics",
+            f"T_i0_{i}",
+            lambda: self.T_ij(i, 0)
+        )
+    
         
     def R_i0(self,i):
         """
@@ -292,6 +302,8 @@ class Robot(object):
             raise ValueError(f"Number of masses must be equal to the number of links ({self.dof}).")
         else:
             self.masses = masses
+
+        self._invalidate_dynamics_cache() # Invalidate dynamics cache since link masses affect the inertia matrix and potential energy
         
     def set_inertia_tensors(self,tensors=None):
         """
@@ -324,6 +336,8 @@ class Robot(object):
         else:
             for k in range(dof):
                 self.inertia_tensors.append( tensors[k] )
+        
+        self._invalidate_dynamics_cache() # Invalidate dynamics cache since inertia tensors affect the inertia matrix and Coriolis matrix
             
     def set_cm_locations(self,cm_locations):
         """
@@ -357,6 +371,8 @@ class Robot(object):
                 cm_locations[idx] = Matrix(cm)
 
         self.cm_locations = cm_locations
+        # Invalidate dynamics cache since CoM locations affect the inertia matrix and potential energy
+        self._invalidate_dynamics_cache() 
 
     def set_gravity_vector(self,G):
         """
@@ -383,6 +399,7 @@ class Robot(object):
             G = Matrix(G)
 
         self.G = G
+        self._invalidate_dynamics_cache() # Invalidate dynamics cache since gravity vector affects potential energy and gravity torque vector
 
     def _r_cm_i(self,i):
         """
@@ -420,6 +437,16 @@ class Robot(object):
         -------
         `sympy.matrices.dense.MutableDenseMatrix`
             A column vector
+        """
+        return self._get_cached(
+            "kinematics",
+            f"r_cm_{i}",
+            lambda: self._compute_r_cm(i)
+        )
+    
+    def _compute_r_cm(self,i):
+        """
+        Internal method to compute the position of the center of mass of the i-th link w.r.t. the base frame. This method is called by r_cm() and its result is cached for future calls.
         """
         self._check_index(i, name="link") 
         if self.cm_locations is None:
@@ -628,6 +655,16 @@ class Robot(object):
         sympy.matrices.dense.MutableDenseMatrix
             Angular velocity of the [i]-link w.r.t. {0}-Frame.
         """
+        return self._get_cached(
+            "kinematics",
+            f"w_{i}",
+            lambda: self._w(i)
+        )
+    
+    def _w(self,i):
+        """
+        Internal method to compute the angular velocity of the [i]-link w.r.t. base {0}-Frame. This method is called by w() and its result is cached for future calls.
+        """
         wi = Matrix([0,0,0])
         for k in range(1,i+1):
             wi += self.w_rel0(k)
@@ -714,6 +751,23 @@ class Robot(object):
         sympy.matrices.dense.MutableDenseMatrix
             Inertia matrix M(q)
         """
+        return self._get_cached(
+            "dynamics",
+            "inertia_matrix",
+            lambda: self._compute_inertia_matrix()
+        )
+    
+    def _compute_inertia_matrix(self):
+        """
+        Internal method to compute the inertia matrix. This method is called by get_inertia_matrix() and its result is cached for future calls.
+        """
+        if self.masses is None:
+            raise ValueError("Link masses are not defined. Use set_masses().")
+        if self.inertia_tensors is None:
+            raise ValueError("Inertia tensors are not defined. Use set_inertia_tensors().")
+        if self.cm_locations is None:
+            raise ValueError("Center of mass locations are not defined. Use set_cm_locations().")
+        
         n = self.dof
         M = zeros(n)
 
@@ -798,7 +852,7 @@ class Robot(object):
         G = self.get_gravity_torque_vector()
         qpp = Matrix([q.diff(t,2) for q in self.qs])
         qp = Matrix([q.diff(t) for q in self.qs])
-        tau = Matrix([ symbols(f"tau_{i+1}") for i in range(len(qp))])
+        tau = Matrix([ symbols(f"tau_{i+1}") for i in range(self.dof)])
         return Eq(MatAdd( MatMul(M,qpp), MatMul(C,qp),  G) , tau)
             
     def kin(self,i):
@@ -890,7 +944,7 @@ class Robot(object):
         for i in range(self.dof):
             q = self.qs[i]
             qp = self.qs[i].diff()
-            equations.append( Eq( simplify(L.diff(qp).diff(t) - L.diff(q) ), symbols(f"tau_{i+1}") ) ) 
+            equations.append( Eq( trigsimp(L.diff(qp).diff(t) - L.diff(q) ), symbols(f"tau_{i+1}") ) ) 
             
         return equations
     
@@ -965,7 +1019,56 @@ class Robot(object):
             raise TypeError(f"{name} index must be an integer, got {type(i)}")
         if i < 1 or i > self.dof:
             raise IndexError(f"{name} index {i} out of range. Valid range is 1 to {self.dof}.")
-    
+        
+    def _invalidate_kinematics(self):
+        """
+        Invalidate kinematics and dynamics cache when joint variables or DH parameters are updated.
+        """
+        self._cache["kinematics"] = {}
+        self._cache["dynamics"] = {}  
+
+    def _invalidate_dynamics(self):
+        """
+        Invalidate dynamics cache when masses, inertia tensors, or gravity vector are updated
+        """
+        self._cache["dynamics"] = {} 
+
+    def _get_cached(self, category, key, compute_fn):
+        """
+        Get a cached value for a given category and key. If the value is not in the cache, compute it using the provided function, store it in the cache, and return it.
+        
+        Parameters
+        ----------
+        category : str
+            The category of the cache (e.g., "kinematics", "dynamics").
+        key : str
+            The key that identifies the specific value within the category (e.g., "T_i0_1", "inertia_matrix").
+        compute_fn : callable
+            A function that computes the value if it's not already cached. This function should take no arguments and return the computed value.
+        
+        Returns
+        -------
+        The cached or computed value corresponding to the given category and key.
+        
+        Raises
+        ------
+        ValueError
+            If the provided category is not a valid cache category.
+        """
+        if category not in self._CACHE_CATEGORIES:
+            raise ValueError(
+                f"Invalid cache category: '{category}'. "
+                f"Valid categories are: {self._CACHE_CATEGORIES}."
+            )
+        
+        if key not in self._cache[category]:
+            self._cache[category][key] = compute_fn()
+        
+        return self._cache[category][key]
+
+
+
+
 
             
 
