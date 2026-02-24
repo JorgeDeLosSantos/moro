@@ -139,13 +139,13 @@ class Robot(object):
     @property
     def T(self):
         """ 
-        Get the homogeneous transformation matrix of {N}-Frame (end-effector)
+        Get the homogeneous transformation matrix of {n}-Frame (end-effector)
         w.r.t. {0}-Frame.
         
         Returns
         -------
         sympy.matrices.dense.MutableDenseMatrix
-            T_n^0
+            :math:`T_n^0`
         """
         return simplify(functools.reduce(operator.mul, self.Ts))
         
@@ -396,7 +396,7 @@ class Robot(object):
         Returns
         -------
         `sympy.matrices.dense.MutableDenseMatrix`
-            A column vector
+            A column vector :math:`\\mathbf{r}_{G_i}^i`
         """
         self._check_index(i, name="link") 
         if self.cm_locations is None:
@@ -426,7 +426,7 @@ class Robot(object):
             raise ValueError("Center of mass locations are not defined. " \
             "Please set them using the set_cm_locations() method.")  
 
-        r_cm_i = self._r_cm_i(i)
+        r_cm_i = self._r_cm_i(i) # vector r_{G_i}^i
         r_cm = ( self.T_i0(i) * vector_in_hcoords( r_cm_i ) )[:3,:]
         return simplify( r_cm )
         
@@ -443,9 +443,9 @@ class Robot(object):
         Returns
         -------
         `sympy.matrices.dense.MutableDenseMatrix`
-            A column vector
+            A column vector 
         """
-        self._check_index(i, name="link")
+        self._check_index(i)
         rcm_i = self.r_cm(i)
         vcm_i = rcm_i.diff(t)
         return simplify( vcm_i )
@@ -459,7 +459,7 @@ class Robot(object):
         i : int
             Link number.
         """
-        return self.J_point(self.cm_locations[i-1], i)
+        return self.J_point(self._r_cm_i(i), i)
     
     def Jv_cm_i(self,i):
         """
@@ -550,8 +550,20 @@ class Robot(object):
         i : int
             Joint number.
         """
-        idx = i - 1
-        return self.joint_types[idx]
+        self._check_index(i, name="joint")
+        return self.joint_types[i-1]
+    
+    def q(self,i):
+        """
+        Return the i-th joint variable.
+        
+        Parameters
+        ----------
+        i : int
+            Joint number.
+        """
+        self._check_index(i, name="joint")
+        return self.qs[i-1]
     
     def q_dot(self,i):
         """
@@ -562,8 +574,8 @@ class Robot(object):
         i : int
             Joint number.
         """
-        idx = i - 1
-        return self.qs[idx].diff()
+        self._check_index(i, name="joint")
+        return self.q(i).diff(t)
     
     def w_rel0(self,i):
         """
@@ -848,7 +860,11 @@ class Robot(object):
         
     def get_potential_energy(self):
         """
-        Returns the total potential energy of the robot
+        Returns the total potential energy of the robot:
+
+        .. math::
+            P(q) = \\sum_{{i=1}}^n P_i = - \\sum_{{i=1}}^n m_i \\mathbf{g}^T \\mathbf{r}_{G_i}
+
         """
         P = Matrix([0])
         for i in range(self.dof):
@@ -919,7 +935,7 @@ class Robot(object):
         return self._joint_limits
     
     @joint_limits.setter
-    def joint_limits(self,*limits):
+    def joint_limits(self,limits):
         if len(limits) != self.dof:
             raise ValueError("The number of joint limits must match DOF.")
         for limit in limits:
@@ -942,6 +958,9 @@ class Robot(object):
         return f"Robot {repr}"
 
     def _check_index(self, i, name="Link"):
+        """
+        Check if the index i is a valid link index. If not, raise an appropriate error.
+        """
         if not isinstance(i, int):
             raise TypeError(f"{name} index must be an integer, got {type(i)}")
         if i < 1 or i > self.dof:
