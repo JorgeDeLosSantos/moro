@@ -805,12 +805,14 @@ class Robot(object):
         mi = self.m(i)
         vi = self.v_cm(i)
         wi = self.w(i)
-        Ii = self.I_cm0(i)
+        I_cmi = self.I_cm(i)
+        Ri = self.R_i0(i)
         
         Ktra_i = (1/2) * mi * vi.T * vi
-        Krot_i = (1/2) * wi.T * Ii * wi
+        Krot_i = (1/2) * wi.T * Ri * I_cmi * Ri.T * wi
         Ki = Ktra_i + Krot_i
         return Ki
+
         
     def pot(self,i):
         """
