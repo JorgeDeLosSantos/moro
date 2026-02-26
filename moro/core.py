@@ -775,7 +775,7 @@ class Robot(object):
         Jv = [self.Jv_cm_i(i+1) for i in range(n)]
         Jw = [self.Jw_cm_i(i+1) for i in range(n)]
         R  = [self.R_i0(i+1)    for i in range(n)]
-        I  = [self.I_cm0(i+1)    for i in range(n)]
+        I  = [self.I_cm(i+1)    for i in range(n)]
         m  = [self.m(i+1)     for i in range(n)]
 
         # Compute inertia matrix
@@ -1020,14 +1020,14 @@ class Robot(object):
         if i < 1 or i > self.dof:
             raise IndexError(f"{name} index {i} out of range. Valid range is 1 to {self.dof}.")
         
-    def _invalidate_kinematics(self):
+    def _invalidate_kinematics_cache(self):
         """
         Invalidate kinematics and dynamics cache when joint variables or DH parameters are updated.
         """
         self._cache["kinematics"] = {}
         self._cache["dynamics"] = {}  
 
-    def _invalidate_dynamics(self):
+    def _invalidate_dynamics_cache(self):
         """
         Invalidate dynamics cache when masses, inertia tensors, or gravity vector are updated
         """

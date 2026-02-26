@@ -33,6 +33,18 @@ __all__ = [
 # ~ Transformation operations
 # ~ ==========================================
 def rot(theta, axis="z", deg=False):
+    """
+    Return a rotation matrix that represents a rotation of "theta" about "axis".
+
+    Parameters
+    ----------
+    theta : float, int or `symbolic`
+        Rotation angle (given in radians by default)
+    axis : str
+        Rotation axis, "x", "y" or "z" (default is "z")
+    deg : bool
+        ¿Is theta given in degrees?, False is default value.    
+    """
     axis = axis.lower()
     if axis=="x":
         return rotx(theta, deg)
@@ -45,52 +57,49 @@ def rot(theta, axis="z", deg=False):
 
 def rotz(theta, deg=False):
     """
-    Calculates the rotation matrix about the z-axis
+    Calculate the rotation matrix about the z-axis.
 
     Parameters
     ----------
-    :param theta: Rotation angle (given in radians by default)
-    :type theta: float, int or `symbolic`
-
-    :param deg: ¿Is theta given in degrees?, False is default value.
-    :type deg: bool
+    theta : float, int or symbolic
+        Rotation angle. By default, the value is assumed to be given in radians.
+    deg : bool, optional
+        If True, `theta` is interpreted as degrees. Default is False.
 
     Returns
     -------
-    :return: `sympy.matrices.dense.MutableDenseMatrix`
-    :rtype: Rotation matrix (SO3)
+    sympy.matrices.dense.MutableDenseMatrix
+        Rotation matrix in SO(3).
 
     Examples
     --------
-    
-    Using angle in radians,
-    
+    Using angle in radians:
+
     >>> rotz(pi/2)
     ⎡0  -1  0⎤
     ⎢        ⎥
-    ⎢1  0   0⎥
+    ⎢1   0  0⎥
     ⎢        ⎥
-    ⎣0  0   1⎦
+    ⎣0   0  1⎦
 
-    Or symbolic variables,
-    
+    Using symbolic variables:
+
     >>> x = symbols("x")
     >>> rotz(x)
     ⎡cos(x)  -sin(x)  0⎤
     ⎢                  ⎥
-    ⎢sin(x)  cos(x)   0⎥
+    ⎢sin(x)   cos(x)  0⎥
     ⎢                  ⎥
     ⎣  0        0     1⎦
 
     Using angles in degrees:
-    
+
     >>> rotz(45, deg=True)
     ⎡0.707106781186548  -0.707106781186547  0⎤
     ⎢                                        ⎥
-    ⎢0.707106781186547  0.707106781186548   0⎥
+    ⎢0.707106781186547   0.707106781186548  0⎥
     ⎢                                        ⎥
     ⎣        0                  0           1⎦
-
     """
     if deg: # If theta is given in degrees -> convert to radians
         theta = deg2rad(theta, False)
@@ -108,16 +117,16 @@ def roty(theta, deg=False):
 
     Parameters
     ----------
-    :param theta: Rotation angle (given in radians by default)
-    :type theta: float, int or `symbolic`
+    theta : float, int or `symbolic`
+        Rotation angle (given in radians by default)
 
-    :param deg: ¿Is theta given in degrees?, False is default value.
-    :type deg: bool
+    deg : bool 
+        ¿Is theta given in degrees?, False is default value.
 
     Returns
     -------
-    :return: `sympy.matrices.dense.MutableDenseMatrix`
-    :rtype: Rotation matrix (SO3)
+    sympy.matrices.dense.MutableDenseMatrix
+        Rotation matrix in SO(3).
         
     Examples
     --------
@@ -157,16 +166,16 @@ def rotx(theta, deg=False):
 
     Parameters
     ----------
-    :param theta: Rotation angle (given in radians by default)
-    :type theta: float, int or `symbolic`
+    theta : float, int or `symbolic`
+        Rotation angle (given in radians by default)
 
-    :param deg: ¿Is theta given in degrees?, False is default value.
-    :type deg: bool
+    deg : bool  
+        ¿Is theta given in degrees?, False is default value.
 
     Returns
     -------
-    :return: `sympy.matrices.dense.MutableDenseMatrix`
-    :rtype: Rotation matrix (SO3)
+    sympy.matrices.dense.MutableDenseMatrix
+        Rotation matrix in SO(3).
         
     Examples
     --------
@@ -186,6 +195,7 @@ def rotx(theta, deg=False):
     """
     if deg: # If theta is given in degrees -> convert to radians
         theta = deg2rad(theta, False)
+
     ct = cos(theta)
     st = sin(theta)
     R = Matrix([[1, 0, 0],
@@ -194,90 +204,31 @@ def rotx(theta, deg=False):
     return R
 
 
-def _rot(theta, axis, deg=False):
-    if axis in ("X","x",1,"1"):
-        R = rotx(theta, deg)
-    elif axis in ("Y","y",2,"2"):
-        R = roty(theta, deg)
-    elif axis in ("Z","z",3,"3"):
-        R = rotz(theta, deg)
-    else:
-        R = eye(3)
-    return R
-    
-
-def compose_rotations(*rotations):
-    """
-    Composes rotation matrices w.r.t. fixed or movable frames
-    
-    Parameters
-    ----------
-    :param rotations: A tuple that contains (angle, axis, frame, deg)
-    :type rotations: tuple
-
-    Returns
-    -------
-    :return: Rotation matrix
-    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`
-        
-    Examples
-    --------
-    >>> compose_rotations((45, "z", "fixed", True), (30, "x", "local", True))
-    ⎡0.707106781186548  -0.612372435695794  0.353553390593274 ⎤
-    ⎢                                                         ⎥
-    ⎢0.707106781186547  0.612372435695795   -0.353553390593274⎥
-    ⎢                                                         ⎥
-    ⎣        0                 0.5          0.866025403784439 ⎦
-    """
-    R = eye(3) # I3x3 matrix
-    for rot in rotations:
-        angle,axis,frame,*_ = rot
-        if len(rot)==4:
-            deg = rot[-1]
-        else:
-            deg = False # default value
-        crm = _rot(angle,axis,deg)
-        if frame in ("world","fixed","global","w","0",0):
-            R = crm*R
-        elif frame in ("current","movable","local","c","1",1):
-            R = R*crm
-        else:
-            pass # Nothing to do here -> raise except. (to impl.)
-            
-    return R
-
-
 def dh(a,alpha,d,theta):
     """
-    Calculates Denavit-Hartenberg matrix given the four parameters.
+    Compute the Denavit-Hartenberg homogeneous transformation matrix.
 
     Parameters
     ----------
-    :param a: DH parameter
-    :type a: int, float or symbol
-
-    :param alpha: DH parameter
-    :type alpha: int, float or symbol
-
-    :param d: DH parameter
-    :type d: int, float or symbol
-
-    :param theta: DH parameter
-    :type theta: int, float or symbol    
+    a : int, float or symbolic
+        Link length (DH parameter).
+    alpha : int, float or symbolic
+        Link twist (DH parameter).
+    d : int, float or symbolic
+        Link offset (DH parameter).
+    theta : int, float or symbolic
+        Joint angle (DH parameter).
 
     Returns
     -------
-
-    :return: Denavit-Hartenberg matrix (4x4)
-    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`
-        
+    sympy.matrices.dense.MutableDenseMatrix
+        Denavit-Hartenberg homogeneous transformation matrix of shape (4, 4).
 
     Examples
     --------
-    
     With numerical values:
-    
-    >>> dh(100,pi/2,50,pi/2)
+
+    >>> dh(100, pi/2, 50, pi/2)
     ⎡0  0  1   0 ⎤
     ⎢            ⎥
     ⎢1  0  0  100⎥
@@ -285,20 +236,21 @@ def dh(a,alpha,d,theta):
     ⎢0  1  0  50 ⎥
     ⎢            ⎥
     ⎣0  0  0   1 ⎦
-    
+
     Using symbolic values:
-    
+
     >>> a = symbols("a")
     >>> t = symbols("t")
-    >>> dh(a,0,0,t)
+    >>> dh(a, 0, 0, t)
     ⎡cos(t)  -sin(t)  0  a⋅cos(t)⎤
     ⎢                            ⎥
-    ⎢sin(t)  cos(t)   0  a⋅sin(t)⎥
+    ⎢sin(t)   cos(t)  0  a⋅sin(t)⎥
     ⎢                            ⎥
     ⎢  0        0     1     0    ⎥
     ⎢                            ⎥
     ⎣  0        0     0     1    ⎦
     """
+
     H = Matrix([[cos(theta),-sin(theta)*cos(alpha),sin(theta)*sin(alpha),a*cos(theta)],
                   [sin(theta),cos(theta)*cos(alpha),-cos(theta)*sin(alpha),a*sin(theta)],
                   [0,sin(alpha),cos(alpha),d],
