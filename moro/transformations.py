@@ -6,18 +6,16 @@ using SymPy as base library.
 """
 # import matplotlib.pyplot as plt
 # from mpl_toolkits.mplot3d import Axes3D
+import sympy as sp
 from sympy import sin,cos,atan2,acos,sqrt,pi
-from sympy.matrices import Matrix,eye,zeros
+from sympy.matrices import Matrix,zeros
 from moro.abc import *
 from moro.util import *
 
 __all__ = [
     "axa2rot",
-    "compose_rotations",
     "dh",
-    "eul2htm",
     "eul2rot",
-    "htm2eul",
     "htmrot",
     "htmtra",
     "rot2eul",
@@ -250,153 +248,13 @@ def dh(a,alpha,d,theta):
     ⎢                            ⎥
     ⎣  0        0     0     1    ⎦
     """
-
     H = Matrix([[cos(theta),-sin(theta)*cos(alpha),sin(theta)*sin(alpha),a*cos(theta)],
                   [sin(theta),cos(theta)*cos(alpha),-cos(theta)*sin(alpha),a*sin(theta)],
                   [0,sin(alpha),cos(alpha),d],
                   [0,0,0,1]])
     return H
+
     
-    
-def eul2htm(phi,theta,psi,seq="zxz",deg=False):
-    """
-    Given a set of Euler Angles (phi,theta,psi) for specific 
-    sequence this function returns the homogeneous transformation 
-    matrix associated. Default sequence is ZXZ.
-
-    Parameters
-    ----------
-
-    phi: int, float, symbol
-        First angle of the set
-
-    theta: int, float, symbol
-        Second angle of the set
-
-    psi: int, float, symbol
-        Third angle of the set
-        
-    deg: bool
-        This parameter is True if phi, theta, and psi are given in degrees, 
-        by default it's assumed to be False (angles in radians).
-
-    Returns
-    -------
-
-    H: `sympy.matrices.dense.MutableDenseMatrix`
-        A homogeneous transformation matrix (SE(3)).
-    
-    
-    Examples
-    --------
-    
-    >>> eul2htm(90,90,90,"zxz",True)
-    ⎡0  0   1  0⎤
-    ⎢           ⎥
-    ⎢0  -1  0  0⎥
-    ⎢           ⎥
-    ⎢1  0   0  0⎥
-    ⎢           ⎥
-    ⎣0  0   0  1⎦
-    
-    >>> eul2htm(pi/2,pi/2,pi/2)
-    ⎡0  0   1  0⎤
-    ⎢           ⎥
-    ⎢0  -1  0  0⎥
-    ⎢           ⎥
-    ⎢1  0   0  0⎥
-    ⎢           ⎥
-    ⎣0  0   0  1⎦
-        
-    >>> eul2htm(0,pi/2,0,"zyz")
-    ⎡0   0  1  0⎤
-    ⎢           ⎥
-    ⎢0   1  0  0⎥
-    ⎢           ⎥
-    ⎢-1  0  0  0⎥
-    ⎢           ⎥
-    ⎣0   0  0  1⎦
-    """
-    if deg: # If angles are given in degrees -> convert to radians
-        phi,theta,psi = deg2rad(Matrix([phi,theta,psi]), evalf=False)
-    seq = seq.lower()
-
-    if not seq in ("zxz","zyz","xyx","xzx","yxy","yzy"):
-        raise ValueError(f"{seq} is not a valid sequence")
-
-    axis1 = seq[0]
-    axis2 = seq[1]
-    axis3 = seq[2]
-    H = htmrot(phi,axis1) * htmrot(theta,axis2) * htmrot(psi,axis3)
-
-    return H
-    
-    
-def htm2eul(H, seq="zxz", deg=False):
-    """
-    Given a homogeneous transformation matrix this function 
-    return the equivalent set of Euler Angles. 
-    
-    If "deg" is True then Euler Angles are converted to degrees.
-    
-    >>> H = htmrot(pi/3,"y")*htmrot(pi/4,"x")
-    >>> H
-    ⎡      √6   √6    ⎤
-    ⎢1/2   ──   ──   0⎥
-    ⎢      4    4     ⎥
-    ⎢                 ⎥
-    ⎢      √2  -√2    ⎥
-    ⎢ 0    ──  ────  0⎥
-    ⎢      2    2     ⎥
-    ⎢                 ⎥
-    ⎢-√3   √2   √2    ⎥
-    ⎢────  ──   ──   0⎥
-    ⎢ 2    4    4     ⎥
-    ⎢                 ⎥
-    ⎣ 0    0    0    1⎦
-    >>> htm2eul(H)
-    ⎛    ⎛√3⎞                     ⎞
-    ⎜atan⎜──⎟, atan(√7), -atan(√6)⎟
-    ⎝    ⎝2 ⎠                     ⎠
-    >>> htm2eul(H, deg=True)
-    (40.8933946491309, 69.2951889453646, -67.7923457014035)
-    """
-    if seq in ("ZXZ","zxz"):
-        return _htm2zxz(H, deg)
-    # elif seq in ("ZYZ","zyz"):
-    #     return _htm2zyz(H, deg)
-    else:
-        raise ValueError("Currently only ZXZ sequence is supported")
-
-
-def _htm2zxz(H, deg=False):
-    """
-    Calculates ZXZ Euler Angles from a homogeneous transformation matrix
-    """
-    R = H[:3,:3] # rotation sub-matrix
-    r33,r13,r23,r31,r32,r11,r12,r21 = R[2,2],R[0,2],R[1,2],R[2,0],R[2,1],R[0,0],R[0,1],R[1,0]
-    if abs(r33) != 1:
-        theta = atan2(sqrt(1-r33**2), r33)
-        phi = atan2(r13, -r23)
-        psi = atan2(r31, r32)
-    elif r33==1:
-        theta = 0
-        phi = 0
-        psi = atan2(r21, r11)
-    elif r33==-1:
-        theta = pi
-        psi = 0
-        phi = atan2(r21, r11)
-    else:
-        theta = atan2(sqrt(1-r33**2), r33)
-        phi = atan2(r13,-r23)
-        psi = atan2(r31,r32)
-        
-    if deg:
-        return rad2deg(phi), rad2deg(theta), rad2deg(psi)
-        
-    return phi,theta,psi
-
 
 def rot2eul(R, seq="zxz", deg=False):
     if seq in ("ZXZ","zxz"):
@@ -656,22 +514,75 @@ def _rot2htm(R):
 def rot2axa(R, deg=False):
     """
     Given a SO(3) matrix return the axis-angle representation.
+
+    Parameters
+    ---------- 
+
+    R : `sympy.matrices.dense.MutableDenseMatrix`
+        Rotation matrix in SO(3).
+
+    deg : bool
+        If True, the angle is returned in degrees. By default, it is False (angle in radians or symbolic).
+
+    Returns
+    -------
+    k : `sympy.matrices.dense.MutableDenseMatrix`
+        Axis of rotation, a 3D vector.
+    theta : float, int or symbolic
+        Rotation angle (given in radians by default, or symbolic).
     """
     if not(is_SO3(R)):
         raise ValueError("R must be a rotation matrix.")
-    r32,r23 = R[2,1],R[1,2]
-    r13,r31 = R[0,2],R[2,0]
-    r21,r12 = R[1,0],R[0,1]
-    theta = acos((R.trace() - 1)/2)
-    k = ( (1/(2*sin(theta)))*Matrix([r32-r23, r13-r31, r21-r12]) ).evalf()
-    if deg:
-        theta = rad2deg(theta)
-    return k,theta
+    
+    # trace
+    trace = sp.trace(R)
+
+    # angle 
+    angle = sp.acos((trace - 1) / 2)
+
+    # Case 1: angle = 0
+    # In this case, the rotation is the identity, so we can return any axis (we choose the x-axis) and an angle of 0.
+    if sp.simplify(angle) == 0:
+        return Matrix([1, 0, 0]), sp.S(0)
+
+    # Case 2: angle = pi
+    # In this case, the axis can be computed from the diagonal elements of R, but we need to be careful with the signs.
+    if sp.simplify(angle - sp.pi) == 0:
+        axis = Matrix([
+            sp.sqrt((R[0,0] + 1)/2),
+            sp.sqrt((R[1,1] + 1)/2),
+            sp.sqrt((R[2,2] + 1)/2)
+        ])
+        axis = axis / axis.norm()
+        return axis, angle
+
+    # Case 3: general case
+    axis = Matrix([
+        R[2,1] - R[1,2],
+        R[0,2] - R[2,0],
+        R[1,0] - R[0,1]
+    ]) / (2 * sp.sin(angle))
+
+    axis = sp.simplify(axis / axis.norm())
+
+    return axis, sp.simplify(angle)
     
 def axa2rot(k,theta):
     """
     Given a R^3 vector (k) and an angle (theta), return 
     the SO(3) matrix associated.
+
+    Parameters
+    ----------   
+    k : `sympy.matrices.dense.MutableDenseMatrix` or list or tuple
+        Axis of rotation, must be a 3D vector. If k is given as a list or tuple, it will be converted to a sympy Matrix.
+    theta : float, int or symbolic
+        Rotation angle (given in radians by default).
+
+    Returns
+    -------
+    R : `sympy.matrices.dense.MutableDenseMatrix`
+        Rotation matrix in SO(3) corresponding to a rotation of "theta" about the axis defined by "k".
     """
     if isinstance(k,(list,tuple)):
         k = Matrix(k)
@@ -694,7 +605,17 @@ def axa2rot(k,theta):
 
 def skew(u):
     """
-    Return skew-symmetric matrix associated to u vector 
+    Return skew-symmetric matrix associated to u vector.
+
+    Parameters
+    ----------
+    u : `sympy.matrices.dense.MutableDenseMatrix` or list or tuple
+        A 3D vector. If u is given as a list or tuple, it will be converted to a sympy Matrix.
+
+    Returns
+    -------
+    S : `sympy.matrices.dense.MutableDenseMatrix`
+        Skew-symmetric matrix associated to u.  
     """
     if len(u) != 3:
         raise ValueError("The vector u must have three components.")
@@ -706,4 +627,4 @@ def skew(u):
     
 
 if __name__=="__main__":
-    print(eul2htm(0,0,pi,"zxz"))
+    pass
