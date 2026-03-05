@@ -9,15 +9,17 @@ Welcome to moro's documentation!
 .. image:: https://numython-rd.github.io/projects/moro/img/logo-moro.png
   :width: 180
 
-Moro is a Python library for kinematic and dynamic modeling of serial robots. This library has been designed, mainly, for academic and research purposes, using SymPy as base library. 
+Moro is a Python library for kinematic and dynamic modeling of serial robots. This library has been designed, mainly, for teaching purposes, using SymPy as base library. 
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    installation.rst
+   examples.rst
    core.rst
-
+   transformations.rst
+   util.rst
 
 Indices and tables
 ==================

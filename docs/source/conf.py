@@ -21,13 +21,13 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'moro'
-copyright = '2024, Pedro Jorge De Los Santos'
-author = 'Pedro Jorge De Los Santos'
+copyright = '2026, P.J. De Los Santos'
+author = 'P.J. De Los Santos'
 
 # The short X.Y version
 version = '0.3'
 # The full version, including alpha/beta/rc tags
-release = '0.3.0.dev1'
+release = '0.3.0'
 
 
 # -- General configuration ---------------------------------------------------

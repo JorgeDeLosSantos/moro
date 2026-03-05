@@ -5,8 +5,8 @@ This library has been designed, mainly, for academic and research purposes,
 using SymPy as base library. 
 """
 import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D
-import operator, functools
+import operator
+import functools
 import sympy as sp
 from sympy import (
     pi,
@@ -76,10 +76,10 @@ class Robot(object):
         self._dof = len(args) # Degree of freedom
 
         # Dynamic parameters (initially set to None, but they can be set using the corresponding methods)
-        self.masses = None
-        self.inertia_tensors = None
-        self.cm_locations = None
-        self.G = None
+        self._masses = None
+        self._inertia_tensors = None
+        self._cm_positions = None
+        self._gravity = None
         self.__set_default_joint_limits() # set default joint-limits on create
 
         # Cache for kinematics and dynamics computations
@@ -284,8 +284,25 @@ class Robot(object):
     @qis_range.setter
     def qis_range(self, *args):
         self._qis_range = args
+
+    @property
+    def masses(self):
+        """
+        Get the masses of the links as a list like: [m1, m2, ..., mn], where 
+        m1, m2, ..., mn, are numeric or symbolic values.
         
-    def set_masses(self,masses=None):
+        Returns
+        -------
+        list
+            A list of numerical or symbolic values that correspond to link masses.
+        """
+        if self._masses is None:
+            raise ValueError("Link masses are not defined. Please set them using "
+                             "the set_masses() method.")
+        return self._masses
+
+    @masses.setter
+    def masses(self,masses):
         """
         Set mass for each link using a list like: [m1, m2, ..., mn], where 
         m1, m2, ..., mn, are numeric or symbolic values.
@@ -301,11 +318,29 @@ class Robot(object):
         if len(masses) != self.dof:
             raise ValueError(f"Number of masses must be equal to the number of links ({self.dof}).")
         else:
-            self.masses = masses
+            self._masses = masses
 
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since link masses affect the inertia matrix and potential energy
+
+    @property
+    def inertia_tensors(self):
+        """
+        Get the inertia tensors of the links as a list like: [I1, I2, ..., In], where 
+        I1, I2, ..., In, are 3x3 sympy matrices that correspond to the inertia tensor of each link w.r.t. a frame located in its center of mass and aligned with the {i}-Frame.
         
-    def set_inertia_tensors(self,tensors=None):
+        Returns
+        -------
+
+        list
+            A list of 3x3 sympy matrices that correspond to the inertia tensor of each link w.r.t. a frame located in its center of mass and aligned with the {i}-Frame.
+
+        """
+        if self._inertia_tensors is None:
+            raise ValueError("Inertia tensors are not defined. Please set them using the inertia_tensors setter.")
+        return self._inertia_tensors
+    
+    @inertia_tensors.setter
+    def inertia_tensors(self,tensors):
         """
         Inertia tensor w.r.t. {i}'-Frame. Consider that the reference 
         frame {i}' is located at the center of mass of link [i] 
@@ -327,19 +362,35 @@ class Robot(object):
             raise ValueError(f"Number of inertia tensors must be equal to the number of links ({self.dof}).")
 
         dof = self.dof
-        self.inertia_tensors = []
+        self._inertia_tensors = []
         if tensors is None: # Default assumption
             for k in range(dof):
                 Istr = f"I_{{x_{k+1}x_{k+1}}}, I_{{y_{k+1}y_{k+1}}} I_{{z_{k+1}z_{k+1}}}"
                 Ix,Iy,Iz = symbols(Istr)
-                self.inertia_tensors.append( diag(Ix,Iy,Iz) )
+                self._inertia_tensors.append( diag(Ix,Iy,Iz) )
         else:
             for k in range(dof):
-                self.inertia_tensors.append( tensors[k] )
+                self._inertia_tensors.append( tensors[k] )
         
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since inertia tensors affect the inertia matrix and Coriolis matrix
-            
-    def set_cm_locations(self,cm_locations):
+
+    @property
+    def cm_positions(self):
+        """
+        Get the positions of the center of mass for each link. The position of the center of mass of the i-th link is defined as a list or tuple of three elements that correspond to the x, y, z coordinates of the center of mass w.r.t. {i}-Frame.
+        
+        Returns
+        -------
+        list
+            A list of lists (or tuples) or a tuple of tuples (or lists) containing 
+            each center of mass position w.r.t. its reference frame.
+        """
+        if self._cm_positions is None:
+            raise ValueError("Center of mass locations are not defined. Please set them using the cm_positions setter.")
+        return self._cm_positions
+    
+    @cm_positions.setter
+    def cm_positions(self,positions):
         """
         Set the positions of the center of mass for each 
         link. The position of the center of mass of the i-th link must be 
@@ -348,57 +399,70 @@ class Robot(object):
     
         Parameters
         ----------
-        cm_locations: list, tuple
+        positions: list, tuple
             A list of lists (or tuples) or a tuple of tuples (or lists) containing 
             each center of mass position w.r.t. its reference frame.
         
         Examples
         --------
         >>> RR = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
-        >>> RR.set_cm_locations([(-lc1,0,0), (-lc2,0,0)])
+        >>> RR.cm_positions = [(-lc1,0,0), (-lc2,0,0)]
         """
-        if len(cm_locations) != self.dof:
+        if len(positions) != self.dof:
             raise ValueError(f"Number of center of mass locations must be equal to the number of links ({self.dof}).")
         
         # Validate that each center of mass location is a 3-element list or tuple
-        for idx, cm in enumerate(cm_locations):
+        for idx, cm in enumerate(positions):
             if not is_position_vector(cm):
                 raise ValueError(f"Center of mass location for link {idx+1} must be a list or tuple of three elements (x, y, z).")
         
         # Convert each center of mass location to a sympy Matrix if it's a list or tuple
-        for idx, cm in enumerate(cm_locations):
+        for idx, cm in enumerate(positions):
             if not isinstance(cm, Matrix):
-                cm_locations[idx] = Matrix(cm)
+                positions[idx] = Matrix(cm)
 
-        self.cm_locations = cm_locations
+        self._cm_positions = positions
         # Invalidate dynamics cache since CoM locations affect the inertia matrix and potential energy
         self._invalidate_dynamics_cache() 
 
-    def set_gravity_vector(self,G):
+    @property
+    def gravity(self):
         """
-        Set the gravity vector in the base frame. The gravity vector 
-        must be defined as a list or tuple of three elements that 
-        correspond to the x, y, z components of the gravity vector in the base frame. 
+        Get the gravity vector defined in the base frame. The gravity vector is defined as a list or tuple of three elements that correspond to the x, y, z components of the gravity vector in the base frame.
+        
+        Returns
+        -------
+        sympy.matrices.dense.MutableDenseMatrix
+            Gravity vector defined in the base frame.
+        """
+        if self._gravity is None:
+            raise ValueError("Gravity vector is not defined. Please set it using the set_gravity() method.")
+        return self._gravity
+
+    @gravity.setter
+    def gravity(self,g):
+        """
+        Set the gravity acceleration in the base frame. 
         
         Parameters
         ----------
-        G: list, tuple
+        g: list, tuple
             A list or tuple of three elements that define 
-            the gravity vector in the base frame.
+            the gravity acceleration in the base frame.
         
         Examples
         --------
         >>> RR = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
-        >>> RR.set_gravity_vector((0,-g,0))
+        >>> RR.gravity = (0, -g, 0)
         """
-        if len(G) != 3:
-            raise ValueError("Gravity vector must have three components (x, y, z).")
+        if len(g) != 3:
+            raise ValueError("Gravity acceleration must have three components (x, y, z).")
         
-        # Convert G to a sympy Matrix if it's a list or tuple
-        if not isinstance(G, Matrix):
-            G = Matrix(G)
+        # Convert g to a sympy Matrix if it's a list or tuple
+        if not isinstance(g, Matrix):
+            g = Matrix(g)
 
-        self.G = G
+        self._gravity = g
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since gravity vector affects potential energy and gravity torque vector
 
     def _r_cm_i(self,i):
@@ -416,11 +480,11 @@ class Robot(object):
             A column vector :math:`\\mathbf{r}_{G_i}^i`
         """
         self._check_index(i, name="link") 
-        if self.cm_locations is None:
+        if self.cm_positions is None:
             raise ValueError("Center of mass locations are not defined. " \
-                             "Please set them using the set_cm_locations() method.")
+                             "Please set them using the cm_positions setter.")
         
-        return self.cm_locations[i-1]
+        return self.cm_positions[i-1]
 
     
     def r_cm(self,i):
@@ -449,9 +513,9 @@ class Robot(object):
         Internal method to compute the position of the center of mass of the i-th link w.r.t. the base frame. This method is called by r_cm() and its result is cached for future calls.
         """
         self._check_index(i, name="link") 
-        if self.cm_locations is None:
+        if self.cm_positions is None:
             raise ValueError("Center of mass locations are not defined. " \
-            "Please set them using the set_cm_locations() method.")  
+            "Please set them using the cm_positions setter.")  
 
         r_cm_i = self._r_cm_i(i) # vector r_{G_i}^i
         r_cm = ( self.T_i0(i) * vector_in_hcoords( r_cm_i ) )[:3,:]
@@ -688,7 +752,7 @@ class Robot(object):
         """
         if self.inertia_tensors is None:
             raise ValueError("Inertia tensors are not defined. Please set them using the " \
-            "set_inertia_tensors() method.")
+            "inertia_tensors setter.")
 
         if i == 0:
             raise ValueError("i must be greater than 0")
@@ -716,7 +780,7 @@ class Robot(object):
         self._check_index(i)
         if self.inertia_tensors is None:
             raise ValueError("Inertia tensors are not defined. Please set them using the " \
-            "set_inertia_tensors() method.") 
+            "inertia_tensors setter.") 
         
         idx = i - 1
         I_cm = self.inertia_tensors[idx]
@@ -732,12 +796,12 @@ class Robot(object):
         i: int  
             Link number.
         """
-        if self.masses is None:
+        if self._masses is None:
             raise ValueError("Link masses are not defined. Please set them using " \
             "the set_masses() method.")
-        return self.masses[i-1]
+        return self._masses[i-1]
         
-    def get_inertia_matrix(self):
+    def inertia_matrix(self):
         """
         Return the inertia matrix M(q) of the robot. The inertia matrix is computed as:
 
@@ -759,15 +823,15 @@ class Robot(object):
     
     def _compute_inertia_matrix(self):
         """
-        Internal method to compute the inertia matrix. This method is called by get_inertia_matrix() and its result is cached for future calls.
+        Internal method to compute the inertia matrix. This method is called by inertia_matrix() and its result is cached for future calls.
         """
-        if self.masses is None:
-            raise ValueError("Link masses are not defined. Use set_masses().")
+        if self._masses is None:
+            raise ValueError("Link masses are not defined. Use masses setter.")
         if self.inertia_tensors is None:
-            raise ValueError("Inertia tensors are not defined. Use set_inertia_tensors().")
-        if self.cm_locations is None:
-            raise ValueError("Center of mass locations are not defined. Use set_cm_locations().")
-        
+            raise ValueError("Inertia tensors are not defined. Use inertia_tensors setter.")
+        if self.cm_positions is None:
+            raise ValueError("Center of mass locations are not defined. Use cm_positions setter.")
+
         n = self.dof
         M = zeros(n)
 
@@ -785,18 +849,18 @@ class Robot(object):
 
         return simplify(M)
 
-    def get_coriolis_matrix(self):
+    def coriolis_matrix(self):
         """
         Return the Coriolis matrix C(q,q').
         The Coriolis matrix is computed using the Christoffel symbols of the first kind:
-        
+
         .. math::
         
             C_{{i,j}} = \\sum_{{k=1}}^n c_{{i,j,k}} \\dot{{q}}_k
             
         """
         n = self.dof
-        M = self.get_inertia_matrix()
+        M = self.inertia_matrix()
         C = zeros(n)
         for i in range(1,n+1):
             for j in range(1,n+1):
@@ -821,7 +885,7 @@ class Robot(object):
         cijk = (1/2)*( mij.diff(q[idx_k]) + mik.diff(q[idx_j]) - mjk.diff(q[idx_i]) )
         return cijk
     
-    def get_gravity_torque_vector(self):
+    def gravity_vector(self):
         """
         Compute the gravity torque vector G(q). The gravity torque vector is computed as the gradient of the potential energy of the system:
 
@@ -833,11 +897,11 @@ class Robot(object):
         sympy.matrices.dense.MutableDenseMatrix
             Gravity torque vector G(q)
         """
-        pot = self.get_potential_energy()
+        pot = self.potential_energy()
         gv = [nsimplify(pot.diff(k)) for k in self.qs]
         return Matrix(gv)
     
-    def get_dynamic_model_matrix_form(self):
+    def dynamic_model_matrix_form(self):
         """
         Return the dynamic model of the robot in matrix form:
 
@@ -848,15 +912,15 @@ class Robot(object):
         :math:`G(q)` is the gravity torque vector, and :math:`\\tau` is the vector of joint torques.
 
         """
-        M = self.get_inertia_matrix()
-        C = self.get_coriolis_matrix()
-        G = self.get_gravity_torque_vector()
+        M = self.inertia_matrix()
+        C = self.coriolis_matrix()
+        G = self.gravity_vector()
         qpp = Matrix([q.diff(t,2) for q in self.qs])
         qp = Matrix([q.diff(t) for q in self.qs])
         tau = Matrix([ symbols(f"tau_{i+1}") for i in range(self.dof)])
         return Eq(MatAdd( MatMul(M,qpp), MatMul(C,qp),  G) , tau)
             
-    def kin(self,i):
+    def link_kinetic_energy(self,i):
         """
         Returns the kinetic energy of i-th link.
 
@@ -881,7 +945,7 @@ class Robot(object):
         return Ki
 
         
-    def pot(self,i):
+    def link_potential_energy(self,i):
         """
         Returns the potential energy of the [i-th] link.
         
@@ -898,22 +962,22 @@ class Robot(object):
         -------
         
         """
-        if self.G is None:
-            raise ValueError("Gravity vector is not defined. Please set it using " \
-            "the set_gravity_vector() method.") 
+        if self.gravity is None:
+            raise ValueError("Gravity acceleration is not defined. Please set it using " \
+            "the gravity property.") 
         
-        return - self.m(i) * self.G.T * self.r_cm(i)
+        return - self.m(i) * self.gravity.T * self.r_cm(i)
         
-    def get_kinetic_energy(self):
+    def kinetic_energy(self):
         """
         Returns the total kinetic energy of the robot
         """
         K = Matrix([0])
         for i in range(self.dof):
-            K += self.kin(i+1)
+            K += self.link_kinetic_energy(i+1)
         return nsimplify(K)
         
-    def get_potential_energy(self):
+    def potential_energy(self):
         """
         Returns the total potential energy of the robot:
 
@@ -923,10 +987,19 @@ class Robot(object):
         """
         P = Matrix([0])
         for i in range(self.dof):
-            P += self.pot(i+1) 
+            P += self.link_potential_energy(i+1) 
         return nsimplify(P)
         
-    def get_dynamic_model(self):
+    def lagrangian(self):
+        """
+        Returns the Lagrangian of the system, defined as :math:`\\mathbb{L} = K - P`, where K is the kinetic energy and P is the potential energy.
+        """
+        K = self.kinetic_energy()
+        P = self.potential_energy()
+        L = K - P
+        return nsimplify(L)[0]
+
+    def dynamic_model(self):
         """
         Returns the dynamic model of the robot 
         using the Euler-Lagrange formulation. The returned value is a list of equations,
@@ -935,12 +1008,9 @@ class Robot(object):
         .. math::   
             \\frac{d}{dt} \\left( \\frac{\\partial L}{\\partial \\dot{{q}}_i} \\right) - \\frac{\\partial L}{\\partial q_i} = \\tau_i
         
-        where :math:`L` is the Lagrangian of the system, defined as :math:`\\mathbb{L} = K - P`, where K 
-        is the kinetic energy and P is the potential energy.
+        where :math:`\\mathcal{L}` is the Lagrangian of the system, defined as :math:`\\mathcal{L} = \\mathcal{K} - \\mathcal{P}`, where :math:`\\mathcal{K}` is the kinetic energy and :math:`\\mathcal{P}` is the potential energy.
         """
-        K = self.get_kinetic_energy()
-        U = self.get_potential_energy()
-        L = ( K - U )[0]
+        L = self.lagrangian()
         equations = []
         for i in range(self.dof):
             q = self.qs[i]
@@ -1066,10 +1136,6 @@ class Robot(object):
             self._cache[category][key] = compute_fn()
         
         return self._cache[category][key]
-
-
-
-
 
             
 

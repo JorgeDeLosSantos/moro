@@ -3,17 +3,17 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to moro’s documentation! &mdash; moro 0.3.0.dev1 documentation</title>
+  <title>Welcome to moro’s documentation! &mdash; moro 0.3.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b76e3c8a" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=cbbe7d37"></script>
+      <script src="_static/documentation_options.js?v=e259d695"></script>
       <script src="_static/doctools.js?v=9a2dae69"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -45,7 +45,10 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
 </ul>
 
         </div>
@@ -74,16 +77,47 @@
              
   <section id="welcome-to-moro-s-documentation">
 <h1>Welcome to moro’s documentation!<a class="headerlink" href="#welcome-to-moro-s-documentation" title="Link to this heading"></a></h1>
-<a class="reference internal image-reference" href="https://numython-rd.github.io/projects/moro/img/logo-moro.png"><img alt="https://numython-rd.github.io/projects/moro/img/logo-moro.png" src="https://numython-rd.github.io/projects/moro/img/logo-moro.png" style="width: 180px;" />
-</a>
-<p>Moro is a Python library for kinematic and dynamic modeling of serial robots. This library has been designed, mainly, for academic and research purposes, using SymPy as base library.</p>
+<a class="reference internal image-reference" href="https://numython-rd.github.io/projects/moro/img/logo-moro.png"><img alt="https://numython-rd.github.io/projects/moro/img/logo-moro.png" src="https://numython-rd.github.io/projects/moro/img/logo-moro.png" style="width: 180px;" /></a>
+<p>Moro is a Python library for kinematic and dynamic modeling of serial robots. This library has been designed, mainly, for teaching purposes, using SymPy as base library.</p>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="core.html#moro.core.RigidBody2D"><code class="docutils literal notranslate"><span class="pre">RigidBody2D</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="core.html#moro.core.Robot"><code class="docutils literal notranslate"><span class="pre">Robot</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.axa2rot"><code class="docutils literal notranslate"><span class="pre">axa2rot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.dh"><code class="docutils literal notranslate"><span class="pre">dh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.eul2rot"><code class="docutils literal notranslate"><span class="pre">eul2rot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.htmrot"><code class="docutils literal notranslate"><span class="pre">htmrot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.htmtra"><code class="docutils literal notranslate"><span class="pre">htmtra()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.rot"><code class="docutils literal notranslate"><span class="pre">rot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.rot2axa"><code class="docutils literal notranslate"><span class="pre">rot2axa()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.rot2eul"><code class="docutils literal notranslate"><span class="pre">rot2eul()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.rotx"><code class="docutils literal notranslate"><span class="pre">rotx()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.roty"><code class="docutils literal notranslate"><span class="pre">roty()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.rotz"><code class="docutils literal notranslate"><span class="pre">rotz()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.skew"><code class="docutils literal notranslate"><span class="pre">skew()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.deg2rad"><code class="docutils literal notranslate"><span class="pre">deg2rad()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.is_SE3"><code class="docutils literal notranslate"><span class="pre">is_SE3()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.is_SO3"><code class="docutils literal notranslate"><span class="pre">is_SO3()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.is_position_vector"><code class="docutils literal notranslate"><span class="pre">is_position_vector()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.ishtm"><code class="docutils literal notranslate"><span class="pre">ishtm()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.isorthonormal"><code class="docutils literal notranslate"><span class="pre">isorthonormal()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.isrot"><code class="docutils literal notranslate"><span class="pre">isrot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.issympyobject"><code class="docutils literal notranslate"><span class="pre">issympyobject()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.pprint"><code class="docutils literal notranslate"><span class="pre">pprint()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.rad2deg"><code class="docutils literal notranslate"><span class="pre">rad2deg()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.sympy2float"><code class="docutils literal notranslate"><span class="pre">sympy2float()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.sympy_matrix_to_numpy_float"><code class="docutils literal notranslate"><span class="pre">sympy_matrix_to_numpy_float()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.vector_in_hcoords"><code class="docutils literal notranslate"><span class="pre">vector_in_hcoords()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -108,7 +142,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Pedro Jorge De Los Santos.</p>
+    <p>&#169; Copyright 2026, P.J. De Los Santos.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

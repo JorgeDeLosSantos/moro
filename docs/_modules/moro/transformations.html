@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>moro.transformations &mdash; moro 0.3.0.dev1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b76e3c8a" />
-      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
@@ -78,18 +78,16 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="c1"># import matplotlib.pyplot as plt</span>
 <span class="c1"># from mpl_toolkits.mplot3d import Axes3D</span>
+<span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sp</span>
 <span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">sin</span><span class="p">,</span><span class="n">cos</span><span class="p">,</span><span class="n">atan2</span><span class="p">,</span><span class="n">acos</span><span class="p">,</span><span class="n">sqrt</span><span class="p">,</span><span class="n">pi</span>
-<span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">eye</span><span class="p">,</span><span class="n">zeros</span>
+<span class="kn">from</span> <span class="nn">sympy.matrices</span> <span class="kn">import</span> <span class="n">Matrix</span><span class="p">,</span><span class="n">zeros</span>
 <span class="kn">from</span> <span class="nn">moro.abc</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">moro.util</span> <span class="kn">import</span> <span class="o">*</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;axa2rot&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;compose_rotations&quot;</span><span class="p">,</span>
     <span class="s2">&quot;dh&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;eul2htm&quot;</span><span class="p">,</span>
     <span class="s2">&quot;eul2rot&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;htm2eul&quot;</span><span class="p">,</span>
     <span class="s2">&quot;htmrot&quot;</span><span class="p">,</span>
     <span class="s2">&quot;htmtra&quot;</span><span class="p">,</span>
     <span class="s2">&quot;rot2eul&quot;</span><span class="p">,</span>
@@ -107,6 +105,18 @@
 <div class="viewcode-block" id="rot">
 <a class="viewcode-back" href="../../transformations.html#moro.transformations.rot">[docs]</a>
 <span class="k">def</span> <span class="nf">rot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a rotation matrix that represents a rotation of &quot;theta&quot; about &quot;axis&quot;.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    theta : float, int or `symbolic`</span>
+<span class="sd">        Rotation angle (given in radians by default)</span>
+<span class="sd">    axis : str</span>
+<span class="sd">        Rotation axis, &quot;x&quot;, &quot;y&quot; or &quot;z&quot; (default is &quot;z&quot;)</span>
+<span class="sd">    deg : bool</span>
+<span class="sd">        ¿Is theta given in degrees?, False is default value.    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">axis</span> <span class="o">=</span> <span class="n">axis</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">axis</span><span class="o">==</span><span class="s2">&quot;x&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">rotx</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
@@ -122,52 +132,49 @@
 <a class="viewcode-back" href="../../transformations.html#moro.transformations.rotz">[docs]</a>
 <span class="k">def</span> <span class="nf">rotz</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Calculates the rotation matrix about the z-axis</span>
+<span class="sd">    Calculate the rotation matrix about the z-axis.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    :param theta: Rotation angle (given in radians by default)</span>
-<span class="sd">    :type theta: float, int or `symbolic`</span>
-
-<span class="sd">    :param deg: ¿Is theta given in degrees?, False is default value.</span>
-<span class="sd">    :type deg: bool</span>
+<span class="sd">    theta : float, int or symbolic</span>
+<span class="sd">        Rotation angle. By default, the value is assumed to be given in radians.</span>
+<span class="sd">    deg : bool, optional</span>
+<span class="sd">        If True, `theta` is interpreted as degrees. Default is False.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    :return: `sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">    :rtype: Rotation matrix (SO3)</span>
+<span class="sd">    sympy.matrices.dense.MutableDenseMatrix</span>
+<span class="sd">        Rotation matrix in SO(3).</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-<span class="sd">    </span>
-<span class="sd">    Using angle in radians,</span>
-<span class="sd">    </span>
+<span class="sd">    Using angle in radians:</span>
+
 <span class="sd">    &gt;&gt;&gt; rotz(pi/2)</span>
 <span class="sd">    ⎡0  -1  0⎤</span>
 <span class="sd">    ⎢        ⎥</span>
-<span class="sd">    ⎢1  0   0⎥</span>
+<span class="sd">    ⎢1   0  0⎥</span>
 <span class="sd">    ⎢        ⎥</span>
-<span class="sd">    ⎣0  0   1⎦</span>
+<span class="sd">    ⎣0   0  1⎦</span>
 
-<span class="sd">    Or symbolic variables,</span>
-<span class="sd">    </span>
+<span class="sd">    Using symbolic variables:</span>
+
 <span class="sd">    &gt;&gt;&gt; x = symbols(&quot;x&quot;)</span>
 <span class="sd">    &gt;&gt;&gt; rotz(x)</span>
 <span class="sd">    ⎡cos(x)  -sin(x)  0⎤</span>
 <span class="sd">    ⎢                  ⎥</span>
-<span class="sd">    ⎢sin(x)  cos(x)   0⎥</span>
+<span class="sd">    ⎢sin(x)   cos(x)  0⎥</span>
 <span class="sd">    ⎢                  ⎥</span>
 <span class="sd">    ⎣  0        0     1⎦</span>
 
 <span class="sd">    Using angles in degrees:</span>
-<span class="sd">    </span>
+
 <span class="sd">    &gt;&gt;&gt; rotz(45, deg=True)</span>
 <span class="sd">    ⎡0.707106781186548  -0.707106781186547  0⎤</span>
 <span class="sd">    ⎢                                        ⎥</span>
-<span class="sd">    ⎢0.707106781186547  0.707106781186548   0⎥</span>
+<span class="sd">    ⎢0.707106781186547   0.707106781186548  0⎥</span>
 <span class="sd">    ⎢                                        ⎥</span>
 <span class="sd">    ⎣        0                  0           1⎦</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">deg</span><span class="p">:</span> <span class="c1"># If theta is given in degrees -&gt; convert to radians</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="n">deg2rad</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
@@ -188,16 +195,16 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    :param theta: Rotation angle (given in radians by default)</span>
-<span class="sd">    :type theta: float, int or `symbolic`</span>
+<span class="sd">    theta : float, int or `symbolic`</span>
+<span class="sd">        Rotation angle (given in radians by default)</span>
 
-<span class="sd">    :param deg: ¿Is theta given in degrees?, False is default value.</span>
-<span class="sd">    :type deg: bool</span>
+<span class="sd">    deg : bool </span>
+<span class="sd">        ¿Is theta given in degrees?, False is default value.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    :return: `sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">    :rtype: Rotation matrix (SO3)</span>
+<span class="sd">    sympy.matrices.dense.MutableDenseMatrix</span>
+<span class="sd">        Rotation matrix in SO(3).</span>
 <span class="sd">        </span>
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -240,16 +247,16 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    :param theta: Rotation angle (given in radians by default)</span>
-<span class="sd">    :type theta: float, int or `symbolic`</span>
+<span class="sd">    theta : float, int or `symbolic`</span>
+<span class="sd">        Rotation angle (given in radians by default)</span>
 
-<span class="sd">    :param deg: ¿Is theta given in degrees?, False is default value.</span>
-<span class="sd">    :type deg: bool</span>
+<span class="sd">    deg : bool  </span>
+<span class="sd">        ¿Is theta given in degrees?, False is default value.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    :return: `sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">    :rtype: Rotation matrix (SO3)</span>
+<span class="sd">    sympy.matrices.dense.MutableDenseMatrix</span>
+<span class="sd">        Rotation matrix in SO(3).</span>
 <span class="sd">        </span>
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -269,6 +276,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">deg</span><span class="p">:</span> <span class="c1"># If theta is given in degrees -&gt; convert to radians</span>
         <span class="n">theta</span> <span class="o">=</span> <span class="n">deg2rad</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
     <span class="n">ct</span> <span class="o">=</span> <span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
     <span class="n">st</span> <span class="o">=</span> <span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
     <span class="n">R</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
@@ -278,95 +286,33 @@
 
 
 
-<span class="k">def</span> <span class="nf">_rot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">axis</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;X&quot;</span><span class="p">,</span><span class="s2">&quot;x&quot;</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;1&quot;</span><span class="p">):</span>
-        <span class="n">R</span> <span class="o">=</span> <span class="n">rotx</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">axis</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;Y&quot;</span><span class="p">,</span><span class="s2">&quot;y&quot;</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="s2">&quot;2&quot;</span><span class="p">):</span>
-        <span class="n">R</span> <span class="o">=</span> <span class="n">roty</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">axis</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;Z&quot;</span><span class="p">,</span><span class="s2">&quot;z&quot;</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="s2">&quot;3&quot;</span><span class="p">):</span>
-        <span class="n">R</span> <span class="o">=</span> <span class="n">rotz</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">R</span> <span class="o">=</span> <span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">R</span>
-    
-
-<div class="viewcode-block" id="compose_rotations">
-<a class="viewcode-back" href="../../transformations.html#moro.transformations.compose_rotations">[docs]</a>
-<span class="k">def</span> <span class="nf">compose_rotations</span><span class="p">(</span><span class="o">*</span><span class="n">rotations</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Composes rotation matrices w.r.t. fixed or movable frames</span>
-<span class="sd">    </span>
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    :param rotations: A tuple that contains (angle, axis, frame, deg)</span>
-<span class="sd">    :type rotations: tuple</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    :return: Rotation matrix</span>
-<span class="sd">    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        </span>
-<span class="sd">    Examples</span>
-<span class="sd">    --------</span>
-<span class="sd">    &gt;&gt;&gt; compose_rotations((45, &quot;z&quot;, &quot;fixed&quot;, True), (30, &quot;x&quot;, &quot;local&quot;, True))</span>
-<span class="sd">    ⎡0.707106781186548  -0.612372435695794  0.353553390593274 ⎤</span>
-<span class="sd">    ⎢                                                         ⎥</span>
-<span class="sd">    ⎢0.707106781186547  0.612372435695795   -0.353553390593274⎥</span>
-<span class="sd">    ⎢                                                         ⎥</span>
-<span class="sd">    ⎣        0                 0.5          0.866025403784439 ⎦</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">R</span> <span class="o">=</span> <span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c1"># I3x3 matrix</span>
-    <span class="k">for</span> <span class="n">rot</span> <span class="ow">in</span> <span class="n">rotations</span><span class="p">:</span>
-        <span class="n">angle</span><span class="p">,</span><span class="n">axis</span><span class="p">,</span><span class="n">frame</span><span class="p">,</span><span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">rot</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rot</span><span class="p">)</span><span class="o">==</span><span class="mi">4</span><span class="p">:</span>
-            <span class="n">deg</span> <span class="o">=</span> <span class="n">rot</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">deg</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># default value</span>
-        <span class="n">crm</span> <span class="o">=</span> <span class="n">_rot</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span><span class="n">axis</span><span class="p">,</span><span class="n">deg</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">frame</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">,</span><span class="s2">&quot;fixed&quot;</span><span class="p">,</span><span class="s2">&quot;global&quot;</span><span class="p">,</span><span class="s2">&quot;w&quot;</span><span class="p">,</span><span class="s2">&quot;0&quot;</span><span class="p">,</span><span class="mi">0</span><span class="p">):</span>
-            <span class="n">R</span> <span class="o">=</span> <span class="n">crm</span><span class="o">*</span><span class="n">R</span>
-        <span class="k">elif</span> <span class="n">frame</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;current&quot;</span><span class="p">,</span><span class="s2">&quot;movable&quot;</span><span class="p">,</span><span class="s2">&quot;local&quot;</span><span class="p">,</span><span class="s2">&quot;c&quot;</span><span class="p">,</span><span class="s2">&quot;1&quot;</span><span class="p">,</span><span class="mi">1</span><span class="p">):</span>
-            <span class="n">R</span> <span class="o">=</span> <span class="n">R</span><span class="o">*</span><span class="n">crm</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">pass</span> <span class="c1"># Nothing to do here -&gt; raise except. (to impl.)</span>
-            
-    <span class="k">return</span> <span class="n">R</span></div>
-
-
-
 <div class="viewcode-block" id="dh">
 <a class="viewcode-back" href="../../transformations.html#moro.transformations.dh">[docs]</a>
 <span class="k">def</span> <span class="nf">dh</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">alpha</span><span class="p">,</span><span class="n">d</span><span class="p">,</span><span class="n">theta</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Calculates Denavit-Hartenberg matrix given the four parameters.</span>
+<span class="sd">    Compute the Denavit-Hartenberg homogeneous transformation matrix.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    :param a: DH parameter</span>
-<span class="sd">    :type a: int, float or symbol</span>
-
-<span class="sd">    :param alpha: DH parameter</span>
-<span class="sd">    :type alpha: int, float or symbol</span>
-
-<span class="sd">    :param d: DH parameter</span>
-<span class="sd">    :type d: int, float or symbol</span>
-
-<span class="sd">    :param theta: DH parameter</span>
-<span class="sd">    :type theta: int, float or symbol    </span>
+<span class="sd">    a : int, float or symbolic</span>
+<span class="sd">        Link length (DH parameter).</span>
+<span class="sd">    alpha : int, float or symbolic</span>
+<span class="sd">        Link twist (DH parameter).</span>
+<span class="sd">    d : int, float or symbolic</span>
+<span class="sd">        Link offset (DH parameter).</span>
+<span class="sd">    theta : int, float or symbolic</span>
+<span class="sd">        Joint angle (DH parameter).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-
-<span class="sd">    :return: Denavit-Hartenberg matrix (4x4)</span>
-<span class="sd">    :rtype: :class:`sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        </span>
+<span class="sd">    sympy.matrices.dense.MutableDenseMatrix</span>
+<span class="sd">        Denavit-Hartenberg homogeneous transformation matrix of shape (4, 4).</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-<span class="sd">    </span>
 <span class="sd">    With numerical values:</span>
-<span class="sd">    </span>
-<span class="sd">    &gt;&gt;&gt; dh(100,pi/2,50,pi/2)</span>
+
+<span class="sd">    &gt;&gt;&gt; dh(100, pi/2, 50, pi/2)</span>
 <span class="sd">    ⎡0  0  1   0 ⎤</span>
 <span class="sd">    ⎢            ⎥</span>
 <span class="sd">    ⎢1  0  0  100⎥</span>
@@ -374,15 +320,15 @@
 <span class="sd">    ⎢0  1  0  50 ⎥</span>
 <span class="sd">    ⎢            ⎥</span>
 <span class="sd">    ⎣0  0  0   1 ⎦</span>
-<span class="sd">    </span>
+
 <span class="sd">    Using symbolic values:</span>
-<span class="sd">    </span>
+
 <span class="sd">    &gt;&gt;&gt; a = symbols(&quot;a&quot;)</span>
 <span class="sd">    &gt;&gt;&gt; t = symbols(&quot;t&quot;)</span>
-<span class="sd">    &gt;&gt;&gt; dh(a,0,0,t)</span>
+<span class="sd">    &gt;&gt;&gt; dh(a, 0, 0, t)</span>
 <span class="sd">    ⎡cos(t)  -sin(t)  0  a⋅cos(t)⎤</span>
 <span class="sd">    ⎢                            ⎥</span>
-<span class="sd">    ⎢sin(t)  cos(t)   0  a⋅sin(t)⎥</span>
+<span class="sd">    ⎢sin(t)   cos(t)  0  a⋅sin(t)⎥</span>
 <span class="sd">    ⎢                            ⎥</span>
 <span class="sd">    ⎢  0        0     1     0    ⎥</span>
 <span class="sd">    ⎢                            ⎥</span>
@@ -394,153 +340,8 @@
                   <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]])</span>
     <span class="k">return</span> <span class="n">H</span></div>
 
-    
-    
-<div class="viewcode-block" id="eul2htm">
-<a class="viewcode-back" href="../../transformations.html#moro.transformations.eul2htm">[docs]</a>
-<span class="k">def</span> <span class="nf">eul2htm</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">,</span><span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Given a set of Euler Angles (phi,theta,psi) for specific </span>
-<span class="sd">    sequence this function returns the homogeneous transformation </span>
-<span class="sd">    matrix associated. Default sequence is ZXZ.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-
-<span class="sd">    phi: int, float, symbol</span>
-<span class="sd">        First angle of the set</span>
-
-<span class="sd">    theta: int, float, symbol</span>
-<span class="sd">        Second angle of the set</span>
-
-<span class="sd">    psi: int, float, symbol</span>
-<span class="sd">        Third angle of the set</span>
-<span class="sd">        </span>
-<span class="sd">    deg: bool</span>
-<span class="sd">        This parameter is True if phi, theta, and psi are given in degrees, </span>
-<span class="sd">        by default it&#39;s assumed to be False (angles in radians).</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-
-<span class="sd">    H: `sympy.matrices.dense.MutableDenseMatrix`</span>
-<span class="sd">        A homogeneous transformation matrix (SE(3)).</span>
-<span class="sd">    </span>
-<span class="sd">    </span>
-<span class="sd">    Examples</span>
-<span class="sd">    --------</span>
-<span class="sd">    </span>
-<span class="sd">    &gt;&gt;&gt; eul2htm(90,90,90,&quot;zxz&quot;,True)</span>
-<span class="sd">    ⎡0  0   1  0⎤</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎢0  -1  0  0⎥</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎢1  0   0  0⎥</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎣0  0   0  1⎦</span>
-<span class="sd">    </span>
-<span class="sd">    &gt;&gt;&gt; eul2htm(pi/2,pi/2,pi/2)</span>
-<span class="sd">    ⎡0  0   1  0⎤</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎢0  -1  0  0⎥</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎢1  0   0  0⎥</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎣0  0   0  1⎦</span>
-<span class="sd">        </span>
-<span class="sd">    &gt;&gt;&gt; eul2htm(0,pi/2,0,&quot;zyz&quot;)</span>
-<span class="sd">    ⎡0   0  1  0⎤</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎢0   1  0  0⎥</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎢-1  0  0  0⎥</span>
-<span class="sd">    ⎢           ⎥</span>
-<span class="sd">    ⎣0   0  0  1⎦</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">deg</span><span class="p">:</span> <span class="c1"># If angles are given in degrees -&gt; convert to radians</span>
-        <span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span> <span class="o">=</span> <span class="n">deg2rad</span><span class="p">(</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span><span class="p">]),</span> <span class="n">evalf</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="n">seq</span> <span class="o">=</span> <span class="n">seq</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span><span class="s2">&quot;zyz&quot;</span><span class="p">,</span><span class="s2">&quot;xyx&quot;</span><span class="p">,</span><span class="s2">&quot;xzx&quot;</span><span class="p">,</span><span class="s2">&quot;yxy&quot;</span><span class="p">,</span><span class="s2">&quot;yzy&quot;</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">seq</span><span class="si">}</span><span class="s2"> is not a valid sequence&quot;</span><span class="p">)</span>
-
-    <span class="n">axis1</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">axis2</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">axis3</span> <span class="o">=</span> <span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-    <span class="n">H</span> <span class="o">=</span> <span class="n">htmrot</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span><span class="n">axis1</span><span class="p">)</span> <span class="o">*</span> <span class="n">htmrot</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span><span class="n">axis2</span><span class="p">)</span> <span class="o">*</span> <span class="n">htmrot</span><span class="p">(</span><span class="n">psi</span><span class="p">,</span><span class="n">axis3</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">H</span></div>
 
     
-    
-<div class="viewcode-block" id="htm2eul">
-<a class="viewcode-back" href="../../transformations.html#moro.transformations.htm2eul">[docs]</a>
-<span class="k">def</span> <span class="nf">htm2eul</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Given a homogeneous transformation matrix this function </span>
-<span class="sd">    return the equivalent set of Euler Angles. </span>
-<span class="sd">    </span>
-<span class="sd">    If &quot;deg&quot; is True then Euler Angles are converted to degrees.</span>
-<span class="sd">    </span>
-<span class="sd">    &gt;&gt;&gt; H = htmrot(pi/3,&quot;y&quot;)*htmrot(pi/4,&quot;x&quot;)</span>
-<span class="sd">    &gt;&gt;&gt; H</span>
-<span class="sd">    ⎡      √6   √6    ⎤</span>
-<span class="sd">    ⎢1/2   ──   ──   0⎥</span>
-<span class="sd">    ⎢      4    4     ⎥</span>
-<span class="sd">    ⎢                 ⎥</span>
-<span class="sd">    ⎢      √2  -√2    ⎥</span>
-<span class="sd">    ⎢ 0    ──  ────  0⎥</span>
-<span class="sd">    ⎢      2    2     ⎥</span>
-<span class="sd">    ⎢                 ⎥</span>
-<span class="sd">    ⎢-√3   √2   √2    ⎥</span>
-<span class="sd">    ⎢────  ──   ──   0⎥</span>
-<span class="sd">    ⎢ 2    4    4     ⎥</span>
-<span class="sd">    ⎢                 ⎥</span>
-<span class="sd">    ⎣ 0    0    0    1⎦</span>
-<span class="sd">    &gt;&gt;&gt; htm2eul(H)</span>
-<span class="sd">    ⎛    ⎛√3⎞                     ⎞</span>
-<span class="sd">    ⎜atan⎜──⎟, atan(√7), -atan(√6)⎟</span>
-<span class="sd">    ⎝    ⎝2 ⎠                     ⎠</span>
-<span class="sd">    &gt;&gt;&gt; htm2eul(H, deg=True)</span>
-<span class="sd">    (40.8933946491309, 69.2951889453646, -67.7923457014035)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">seq</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ZXZ&quot;</span><span class="p">,</span><span class="s2">&quot;zxz&quot;</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">_htm2zxz</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">deg</span><span class="p">)</span>
-    <span class="c1"># elif seq in (&quot;ZYZ&quot;,&quot;zyz&quot;):</span>
-    <span class="c1">#     return _htm2zyz(H, deg)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Currently only ZXZ sequence is supported&quot;</span><span class="p">)</span></div>
-
-
-
-<span class="k">def</span> <span class="nf">_htm2zxz</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Calculates ZXZ Euler Angles from a homogeneous transformation matrix</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">R</span> <span class="o">=</span> <span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,:</span><span class="mi">3</span><span class="p">]</span> <span class="c1"># rotation sub-matrix</span>
-    <span class="n">r33</span><span class="p">,</span><span class="n">r13</span><span class="p">,</span><span class="n">r23</span><span class="p">,</span><span class="n">r31</span><span class="p">,</span><span class="n">r32</span><span class="p">,</span><span class="n">r11</span><span class="p">,</span><span class="n">r12</span><span class="p">,</span><span class="n">r21</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">r33</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">theta</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">r33</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">r33</span><span class="p">)</span>
-        <span class="n">phi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r13</span><span class="p">,</span> <span class="o">-</span><span class="n">r23</span><span class="p">)</span>
-        <span class="n">psi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r31</span><span class="p">,</span> <span class="n">r32</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">r33</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
-        <span class="n">theta</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">phi</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">psi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">r33</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
-        <span class="n">theta</span> <span class="o">=</span> <span class="n">pi</span>
-        <span class="n">psi</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">phi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r21</span><span class="p">,</span> <span class="n">r11</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">theta</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">r33</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">r33</span><span class="p">)</span>
-        <span class="n">phi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r13</span><span class="p">,</span><span class="o">-</span><span class="n">r23</span><span class="p">)</span>
-        <span class="n">psi</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">(</span><span class="n">r31</span><span class="p">,</span><span class="n">r32</span><span class="p">)</span>
-        
-    <span class="k">if</span> <span class="n">deg</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">psi</span><span class="p">)</span>
-        
-    <span class="k">return</span> <span class="n">phi</span><span class="p">,</span><span class="n">theta</span><span class="p">,</span><span class="n">psi</span>
-
 
 <div class="viewcode-block" id="rot2eul">
 <a class="viewcode-back" href="../../transformations.html#moro.transformations.rot2eul">[docs]</a>
@@ -814,17 +615,58 @@
 <span class="k">def</span> <span class="nf">rot2axa</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a SO(3) matrix return the axis-angle representation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ---------- </span>
+
+<span class="sd">    R : `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">        Rotation matrix in SO(3).</span>
+
+<span class="sd">    deg : bool</span>
+<span class="sd">        If True, the angle is returned in degrees. By default, it is False (angle in radians or symbolic).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    k : `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">        Axis of rotation, a 3D vector.</span>
+<span class="sd">    theta : float, int or symbolic</span>
+<span class="sd">        Rotation angle (given in radians by default, or symbolic).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span><span class="p">(</span><span class="n">is_SO3</span><span class="p">(</span><span class="n">R</span><span class="p">)):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;R must be a rotation matrix.&quot;</span><span class="p">)</span>
-    <span class="n">r32</span><span class="p">,</span><span class="n">r23</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span>
-    <span class="n">r13</span><span class="p">,</span><span class="n">r31</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">r21</span><span class="p">,</span><span class="n">r12</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">theta</span> <span class="o">=</span> <span class="n">acos</span><span class="p">((</span><span class="n">R</span><span class="o">.</span><span class="n">trace</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">k</span> <span class="o">=</span> <span class="p">(</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)))</span><span class="o">*</span><span class="n">Matrix</span><span class="p">([</span><span class="n">r32</span><span class="o">-</span><span class="n">r23</span><span class="p">,</span> <span class="n">r13</span><span class="o">-</span><span class="n">r31</span><span class="p">,</span> <span class="n">r21</span><span class="o">-</span><span class="n">r12</span><span class="p">])</span> <span class="p">)</span><span class="o">.</span><span class="n">evalf</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">deg</span><span class="p">:</span>
-        <span class="n">theta</span> <span class="o">=</span> <span class="n">rad2deg</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">k</span><span class="p">,</span><span class="n">theta</span></div>
+    
+    <span class="c1"># trace</span>
+    <span class="n">trace</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+
+    <span class="c1"># angle </span>
+    <span class="n">angle</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">acos</span><span class="p">((</span><span class="n">trace</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Case 1: angle = 0</span>
+    <span class="c1"># In this case, the rotation is the identity, so we can return any axis (we choose the x-axis) and an angle of 0.</span>
+    <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Matrix</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">sp</span><span class="o">.</span><span class="n">S</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Case 2: angle = pi</span>
+    <span class="c1"># In this case, the axis can be computed from the diagonal elements of R, but we need to be careful with the signs.</span>
+    <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">angle</span> <span class="o">-</span> <span class="n">sp</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span>
+            <span class="n">sp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
+            <span class="n">sp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
+            <span class="n">sp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+        <span class="p">])</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">axis</span> <span class="o">/</span> <span class="n">axis</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">axis</span><span class="p">,</span> <span class="n">angle</span>
+
+    <span class="c1"># Case 3: general case</span>
+    <span class="n">axis</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span>
+        <span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span>
+        <span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+        <span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+    <span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">))</span>
+
+    <span class="n">axis</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">axis</span> <span class="o">/</span> <span class="n">axis</span><span class="o">.</span><span class="n">norm</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">axis</span><span class="p">,</span> <span class="n">sp</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span></div>
 
     
 <div class="viewcode-block" id="axa2rot">
@@ -833,6 +675,18 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Given a R^3 vector (k) and an angle (theta), return </span>
 <span class="sd">    the SO(3) matrix associated.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------   </span>
+<span class="sd">    k : `sympy.matrices.dense.MutableDenseMatrix` or list or tuple</span>
+<span class="sd">        Axis of rotation, must be a 3D vector. If k is given as a list or tuple, it will be converted to a sympy Matrix.</span>
+<span class="sd">    theta : float, int or symbolic</span>
+<span class="sd">        Rotation angle (given in radians by default).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    R : `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">        Rotation matrix in SO(3) corresponding to a rotation of &quot;theta&quot; about the axis defined by &quot;k&quot;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,(</span><span class="nb">list</span><span class="p">,</span><span class="nb">tuple</span><span class="p">)):</span>
         <span class="n">k</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
@@ -858,7 +712,17 @@
 <a class="viewcode-back" href="../../transformations.html#moro.transformations.skew">[docs]</a>
 <span class="k">def</span> <span class="nf">skew</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Return skew-symmetric matrix associated to u vector </span>
+<span class="sd">    Return skew-symmetric matrix associated to u vector.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    u : `sympy.matrices.dense.MutableDenseMatrix` or list or tuple</span>
+<span class="sd">        A 3D vector. If u is given as a list or tuple, it will be converted to a sympy Matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    S : `sympy.matrices.dense.MutableDenseMatrix`</span>
+<span class="sd">        Skew-symmetric matrix associated to u.  </span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The vector u must have three components.&quot;</span><span class="p">)</span>
@@ -871,7 +735,7 @@
     
 
 <span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">eul2htm</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">pi</span><span class="p">,</span><span class="s2">&quot;zxz&quot;</span><span class="p">))</span>
+    <span class="k">pass</span>
 </pre></div>
 
            </div>
