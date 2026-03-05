@@ -2,7 +2,7 @@
 
 """
 from moro.core import Robot
-from sympy import sin,cos,tan,atan2
+from sympy import pi, sin,cos,tan,atan2
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
@@ -16,7 +16,7 @@ class RR_Planar_Robot(Robot):
         self.L1 = L1
         self.L2 = L2
         self.q = q
-        self.dof = 2
+        # self.dof = 2
         # ----------------
 
     @property
@@ -118,9 +118,10 @@ class RR_Planar_Robot(Robot):
         
 
 if __name__=="__main__":
-    r = RR_Planar_Robot(120,150)
-    r.plot_workspace([0,np.pi], [0, np.pi/2], 50, color="r")
-    r1 = RR_Planar_Robot(200,100)
-    r1.plot_workspace([0,np.pi/2], [-np.pi/2, np.pi/2], 50, color="b" )
+    r = RR_Planar_Robot(120,150,q=[pi/4, -pi/4])
+    r.draw()
+    # r.plot_workspace([0,np.pi], [0, np.pi/2], 50, color="r")
+    # r1 = RR_Planar_Robot(200,100)
+    # r1.plot_workspace([0,np.pi/2], [-np.pi/2, np.pi/2], 50, color="b" )
     r.show()
     

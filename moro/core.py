@@ -789,6 +789,7 @@ class Robot(object):
         """
         Return the Coriolis matrix C(q,q').
         The Coriolis matrix is computed using the Christoffel symbols of the first kind:
+        
         .. math::
         
             C_{{i,j}} = \\sum_{{k=1}}^n c_{{i,j,k}} \\dot{{q}}_k
