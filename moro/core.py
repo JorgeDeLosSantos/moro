@@ -5,11 +5,10 @@ This library has been designed, mainly, for academic and research purposes,
 using SymPy as base library. 
 """
 import matplotlib.pyplot as plt
-import operator
-import functools
 import sympy as sp
 from sympy import (
     pi,
+    prod,
     symbols,
     Matrix,
     eye,
@@ -61,8 +60,11 @@ class Robot:
         self.Ts = [] # Transformation matrices i to i-1
         self.joint_types = [] # Joint type -> "r" revolute, "p" prismatic
         self._qs = [] # Joint variables
+        self._dh_parameters = [] # Store the DH parameters 
+
         for k in args:
             self.Ts.append(dh(k[0],k[1],k[2],k[3])) # Compute Ti->i-1
+            self._dh_parameters.append(k[:4]) # Store the DH parameters as they were passed in the constructor
             if len(k)>4:
                 self.joint_types.append(k[4])
             else: # By default, the joint type is assumed to be revolute
@@ -83,6 +85,22 @@ class Robot:
 
         # Cache for kinematics and dynamics computations
         self._cache = {category: {} for category in self._CACHE_CATEGORIES}
+
+    @property
+    def dh_parameters(self):
+        return self._dh_parameters
+    
+    @property
+    def dh_table(self):
+        """
+        Return the DH parameter table as a SymPy TableForm.
+        """
+        rows = [["i", "a_i", "alpha_i", "d_i", "theta_i"]]
+
+        for i, (a, alpha, d, theta) in enumerate(self.dh_parameters, start=1):
+            rows.append([i, a, alpha, d, theta])
+
+        return Matrix(rows)
     
     def z(self,i):
         """
@@ -152,7 +170,7 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             :math:`T_n^0`
         """
-        return simplify(functools.reduce(operator.mul, self.Ts))
+        return simplify(prod(self.Ts))
         
     def T_ij(self,i,j):
         """
@@ -163,8 +181,15 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             Returns :math:`T_i^j`
         """
-        if i == j: return eye(4)
-        return simplify(functools.reduce(operator.mul, self.Ts[j:i]))
+        if not (0 <= i <= self.dof) or not (0 <= j <= self.dof):
+            raise ValueError(f"i and j must be between 0 and {self.dof} inclusive.")
+        
+        if i == j: 
+            return eye(4)
+        if i < j:
+            return simplify(prod(self.Ts[i:j]).inv())
+        
+        return simplify(prod(self.Ts[j:i]))
 
     def T_i0(self,i):
         """
@@ -1061,13 +1086,13 @@ class Robot:
         return joint_limits_num
     
     def __str__(self):
-        repr = "".join( self.joint_types ).upper()
-        return f"Robot {repr}"
+        robot_type = "".join( self.joint_types ).upper()
+        return f"Robot {robot_type}"
     
     def __repr__(self):
-        repr = "".join( self.joint_types ).upper()
-        return f"Robot {repr}"
-
+        robot_type = "".join( self.joint_types ).upper()
+        return f"Robot {robot_type}"
+    
     def _check_index(self, i, name="Link"):
         """
         Check if the index i is a valid link index. If not, raise an appropriate error.
