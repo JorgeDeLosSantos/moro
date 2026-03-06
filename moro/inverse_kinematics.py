@@ -147,3 +147,29 @@ def generate_random_initial_guesses(variables, limits):
         guess = random.uniform(limits[k][0], limits[k][1])
         Q0.append(guess)
     return Q0
+
+
+
+def solve_inverse_kinematics(self,pose,q0=None):
+    r_e = self.T[:3,3] # end-effector position
+    if is_position_vector(pose):
+        eqs = r_e - pose
+        variables = self.qs # all joint variables
+        joint_limits = self.__numerical_joint_limits # all joint limits
+        if q0 is None:
+            initial_guesses = ikin.generate_random_initial_guesses(variables, joint_limits)
+        else:
+            initial_guesses = q0
+        # print(eqs, variables, initial_guesses, joint_limits)
+        ikin_sol = ikin.solve_inverse_kinematics(eqs, variables, initial_guesses, joint_limits, method="GD")
+    if is_SE3(pose) and self.dof == 6:
+        variables = self.qs # all joint variables
+        joint_limits = self.__numerical_joint_limits # all joint limits
+        if q0 is None:
+            initial_guesses = ikin.generate_random_initial_guesses(variables, joint_limits)
+        else:
+            initial_guesses = q0
+        # If pose is a SE(3)
+        # # raise NotImplementedError("This method hasn't been implemented yet")
+        ikin_sol = ikin.pieper_method(pose,*self.Ts, variables, initial_guesses, joint_limits)
+    return ikin_sol

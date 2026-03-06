@@ -30,11 +30,10 @@ from moro.util import (
     is_SE3,
 )
 from moro.abc import t
-import moro.inverse_kinematics as ikin
 
 __all__ = ["Robot", "RigidBody2D"]
 
-class Robot(object):
+class Robot:
     """
     Define a robot-serial-arm given the Denavit-Hartenberg parameters 
     and the joint type, as tuples (or lists). Each tuple must have the form:
@@ -61,7 +60,7 @@ class Robot(object):
     def __init__(self,*args):
         self.Ts = [] # Transformation matrices i to i-1
         self.joint_types = [] # Joint type -> "r" revolute, "p" prismatic
-        self.qs = [] # Joint variables
+        self._qs = [] # Joint variables
         for k in args:
             self.Ts.append(dh(k[0],k[1],k[2],k[3])) # Compute Ti->i-1
             if len(k)>4:
@@ -70,9 +69,9 @@ class Robot(object):
                 self.joint_types.append('r')
 
             if self.joint_types[-1] == "r":
-                self.qs.append(k[3])
+                self._qs.append(k[3])
             else:
-                self.qs.append(k[2])
+                self._qs.append(k[2]) 
         self._dof = len(args) # Degree of freedom
 
         # Dynamic parameters (initially set to None, but they can be set using the corresponding methods)
@@ -80,7 +79,7 @@ class Robot(object):
         self._inertia_tensors = None
         self._cm_positions = None
         self._gravity = None
-        self.__set_default_joint_limits() # set default joint-limits on create
+        self._set_default_joint_limits() # set default joint-limits on create
 
         # Cache for kinematics and dynamics computations
         self._cache = {category: {} for category in self._CACHE_CATEGORIES}
@@ -264,18 +263,10 @@ class Robot(object):
         ax.quiver(o[0],o[1],o[2],v[0],v[1],v[2],color="g", length=L)
         ax.quiver(o[0],o[1],o[2],w[0],w[1],w[2],color="b", length=L)
     
-    def qi(self, i):
-        """
-        Get the i-th articular variable.
-
-        Parameters
-        ----------
-
-        i: int
-            Joint number (starting from 1)
-        """
-        idx = i - 1
-        return self.qs[idx]
+    
+    @property
+    def qs(self):
+        return self._qs
     
     @property
     def qis_range(self):
@@ -992,7 +983,7 @@ class Robot(object):
         
     def lagrangian(self):
         """
-        Returns the Lagrangian of the system, defined as :math:`\\mathbb{L} = K - P`, where K is the kinetic energy and P is the potential energy.
+        Returns the Lagrangian of the system, defined as :math:`\\mathcal{L} = \\mathcal{K} - \\mathcal{P}`, where :math:`\\mathcal{K}` is the kinetic energy and :math:`\\mathcal{P}` is the potential energy.
         """
         K = self.kinetic_energy()
         P = self.potential_energy()
@@ -1020,30 +1011,12 @@ class Robot(object):
         return equations
     
     def solve_inverse_kinematics(self,pose,q0=None):
-        r_e = self.T[:3,3] # end-effector position
-        if is_position_vector(pose):
-            eqs = r_e - pose
-            variables = self.qs # all joint variables
-            joint_limits = self.__numerical_joint_limits # all joint limits
-            if q0 is None:
-                initial_guesses = ikin.generate_random_initial_guesses(variables, joint_limits)
-            else:
-                initial_guesses = q0
-            # print(eqs, variables, initial_guesses, joint_limits)
-            ikin_sol = ikin.solve_inverse_kinematics(eqs, variables, initial_guesses, joint_limits, method="GD")
-        if is_SE3(pose) and self.dof == 6:
-            variables = self.qs # all joint variables
-            joint_limits = self.__numerical_joint_limits # all joint limits
-            if q0 is None:
-                initial_guesses = ikin.generate_random_initial_guesses(variables, joint_limits)
-            else:
-                initial_guesses = q0
-            # If pose is a SE(3)
-            # # raise NotImplementedError("This method hasn't been implemented yet")
-            ikin_sol = ikin.pieper_method(pose,*self.Ts, variables, initial_guesses, joint_limits)
-        return ikin_sol
+        """
+        Solve the inverse kinematics problem for a given end-effector pose. This method is not implemented yet and will be added in future versions of the library.
+        """
+        pass
     
-    def __set_default_joint_limits(self):
+    def _set_default_joint_limits(self):
         joint_limits = []
         for k in range(self.dof):
             if self.joint_types[k] == "r":  # for revolute joint
@@ -1057,10 +1030,23 @@ class Robot(object):
         
     @property
     def joint_limits(self):
+        """
+        Get the joint limits of the robot. The joint limits are returned as a list of tuples, 
+        where each tuple contains the lower and upper limits for the corresponding joint. 
+        For revolute joints, the default limits are (-pi, pi) radians, and for prismatic joints, 
+        the default limits are (0, 1000) units. If you want to set custom joint limits, 
+        you can use the joint_limits setter.
+        """
         return self._joint_limits
     
     @joint_limits.setter
     def joint_limits(self,limits):
+        """
+        Set the joint limits of the robot. The joint limits should be provided 
+        as a list of tuples, where each tuple contains the lower and upper limits 
+        for the corresponding joint. For revolute joints, the limits should be in radians, 
+        and for prismatic joints, the limits should be in the appropriate linear units.
+        """
         if len(limits) != self.dof:
             raise ValueError("The number of joint limits must match DOF.")
         for limit in limits:
@@ -1069,7 +1055,7 @@ class Robot(object):
         self._joint_limits = limits
     
     @property
-    def __numerical_joint_limits(self):
+    def _numerical_joint_limits(self):
         joint_limits = self.joint_limits 
         joint_limits_num = [(float(a), float(b)) for (a,b) in joint_limits] 
         return joint_limits_num
