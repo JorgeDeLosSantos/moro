@@ -116,7 +116,11 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             The direction of z_i axis
         """
-        return self.T_i0(i)[:3,2]
+        return self._get_cached(
+            "kinematics",
+            f"z_{i}",
+            lambda: self.T_i0(i)[:3,2]
+        )
     
     def r_o(self,i):
         """
@@ -218,76 +222,11 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             Returns :math:`R_i^0`
         """
-        return self.T_i0(i)[:3,:3]
-        
-    def plot_diagram(self,num_vals):
-        """
-        Draw a simple wire-diagram or kinematic-diagram of the manipulator.
-
-        Parameters
-        ----------
-
-        num_vals : dict
-            Dictionary like: {svar1: nvalue1, svar2: nvalue2, ...}, 
-            where svar1, svar2, ... are symbolic variables that are 
-            currently used in model, and nvalue1, nvalue2, ... 
-            are the numerical values that will substitute these variables.
-
-        """
-        fig = plt.figure()
-        ax = fig.add_subplot(111,projection='3d')
-        
-        # Ts = self.Ts
-        points = []
-        Ti_0 = []
-        points.append(zeros(1,3))
-        for i in range(self.dof):
-            Ti_0.append(self.T_i0(i+1).subs(num_vals))
-            points.append((self.T_i0(i+1)[:3,3]).subs(num_vals))
-            
-        X = [float(k[0]) for k in points]
-        Y = [float(k[1]) for k in points]
-        Z = [float(k[2]) for k in points]
-        ax.plot(X,Y,Z, "o-", color="#778877", lw=3)
-        ax.plot([0],[0],[0], "mo", markersize=6)
-        # ax.set_axis_off()
-        ax.view_init(30,30)
-        
-        px,py,pz = float(X[-1]),float(Y[-1]),float(Z[-1])
-        dim = max([px,py,pz])
-        
-        self._draw_uvw(eye(4),ax, dim)
-        for T in Ti_0:
-            self._draw_uvw(T, ax, dim)
-            
-        ax.set_xlim(-dim, dim)
-        ax.set_ylim(-dim, dim)
-        ax.set_zlim(-dim, dim)
-        plt.show()
-    
-    def _draw_uvw(self,H,ax,sz=1):
-        """
-        Draw the u,v,w axes of a frame defined by the homogeneous transformation matrix H.
-
-        Parameters
-        ----------
-
-        H: sympy.matrices.dense.MutableDenseMatrix
-            Homogeneous transformation matrix that defines the frame to be drawn.
-        ax: matplotlib.axes._subplots.Axes3DSubplot
-            The 3D axis where the frame will be drawn.
-        sz: float
-            The length of the axes to be drawn.
-        """
-        u = H[:3,0]
-        v = H[:3,1]
-        w = H[:3,2]
-        o = H[:3,3]
-        L = sz/5
-        ax.quiver(o[0],o[1],o[2],u[0],u[1],u[2],color="r", length=L)
-        ax.quiver(o[0],o[1],o[2],v[0],v[1],v[2],color="g", length=L)
-        ax.quiver(o[0],o[1],o[2],w[0],w[1],w[2],color="b", length=L)
-    
+        return self._get_cached(
+            "kinematics",
+            f"R_i0_{i}",
+            lambda: self.T_i0(i)[:3,:3]
+        )
     
     @property
     def qs(self):
@@ -577,7 +516,11 @@ class Robot:
         i : int
             Link number.
         """
-        return self._J_cm_i(i)[:3,:]
+        return self._get_cached(
+            "kinematics",
+            f"Jv_cm_{i}",
+            lambda: self._J_cm_i(i)[:3,:]
+        )
     
     def Jw_cm_i(self,i):
         """
@@ -588,7 +531,11 @@ class Robot:
         i : int
             Link number.
         """
-        return self._J_cm_i(i)[3:,:]
+        return self._get_cached(
+            "kinematics",
+            f"Jw_cm_{i}",
+            lambda: self._J_cm_i(i)[3:,:]
+        )
     
     def J_cm_i(self,i):
         """
@@ -605,7 +552,11 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             Jacobian matrix of i-th CoM.     
         """
-        return self._J_cm_i(i)
+        return self._get_cached(
+            "kinematics",
+            f"J_cm_{i}",
+            lambda: self._J_cm_i(i)
+        )
     
     def J_point(self,point,i):
         """
@@ -750,7 +701,7 @@ class Robot:
             wi += self.w_rel0(k)
         return wi
     
-        
+    
     def I_cm0(self,i):
         """
         Return the inertia tensor of [i-th] link w.r.t. a frame 
@@ -765,6 +716,18 @@ class Robot:
         -------
         sympy.matrices.dense.MutableDenseMatrix
             Inertia tensor of the [i]-link w.r.t. {0}-Frame.
+        """
+        return self._get_cached(
+            "dynamics",
+            f"I_cm0_{i}",
+            lambda: self._I_cm0(i)
+        )
+
+    def _I_cm0(self,i):
+        """
+        Internal method to compute the inertia tensor of [i-th] link w.r.t. a frame 
+        located in the center of mass of link [i] and aligned with the base frame. 
+        This method is called by I_cm0() and its result is cached for future calls.
         """
         if self.inertia_tensors is None:
             raise ValueError("Inertia tensors are not defined. Please set them using the " \
@@ -839,7 +802,8 @@ class Robot:
     
     def _compute_inertia_matrix(self):
         """
-        Internal method to compute the inertia matrix. This method is called by inertia_matrix() and its result is cached for future calls.
+        Internal method to compute the inertia matrix. This method is called by 
+        inertia_matrix() and its result is cached for future calls.
         """
         if self._masses is None:
             raise ValueError("Link masses are not defined. Use masses setter.")
@@ -863,7 +827,8 @@ class Robot:
             M += m[i] * Jv[i].T * Jv[i]
             M += Jw[i].T * R[i] * I[i] * R[i].T * Jw[i]
 
-        return simplify(M)
+        return trigsimp(M)
+
 
     def coriolis_matrix(self):
         """
@@ -1085,6 +1050,74 @@ class Robot:
         joint_limits_num = [(float(a), float(b)) for (a,b) in joint_limits] 
         return joint_limits_num
     
+    def plot_diagram(self,num_vals):
+        """
+        Draw a simple wire-diagram or kinematic-diagram of the manipulator.
+
+        Parameters
+        ----------
+
+        num_vals : dict
+            Dictionary like: {svar1: nvalue1, svar2: nvalue2, ...}, 
+            where svar1, svar2, ... are symbolic variables that are 
+            currently used in model, and nvalue1, nvalue2, ... 
+            are the numerical values that will substitute these variables.
+
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111,projection='3d')
+        
+        # Ts = self.Ts
+        points = []
+        Ti_0 = []
+        points.append(zeros(1,3))
+        for i in range(self.dof):
+            Ti_0.append(self.T_i0(i+1).subs(num_vals))
+            points.append((self.T_i0(i+1)[:3,3]).subs(num_vals))
+            
+        X = [float(k[0]) for k in points]
+        Y = [float(k[1]) for k in points]
+        Z = [float(k[2]) for k in points]
+        ax.plot(X,Y,Z, "o-", color="#778877", lw=3)
+        ax.plot([0],[0],[0], "mo", markersize=6)
+        # ax.set_axis_off()
+        ax.view_init(30,30)
+        
+        px,py,pz = float(X[-1]),float(Y[-1]),float(Z[-1])
+        dim = max([px,py,pz])
+        
+        self._draw_uvw(eye(4),ax, dim)
+        for T in Ti_0:
+            self._draw_uvw(T, ax, dim)
+            
+        ax.set_xlim(-dim, dim)
+        ax.set_ylim(-dim, dim)
+        ax.set_zlim(-dim, dim)
+        plt.show()
+    
+    def _draw_uvw(self,H,ax,sz=1):
+        """
+        Draw the u,v,w axes of a frame defined by the homogeneous transformation matrix H.
+
+        Parameters
+        ----------
+
+        H: sympy.matrices.dense.MutableDenseMatrix
+            Homogeneous transformation matrix that defines the frame to be drawn.
+        ax: matplotlib.axes._subplots.Axes3DSubplot
+            The 3D axis where the frame will be drawn.
+        sz: float
+            The length of the axes to be drawn.
+        """
+        u = H[:3,0]
+        v = H[:3,1]
+        w = H[:3,2]
+        o = H[:3,3]
+        L = sz/5
+        ax.quiver(o[0],o[1],o[2],u[0],u[1],u[2],color="r", length=L)
+        ax.quiver(o[0],o[1],o[2],v[0],v[1],v[2],color="g", length=L)
+        ax.quiver(o[0],o[1],o[2],w[0],w[1],w[2],color="b", length=L)
+    
     def __str__(self):
         robot_type = "".join( self.joint_types ).upper()
         return f"Robot {robot_type}"
@@ -1117,7 +1150,8 @@ class Robot:
 
     def _get_cached(self, category, key, compute_fn):
         """
-        Get a cached value for a given category and key. If the value is not in the cache, compute it using the provided function, store it in the cache, and return it.
+        Get a cached value for a given category and key. If the value is not in the cache, 
+        compute it using the provided function, store it in the cache, and return it.
         
         Parameters
         ----------
@@ -1126,7 +1160,8 @@ class Robot:
         key : str
             The key that identifies the specific value within the category (e.g., "T_i0_1", "inertia_matrix").
         compute_fn : callable
-            A function that computes the value if it's not already cached. This function should take no arguments and return the computed value.
+            A function that computes the value if it's not already cached. This function 
+            should take no arguments and return the computed value.
         
         Returns
         -------
