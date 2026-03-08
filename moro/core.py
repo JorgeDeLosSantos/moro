@@ -383,7 +383,7 @@ class Robot:
     @property
     def gravity(self):
         """
-        Get the gravity vector defined in the base frame. The gravity vector is defined as a list or tuple of three elements that correspond to the x, y, z components of the gravity vector in the base frame.
+        Get the gravity acceleration defined in the base frame.
         
         Returns
         -------
@@ -391,7 +391,7 @@ class Robot:
             Gravity vector defined in the base frame.
         """
         if self._gravity is None:
-            raise ValueError("Gravity vector is not defined. Please set it using the set_gravity() method.")
+            raise ValueError("Gravity acceleration is not defined. Please set it using the gravity setter.")
         return self._gravity
 
     @gravity.setter
