@@ -116,6 +116,7 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             The direction of z_i axis
         """
+        self._check_index(i)
         return self._get_cached(
             "kinematics",
             f"z_{i}",
@@ -136,7 +137,12 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             The position of {i}-Frame as a 3-component vector.
         """
-        return self.T_i0(i)[:3,3]
+        self._check_index(i)
+        return self._get_cached(
+            "kinematics",
+            f"r_o_{i}",
+            lambda: self.T_i0(i)[:3,3]
+        )
     
     @property
     def J(self):
@@ -149,7 +155,11 @@ class Robot:
             Get the geometric jacobian matrix of the end-effector.
         """
         # Jacobian of the end-effector (point located at the origin of {n}-Frame)
-        return self.J_point([0,0,0], self.dof) 
+        return self._get_cached(
+            "kinematics",
+            "J",
+            lambda: self.J_point([0,0,0], self.dof)
+        )
 
     @property
     def dof(self):
@@ -174,7 +184,11 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             :math:`T_n^0`
         """
-        return simplify(prod(self.Ts))
+        return self._get_cached(
+            "kinematics",
+            "T",
+            lambda: self.T_i0(self.dof)
+        )
         
     def T_ij(self,i,j):
         """
@@ -339,7 +353,9 @@ class Robot:
     @property
     def cm_positions(self):
         """
-        Get the positions of the center of mass for each link. The position of the center of mass of the i-th link is defined as a list or tuple of three elements that correspond to the x, y, z coordinates of the center of mass w.r.t. {i}-Frame.
+        Get the positions of the center of mass for each link. The position of the 
+        center of mass of the i-th link is defined as a list or tuple of three elements 
+        that correspond to the x, y, z coordinates of the center of mass w.r.t. {i}-Frame.
         
         Returns
         -------
@@ -523,6 +539,7 @@ class Robot:
         i : int
             Link number.
         """
+        self._check_index(i)
         return self._get_cached(
             "kinematics",
             f"Jv_cm_{i}",
@@ -538,6 +555,7 @@ class Robot:
         i : int
             Link number.
         """
+        self._check_index(i)
         return self._get_cached(
             "kinematics",
             f"Jw_cm_{i}",
@@ -559,6 +577,7 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             Jacobian matrix of i-th CoM.     
         """
+        self._check_index(i)
         return self._get_cached(
             "kinematics",
             f"J_cm_{i}",
@@ -693,6 +712,7 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             Angular velocity of the [i]-link w.r.t. {0}-Frame.
         """
+        self._check_index(i)
         return self._get_cached(
             "kinematics",
             f"w_{i}",
@@ -724,6 +744,7 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             Inertia tensor of the [i]-link w.r.t. {0}-Frame.
         """
+        self._check_index(i)
         return self._get_cached(
             "dynamics",
             f"I_cm0_{i}",
@@ -875,7 +896,8 @@ class Robot:
     
     def gravity_vector(self):
         """
-        Compute the gravity torque vector G(q). The gravity torque vector is computed as the gradient of the potential energy of the system:
+        Compute the gravity torque vector G(q). The gravity torque vector is computed 
+        as the gradient of the potential energy of the system:
 
         .. math::
             G(q) = \\nabla U(q) = \\left[ \\frac{{\\partial U}}{{\\partial q_1}}, \\frac{{\\partial U}}{{\\partial q_2}}, ..., \\frac{{\\partial U}}{{\\partial q_n}} \\right]^T
@@ -903,10 +925,10 @@ class Robot:
         M = self.inertia_matrix()
         C = self.coriolis_matrix()
         G = self.gravity_vector()
-        qpp = Matrix([q.diff(t,2) for q in self.qs])
-        qp = Matrix([q.diff(t) for q in self.qs])
+        qdd = Matrix([q.diff(t,2) for q in self.qs])
+        qd = Matrix([q.diff(t) for q in self.qs])
         tau = Matrix([ symbols(f"tau_{i+1}") for i in range(self.dof)])
-        return Eq(MatAdd( MatMul(M,qpp), MatMul(C,qp),  G) , tau)
+        return Eq(MatAdd( MatMul(M,qdd), MatMul(C,qd),  G) , tau)
             
     def link_kinetic_energy(self,i):
         """
@@ -921,6 +943,7 @@ class Robot:
         i: int
             Link number.
         """
+        self._check_index(i)
         mi = self.m(i)
         vi = self.v_cm(i)
         wi = self.w(i)
@@ -950,6 +973,7 @@ class Robot:
         -------
         
         """
+        self._check_index(i)
         if self.gravity is None:
             raise ValueError("Gravity acceleration is not defined. Please set it using " \
             "the gravity property.") 
