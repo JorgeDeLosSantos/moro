@@ -253,7 +253,7 @@ class Robot:
         """
         if self._masses is None:
             raise ValueError("Link masses are not defined. Please set them using "
-                             "the set_masses() method.")
+                             "the masses setter.")
         return self._masses
 
     @masses.setter
@@ -784,7 +784,7 @@ class Robot:
         """
         if self._masses is None:
             raise ValueError("Link masses are not defined. Please set them using " \
-            "the set_masses() method.")
+            "the masses setter.")
         return self._masses[i-1]
         
     def inertia_matrix(self):
