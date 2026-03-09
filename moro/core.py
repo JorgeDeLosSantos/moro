@@ -281,14 +281,16 @@ class Robot:
     def inertia_tensors(self):
         """
         Get the inertia tensors of the links as a list like: [I1, I2, ..., In], where 
-        I1, I2, ..., In, are 3x3 sympy matrices that correspond to the inertia tensor of each link w.r.t. a frame located in its center of mass and aligned with the {i}-Frame.
+        I1, I2, ..., In, are 3x3 sympy matrices that correspond to the inertia tensor 
+        of each link w.r.t. a frame located in its center of mass and aligned with the {i}-Frame.
         
         Returns
         -------
 
         list
-            A list of 3x3 sympy matrices that correspond to the inertia tensor of each link w.r.t. a frame located in its center of mass and aligned with the {i}-Frame.
-
+            A list of 3x3 sympy matrices that correspond to the inertia tensor 
+            of each link w.r.t. a frame located in its center of mass 
+            and aligned with the {i}-Frame.
         """
         if self._inertia_tensors is None:
             raise ValueError("Inertia tensors are not defined. Please set them using the inertia_tensors setter.")
@@ -318,16 +320,21 @@ class Robot:
 
         dof = self.dof
         self._inertia_tensors = []
-        if tensors is None: # Default assumption
-            for k in range(dof):
-                Istr = f"I_{{x_{k+1}x_{k+1}}}, I_{{y_{k+1}y_{k+1}}} I_{{z_{k+1}z_{k+1}}}"
-                Ix,Iy,Iz = symbols(Istr)
-                self._inertia_tensors.append( diag(Ix,Iy,Iz) )
-        else:
-            for k in range(dof):
-                self._inertia_tensors.append( tensors[k] )
+        for k in range(dof):
+            self._inertia_tensors.append( tensors[k] )
         
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since inertia tensors affect the inertia matrix and Coriolis matrix
+
+    def generate_diagonal_inertia_tensors(self):
+        """
+        Generate diagonal inertia tensors for each link.
+        """
+        inertia_tensors = []
+        for k in range(self.dof):
+            Istr = f"I_{{x_{k+1}x_{k+1}}}, I_{{y_{k+1}y_{k+1}}} I_{{z_{k+1}z_{k+1}}}"
+            Ix, Iy, Iz = symbols(Istr)
+            inertia_tensors.append(diag(Ix, Iy, Iz))
+        return inertia_tensors
 
     @property
     def cm_positions(self):
@@ -1125,6 +1132,9 @@ class Robot:
     def __repr__(self):
         robot_type = "".join( self.joint_types ).upper()
         return f"Robot {robot_type}"
+
+    # def _repr_latex_(self):
+    #     return sp.latex(self.dh_table)
     
     def _check_index(self, i, name="Link"):
         """
