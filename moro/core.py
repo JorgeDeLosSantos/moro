@@ -116,7 +116,6 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             The direction of z_i axis
         """
-        self._check_index(i)
         return self._get_cached(
             "kinematics",
             f"z_{i}",
@@ -137,7 +136,6 @@ class Robot:
         sympy.matrices.dense.MutableDenseMatrix
             The position of {i}-Frame as a 3-component vector.
         """
-        self._check_index(i)
         return self._get_cached(
             "kinematics",
             f"r_o_{i}",
