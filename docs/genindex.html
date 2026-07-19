@@ -84,6 +84,7 @@
  | <a href="#I"><strong>I</strong></a>
  | <a href="#J"><strong>J</strong></a>
  | <a href="#K"><strong>K</strong></a>
+ | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#P"><strong>P</strong></a>
  | <a href="#Q"><strong>Q</strong></a>
@@ -109,6 +110,12 @@
       <li><a href="core.html#moro.core.Robot.christoffel_symbols">christoffel_symbols() (moro.core.Robot method)</a>
 </li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="core.html#moro.core.Robot.cm_positions">cm_positions (moro.core.Robot property)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.coriolis_matrix">coriolis_matrix() (moro.core.Robot method)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="D">D</h2>
@@ -118,11 +125,19 @@
 </li>
       <li><a href="transformations.html#moro.transformations.dh">dh() (in module moro.transformations)</a>
 </li>
+      <li><a href="core.html#moro.core.Robot.dh_parameters">dh_parameters (moro.core.Robot property)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.dh_table">dh_table (moro.core.Robot property)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="core.html#moro.core.Robot.dof">dof (moro.core.Robot property)</a>
 </li>
       <li><a href="core.html#moro.core.RigidBody2D.draw">draw() (moro.core.RigidBody2D method)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.dynamic_model">dynamic_model() (moro.core.Robot method)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.dynamic_model_matrix_form">dynamic_model_matrix_form() (moro.core.Robot method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -138,23 +153,15 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="core.html#moro.core.Robot.generate_diagonal_inertia_tensors">generate_diagonal_inertia_tensors() (moro.core.Robot method)</a>
+</li>
       <li><a href="core.html#moro.core.RigidBody2D.get_centroid">get_centroid() (moro.core.RigidBody2D method)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.get_coriolis_matrix">get_coriolis_matrix() (moro.core.Robot method)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.get_dynamic_model">get_dynamic_model() (moro.core.Robot method)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.get_dynamic_model_matrix_form">get_dynamic_model_matrix_form() (moro.core.Robot method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.get_gravity_torque_vector">get_gravity_torque_vector() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.gravity">gravity (moro.core.Robot property)</a>
 </li>
-      <li><a href="core.html#moro.core.Robot.get_inertia_matrix">get_inertia_matrix() (moro.core.Robot method)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.get_kinetic_energy">get_kinetic_energy() (moro.core.Robot method)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.get_potential_energy">get_potential_energy() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.gravity_vector">gravity_vector() (moro.core.Robot method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -180,12 +187,16 @@
 </li>
       <li><a href="core.html#moro.core.Robot.I_cm0">I_cm0() (moro.core.Robot method)</a>
 </li>
-      <li><a href="util.html#moro.util.is_position_vector">is_position_vector() (in module moro.util)</a>
+      <li><a href="core.html#moro.core.Robot.inertia_matrix">inertia_matrix() (moro.core.Robot method)</a>
 </li>
-      <li><a href="util.html#moro.util.is_SE3">is_SE3() (in module moro.util)</a>
+      <li><a href="core.html#moro.core.Robot.inertia_tensors">inertia_tensors (moro.core.Robot property)</a>
+</li>
+      <li><a href="util.html#moro.util.is_position_vector">is_position_vector() (in module moro.util)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="util.html#moro.util.is_SE3">is_SE3() (in module moro.util)</a>
+</li>
       <li><a href="util.html#moro.util.is_SO3">is_SO3() (in module moro.util)</a>
 </li>
       <li><a href="util.html#moro.util.ishtm">ishtm() (in module moro.util)</a>
@@ -224,7 +235,21 @@
 <h2 id="K">K</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.kin">kin() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.kinetic_energy">kinetic_energy() (moro.core.Robot method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="core.html#moro.core.Robot.lagrangian">lagrangian() (moro.core.Robot method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="core.html#moro.core.Robot.link_kinetic_energy">link_kinetic_energy() (moro.core.Robot method)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.link_potential_energy">link_potential_energy() (moro.core.Robot method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -233,6 +258,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="core.html#moro.core.Robot.m">m() (moro.core.Robot method)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.masses">masses (moro.core.Robot property)</a>
 </li>
       <li>
     module
@@ -245,6 +272,8 @@
         <li><a href="util.html#module-moro.util">moro.util</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     moro.core
 
@@ -252,8 +281,6 @@
         <li><a href="core.html#module-moro.core">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     moro.transformations
 
@@ -282,7 +309,7 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.pot">pot() (moro.core.Robot method)</a>
+      <li><a href="core.html#moro.core.Robot.potential_energy">potential_energy() (moro.core.Robot method)</a>
 </li>
       <li><a href="util.html#moro.util.pprint">pprint() (in module moro.util)</a>
 </li>
@@ -298,9 +325,9 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.qi">qi() (moro.core.Robot method)</a>
-</li>
       <li><a href="core.html#moro.core.Robot.qis_range">qis_range (moro.core.Robot property)</a>
+</li>
+      <li><a href="core.html#moro.core.Robot.qs">qs (moro.core.Robot property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -344,20 +371,12 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="core.html#moro.core.Robot.set_cm_locations">set_cm_locations() (moro.core.Robot method)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.set_gravity_vector">set_gravity_vector() (moro.core.Robot method)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.set_inertia_tensors">set_inertia_tensors() (moro.core.Robot method)</a>
-</li>
-      <li><a href="core.html#moro.core.Robot.set_masses">set_masses() (moro.core.Robot method)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="transformations.html#moro.transformations.skew">skew() (in module moro.transformations)</a>
 </li>
       <li><a href="core.html#moro.core.Robot.solve_inverse_kinematics">solve_inverse_kinematics() (moro.core.Robot method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="util.html#moro.util.sympy2float">sympy2float() (in module moro.util)</a>
 </li>
       <li><a href="util.html#moro.util.sympy_matrix_to_numpy_float">sympy_matrix_to_numpy_float() (in module moro.util)</a>
