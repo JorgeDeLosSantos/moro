@@ -13,6 +13,7 @@ from .core import *
 from .plotting import * 
 from .transformations import * 
 from .util import *
+from .inverse_kinematics import solve_position_ik, IKSolution
 
 # import sympy functions
 from sympy import (solve, symbols, pi, 

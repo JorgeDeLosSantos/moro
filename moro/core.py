@@ -1029,11 +1029,6 @@ class Robot:
             
         return equations
     
-    def solve_inverse_kinematics(self,pose,q0=None):
-        """
-        Solve the inverse kinematics problem for a given end-effector pose. This method is not implemented yet and will be added in future versions of the library.
-        """
-        pass
     
     def _set_default_joint_limits(self):
         joint_limits = []
