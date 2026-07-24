@@ -53,9 +53,8 @@ RR.dynamic_model_matrix_form() # M*qdd + C*qd + G = tau
 
 - Examples:
     - Forward kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1I2rTyGTYck_WBwpO9DM2Ho4iq4prefmC?usp=sharing)
-    - Computing jacobian [![](https://img.shields.io/badge/Open%20in-Google%20Colab-F9AB00?logo=googlecolab)](https://colab.research.google.com/drive/1I2rTyGTYck_WBwpO9DM2Ho4iq4prefmC?usp=sharing)
-    - Dynamic modeling (Euler-Lagrange)
-https://img.shields.io/badge/Open%20in-Google%20Colab-F9AB00?logo=googlecolab
+    - Computing jacobian [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1XTBz3UDyVml4RF-k_5snQPrGUPgCCyJf?usp=sharing)
+    - Dynamic modeling (Euler-Lagrange) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1I2rTyGTYck_WBwpO9DM2Ho4iq4prefmC?usp=sharing)
 
 ## Roadmap
 
