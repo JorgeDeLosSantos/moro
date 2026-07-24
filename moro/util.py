@@ -9,7 +9,6 @@ from sympy import pi
 from sympy.matrices import Matrix
 import sympy as sp
 from itertools import combinations
-# ~ from scipy.spatial import Delaunay, ConvexHull
 import numpy as np
 import sympy.core as sc
 import sympy.matrices as sm
