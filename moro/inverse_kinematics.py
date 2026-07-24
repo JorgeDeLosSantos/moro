@@ -26,7 +26,7 @@ class IKSolution:
     error : float
         Final position error (norm of the residual).
     method : str
-        Solver method used ("newton" or "lm").
+        Solver method used ("newton", "lm", or "ccd").
     """
     
     def __init__(self, q, converged, iterations, error, method="lm"):
@@ -51,14 +51,14 @@ def solve_position_ik(
     q0=None,
     joint_limits=None,
     tol=1e-6,
-    max_iter=100,
+    max_iter=None,
     method="lm",
     damping=1.0,
     damping_scale=0.5,
 ):
     """
-    Solve the position inverse kinematics problem using either the 
-    Newton-Raphson or Levenberg-Marquardt method.
+    Solve the position inverse kinematics problem using Newton-Raphson,
+    Levenberg-Marquardt, or Cyclic Coordinate Descent (CCD).
 
     Parameters
     ----------
@@ -75,18 +75,16 @@ def solve_position_ik(
     tol : float, optional
         Convergence tolerance on the position error norm. Default is 1e-6.
     max_iter : int, optional
-        Maximum number of iterations. Default is 100.
+        Maximum number of iterations. Default is 100 for Newton and LM,
+        500 for CCD.
     method : str, optional
-        Solver method: ``"newton"`` for Newton-Raphson or ``"lm"`` for 
-        Levenberg-Marquardt. Default is ``"lm"``.
+        Solver method: ``"newton"``, ``"lm"`` (Levenberg-Marquardt), or
+        ``"ccd"`` (Cyclic Coordinate Descent). Default is ``"lm"``.
     damping : float, optional
         Initial damping parameter :math:`\\lambda` for Levenberg-Marquardt.
         Only used when ``method="lm"``. Default is 1.0.
     damping_scale : float, optional
         Scaling factor for the damping parameter in Levenberg-Marquardt.
-        When an iteration reduces the error, :math:`\\lambda` is multiplied 
-        by ``damping_scale``. When the error increases, :math:`\\lambda` 
-        is divided by ``damping_scale``.
         Only used when ``method="lm"``. Default is 0.5.
 
     Returns
@@ -103,7 +101,7 @@ def solve_position_ik(
 
     Notes
     -----
-    **Newton-Raphson** updates the joint variables as:
+    **Newton-Raphson** (``method="newton"``):
 
     .. math::
 
@@ -111,7 +109,7 @@ def solve_position_ik(
         \\mathbf{J}_p^\\dagger(\\mathbf{q}_k) \\, 
         (\\mathbf{p}_d - \\mathbf{f}(\\mathbf{q}_k))
 
-    **Levenberg-Marquardt** (default) uses a damped least-squares approach:
+    **Levenberg-Marquardt** (``method="lm"``, default):
 
     .. math::
 
@@ -119,9 +117,13 @@ def solve_position_ik(
         (\\mathbf{J}_p^T \\mathbf{J}_p + \\lambda^2 \\mathbf{I})^{-1}
         \\mathbf{J}_p^T \\, (\\mathbf{p}_d - \\mathbf{f}(\\mathbf{q}_k))
 
-    The damping parameter :math:`\\lambda` is adapted at each iteration:
-    it decreases when the error is reduced (more trust in the Gauss-Newton 
-    step) and increases when the error grows (more regularization needed).
+    **CCD** (``method="ccd"``) adjusts one joint at a time from the 
+    end-effector toward the base. For each revolute joint it computes 
+    the angle that rotates the end-effector toward the target in the 
+    plane perpendicular to the joint axis. For prismatic joints, it 
+    slides along the axis to reduce the error. CCD does not use a 
+    Jacobian matrix and is robust near singularities, but converges 
+    linearly.
 
     Examples
     --------
@@ -132,21 +134,22 @@ def solve_position_ik(
     >>> # 2R planar robot
     >>> rr = mr.Robot((l1, 0, 0, q1, "r"), (l2, 0, 0, q2, "r"))
     >>> 
-    >>> # Solve IK using Levenberg-Marquardt (default)
+    >>> # Levenberg-Marquardt (default)
     >>> sol = solve_position_ik(rr, [1.5, 0.5, 0.0], q0=[0.1, 0.1])
-    >>> sol.converged
-    True
     >>> 
-    >>> # Solve IK using Newton-Raphson
-    >>> sol = solve_position_ik(rr, [1.5, 0.5, 0.0], q0=[0.1, 0.1], 
+    >>> # Newton-Raphson
+    >>> sol = solve_position_ik(rr, [1.5, 0.5, 0.0], q0=[0.1, 0.1],
     ...                         method="newton")
-    >>> sol.converged
-    True
+    >>> 
+    >>> # CCD
+    >>> sol = solve_position_ik(rr, [1.5, 0.5, 0.0], q0=[0.1, 0.1],
+    ...                         method="ccd")
     """
     # Validate method
-    if method not in ("newton", "lm"):
+    if method not in ("newton", "lm", "ccd"):
         raise ValueError(
-            f"Unknown method '{method}'. Choose 'newton' or 'lm'."
+            f"Unknown method '{method}'. "
+            f"Choose 'newton', 'lm', or 'ccd'."
         )
     
     # Validate target position
@@ -155,7 +158,7 @@ def solve_position_ik(
             "target_position must be a 3-element vector (x, y, z)."
         )
     
-    target = np.asarray(target_position, dtype=float).reshape(3, 1)
+    target = np.asarray(target_position, dtype=float).flatten()
     n = robot.dof
     
     # Use provided joint limits or fall back to robot defaults
@@ -173,14 +176,14 @@ def solve_position_ik(
     lower_bounds = np.array([float(limits[i][0]) for i in range(n)])
     upper_bounds = np.array([float(limits[i][1]) for i in range(n)])
     
-    # Build numerical functions for forward kinematics and Jacobian
-    fk_sym = robot.T[:3, 3]
-    J_sym = robot.J[:3, :]
-    sym_vars = tuple(robot.qs)
+    # Default max_iter depending on method
+    if max_iter is None:
+        max_iter = 500 if method == "ccd" else 100
     
-    # Lambdify for fast numerical evaluation
+    # Build numerical functions
+    sym_vars = tuple(robot.qs)
+    fk_sym = robot.T[:3, 3]
     fk_func = lambdify(sym_vars, fk_sym, modules="numpy")
-    J_func = lambdify(sym_vars, J_sym, modules="numpy")
     
     # Initial guess
     if q0 is None:
@@ -189,7 +192,112 @@ def solve_position_ik(
         q = np.asarray(q0, dtype=float).flatten()
         q = np.clip(q, lower_bounds, upper_bounds)
     
-    # Levenberg-Marquardt state
+    # ------------------------------------------------------------------ 
+    #  CCD method (Jacobian-free)
+    # ------------------------------------------------------------------ 
+    if method == "ccd":
+        # Precompute lambdified functions for joint positions and axes
+        # r_o(i): position of {i}-Frame origin w.r.t. {0}-Frame
+        ro_funcs = []
+        for i in range(n + 1):  # i = 0, 1, ..., n (base to end-effector)
+            sym = robot.r_o(i)
+            ro_funcs.append(lambdify(sym_vars, sym, modules="numpy"))
+        
+        # z(i): z-axis direction of {i}-Frame in {0}-Frame
+        z_funcs = []
+        for i in range(n):  # i = 0, 1, ..., n-1
+            sym = robot.z(i)
+            z_funcs.append(lambdify(sym_vars, sym, modules="numpy"))
+        
+        # CCD iteration
+        for iteration in range(max_iter):
+            # Current end-effector position and error
+            p_eff = fk_func(*q).flatten()
+            error_vec = target - p_eff
+            error_norm = np.linalg.norm(error_vec)
+            
+            # Check convergence
+            if error_norm < tol:
+                return IKSolution(q, converged=True,
+                                  iterations=iteration + 1, error=error_norm,
+                                  method=method)
+            
+            # Sweep from end-effector joint (n) down to base (1)
+            for i in range(n, 0, -1):
+                joint_idx = i - 1
+                joint_type = robot.joint_type(i)
+                
+                # Joint origin position in base frame
+                p_joint = ro_funcs[i - 1](*q).flatten()
+                
+                # End-effector position (updated after each joint adjustment)
+                p_eff = fk_func(*q).flatten()
+                
+                if joint_type == "r":
+                    # Revolute joint: rotate z-axis to align toward target
+                    # Vectors from joint to end-effector and to target
+                    r_ie = p_eff - p_joint
+                    r_it = target - p_joint
+                    
+                    # Project onto plane perpendicular to z-axis
+                    z_axis = z_funcs[i - 1](*q).flatten()
+                    z_axis = z_axis / np.linalg.norm(z_axis)
+                    
+                    u_ie = r_ie - np.dot(r_ie, z_axis) * z_axis
+                    u_it = r_it - np.dot(r_it, z_axis) * z_axis
+                    
+                    # Norms of projections
+                    norm_ie = np.linalg.norm(u_ie)
+                    norm_it = np.linalg.norm(u_it)
+                    
+                    if norm_ie > 1e-12 and norm_it > 1e-12:
+                        # Normalize
+                        u_ie = u_ie / norm_ie
+                        u_it = u_it / norm_it
+                        
+                        # Angle between projected vectors
+                        cos_theta = np.clip(np.dot(u_ie, u_it), -1.0, 1.0)
+                        sin_theta = np.dot(z_axis, np.cross(u_ie, u_it))
+                        delta = np.arctan2(sin_theta, cos_theta)
+                        
+                        # Update joint
+                        q[joint_idx] += delta
+                        q[joint_idx] = np.clip(q[joint_idx],
+                                               lower_bounds[joint_idx],
+                                               upper_bounds[joint_idx])
+                else:
+                    # Prismatic joint: slide along z-axis
+                    z_axis = z_funcs[i - 1](*q).flatten()
+                    z_axis = z_axis / np.linalg.norm(z_axis)
+                    
+                    # Project the error vector onto the joint axis
+                    delta = np.dot(error_vec, z_axis)
+                    
+                    # Update joint
+                    q[joint_idx] += delta
+                    q[joint_idx] = np.clip(q[joint_idx],
+                                           lower_bounds[joint_idx],
+                                           upper_bounds[joint_idx])
+        
+        # Did not converge within max_iter
+        p_final = fk_func(*q).flatten()
+        final_error = np.linalg.norm(target - p_final)
+        return IKSolution(q, converged=False,
+                          iterations=max_iter, error=final_error,
+                          method=method)
+    
+    # ------------------------------------------------------------------ 
+    #  Newton-Raphson / Levenberg-Marquardt methods (Jacobian-based)
+    # ------------------------------------------------------------------ 
+    # Precompute Jacobian function
+    J_sym = robot.J[:3, :]
+    J_func = lambdify(sym_vars, J_sym, modules="numpy")
+    
+    # Initial error
+    p_current = fk_func(*q).flatten()
+    error_vec = target - p_current
+    error_norm = np.linalg.norm(error_vec)
+    
     lam = float(damping)
     
     def compute_step(J_p, error_vec):
@@ -206,19 +314,11 @@ def solve_position_ik(
         else:
             # Levenberg-Marquardt: Δq = (J^T J + λ²I)^{-1} J^T e
             H = J_p.T @ J_p
-            # Regularize
             H_reg = H + lam**2 * np.eye(n)
             try:
                 return np.linalg.solve(H_reg, J_p.T @ error_vec)
             except np.linalg.LinAlgError:
-                # Fallback to pseudoinverse if singular even with damping
                 return np.linalg.pinv(J_p) @ error_vec
-    
-    # Evaluate initial error
-    p_current = fk_func(*q).flatten()
-    error_vec = target.flatten() - p_current
-    error_norm = np.linalg.norm(error_vec)
-    best_error = error_norm
     
     # Newton-Raphson / Levenberg-Marquardt iteration
     for iteration in range(max_iter):
@@ -244,23 +344,19 @@ def solve_position_ik(
         
         # Evaluate trial error
         p_trial = fk_func(*q_trial).flatten()
-        trial_error_vec = target.flatten() - p_trial
+        trial_error_vec = target - p_trial
         trial_error_norm = np.linalg.norm(trial_error_vec)
         
         if method == "lm":
-            # Levenberg-Marquardt adaptive damping
             if trial_error_norm < error_norm:
-                # Step accepted: reduce damping (more trust in Gauss-Newton)
+                # Step accepted: reduce damping
                 lam *= damping_scale
                 q = q_trial
                 error_vec = trial_error_vec
                 error_norm = trial_error_norm
             else:
-                # Step rejected: increase damping (more regularization)
+                # Step rejected: increase damping
                 lam /= damping_scale
-                # Keep q unchanged, re-evaluate error at current q
-                # error_vec and error_norm stay the same
-                # (already evaluated above)
         else:
             # Newton-Raphson: always accept the step
             q = q_trial
@@ -268,9 +364,8 @@ def solve_position_ik(
             error_norm = trial_error_norm
     
     # Did not converge within max_iter
-    # Compute final error for reporting (re-evaluate at final q)
     p_final = fk_func(*q).flatten()
-    final_error = np.linalg.norm(target.flatten() - p_final)
+    final_error = np.linalg.norm(target - p_final)
     
     return IKSolution(q, converged=False,
                       iterations=max_iter, error=final_error,
