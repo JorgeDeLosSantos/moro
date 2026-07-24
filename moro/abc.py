@@ -23,7 +23,7 @@ xi,omicron,rho,sigma = symbols("xi,omicron,rho,sigma", real=True)
 tau,upsilon,phi,chi = symbols("tau,upsilon,phi,chi", real=True)
 psi,omega = symbols("psi,omega", real=True)
 
-# ~ del pi # Delete "pi" symbolic variable -> conflict with pi number
+
 available_symvars = [g,t,
 q1,q2,q3,q4,q5,q6,
 qd1,qd2,qd3,qd4,qd5,qd6,
