@@ -7,7 +7,6 @@ using SymPy as base library.
 import matplotlib.pyplot as plt
 import sympy as sp
 from sympy import (
-    pi,
     prod,
     symbols,
     Matrix,
@@ -22,7 +21,7 @@ from sympy import (
     MatMul,
 )
 # Moro core dependencies
-from moro.transformations import dh, htmrot, htmtra
+from moro.transformations import dh
 from moro.util import (
     vector_in_hcoords,
     is_position_vector,
