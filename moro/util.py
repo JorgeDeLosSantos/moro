@@ -222,7 +222,14 @@ def sympy2float(sympy_object):
     else:
         float_object = sympy_object
     return float_object
-    
+
+
+def enable_vprinting():
+    """
+    Enable SymPy vector pretty printing. 
+    """
+    from sympy.physics.mechanics import init_vprinting
+    init_vprinting()
     
 
 
