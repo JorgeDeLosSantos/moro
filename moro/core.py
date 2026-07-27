@@ -30,7 +30,7 @@ from moro.util import (
 )
 from moro.abc import t
 
-__all__ = ["Robot", "RigidBody2D"]
+__all__ = ["Robot"]
 
 class Robot:
     """
