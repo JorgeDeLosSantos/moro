@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #f5f5f5; }
+        #controls-__UNIQUE_ID__ {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px; border-radius: 5px;
+            font-family: Arial, sans-serif; font-size: 12px;
+            z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        #controls-__UNIQUE_ID__ button {
+            margin: 2px; padding: 5px 10px; cursor: pointer;
+            border: none; color: white; border-radius: 3px;
+        }
+        #status-__UNIQUE_ID__ { margin-top: 5px; padding: 5px; font-size: 10px; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="controls-__UNIQUE_ID__">
+        <button onclick="window.robot___UNIQUE_ID__.toggleRotation()"
+                style="background:#4CAF50;">&#9654; Rotate</button>
+        <button onclick="window.robot___UNIQUE_ID__.resetView()"
+                style="background:#4CAF50;">&#x21bb; Reset</button>
+        <div id="status-__UNIQUE_ID__">Loading...</div>
+    </div>
+    <div id="container-__UNIQUE_ID__"></div>
+
+    <script>
+    (function() {
+        if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
+            initRobot___UNIQUE_ID__();
+        } else {
+            var scripts = [
+                'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+                'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'
+            ];
+            var loaded = 0;
+            scripts.forEach(function(src) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.onload = function() {
+                    loaded++;
+                    if (loaded === scripts.length) initRobot___UNIQUE_ID__();
+                };
+                s.onerror = function() {
+                    document.getElementById('status-__UNIQUE_ID__').innerHTML =
+                        'Error loading Three.js';
+                    document.getElementById('status-__UNIQUE_ID__').style.color = 'red';
+                };
+                document.head.appendChild(s);
+            });
+        }
+
+        function initRobot___UNIQUE_ID__() {
+            var data = __ROBOT_DATA__;
+            var container = document.getElementById('container-__UNIQUE_ID__');
+
+            var scene, camera, renderer, controls, robotGroup;
+            var isAutoRotate = false;
+
+            try {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xf5f5f5);
+
+                camera = new THREE.PerspectiveCamera(
+                    50, __WIDTH__ / __HEIGHT__, 0.1, data.dimension * 10
+                );
+                var camDist = data.dimension * 2.5;
+                camera.position.set(camDist, camDist * 0.8, camDist);
+                camera.lookAt(0, 0, data.dimension / 3);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(__WIDTH__, __HEIGHT__);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                container.appendChild(renderer.domElement);
+
+                // OrbitControls with CAD-like mapping
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.target.set(0, 0, data.dimension / 3);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.1;
+                controls.mouseButtons = {
+                    LEFT: THREE.MOUSE.PAN,
+                    MIDDLE: THREE.MOUSE.ROTATE,
+                    RIGHT: THREE.MOUSE.PAN
+                };
+                controls.touches = {
+                    ONE: THREE.TOUCH.PAN,
+                    TWO: THREE.TOUCH.DOLLY_PAN
+                };
+                controls.update();
+
+                // Lights
+                scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+                var dl1 = new THREE.DirectionalLight(0xffffff, 0.5);
+                dl1.position.set(data.dimension, data.dimension, data.dimension);
+                scene.add(dl1);
+                var dl2 = new THREE.DirectionalLight(0xffffff, 0.3);
+                dl2.position.set(-data.dimension, -data.dimension, -data.dimension);
+                scene.add(dl2);
+
+                // Grid
+                var gridSize = data.dimension * 2.5;
+                scene.add(new THREE.GridHelper(gridSize, 20, 0x888888, 0xcccccc));
+                scene.add(new THREE.AxesHelper(data.dimension / 4));
+
+                robotGroup = new THREE.Group();
+                scene.add(robotGroup);
+
+                drawRobot(data);
+
+                animate();
+
+                document.getElementById('status-__UNIQUE_ID__').innerHTML =
+                    'Ready &mdash; Scroll to orbit | Left/Right drag to pan | Wheel to zoom';
+                document.getElementById('status-__UNIQUE_ID__').style.color = 'green';
+            } catch (e) {
+                document.getElementById('status-__UNIQUE_ID__').innerHTML =
+                    'Error: ' + e.message;
+                document.getElementById('status-__UNIQUE_ID__').style.color = 'red';
+            }
+
+            function drawRobot(d) {
+                var joints = d.joints, frames = d.frames;
+
+                // --- Links ---
+                var linkMat = new THREE.MeshPhongMaterial({
+                    color: 0x778877, shininess: 30, side: THREE.DoubleSide
+                });
+                for (var i = 0; i < joints.length - 1; i++) {
+                    var start = new THREE.Vector3().fromArray(joints[i]);
+                    var end   = new THREE.Vector3().fromArray(joints[i+1]);
+                    var dir   = new THREE.Vector3().subVectors(end, start);
+                    var len   = dir.length();
+                    if (len < 1e-6) continue;
+                    var radius = Math.max(d.dimension * 0.015, 0.3);
+                    var cyl = new THREE.Mesh(
+                        new THREE.CylinderGeometry(radius, radius, len, 8),
+                        linkMat
+                    );
+                    var mid = start.clone().add(dir.clone().multiplyScalar(0.5));
+                    cyl.position.copy(mid);
+                    cyl.quaternion.setFromUnitVectors(
+                        new THREE.Vector3(0, 1, 0),
+                        dir.clone().normalize()
+                    );
+                    robotGroup.add(cyl);
+                }
+
+                // --- Joints ---
+                var jointMat = new THREE.MeshPhongMaterial({
+                    color: 0xff1493, shininess: 50
+                });
+                var baseMat = new THREE.MeshPhongMaterial({
+                    color: 0xff00ff, shininess: 50
+                });
+                joints.forEach(function(pos, idx) {
+                    var radius = idx === 0
+                        ? Math.max(d.dimension * 0.03, 0.6)
+                        : Math.max(d.dimension * 0.02, 0.4);
+                    var mat = idx === 0 ? baseMat : jointMat;
+                    var sphere = new THREE.Mesh(
+                        new THREE.SphereGeometry(radius, 16, 16), mat
+                    );
+                    sphere.position.fromArray(pos);
+                    robotGroup.add(sphere);
+                });
+
+                // --- Frames (using AxesHelper) ---
+                var axesLen = Math.max(d.dimension / 6, 1.0);
+                frames.forEach(function(f) {
+                    var origin = new THREE.Vector3().fromArray(f.position);
+                    var axes = new THREE.AxesHelper(axesLen);
+                    axes.position.copy(origin);
+                    robotGroup.add(axes);
+                });
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                if (isAutoRotate) {
+                    var target = controls.target;
+                    var offset = camera.position.clone().sub(target);
+                    var theta = 0.005;
+                    var cos = Math.cos(theta);
+                    var sin = Math.sin(theta);
+                    var x = offset.x * cos - offset.z * sin;
+                    var z = offset.x * sin + offset.z * cos;
+                    camera.position.set(target.x + x, camera.position.y, target.z + z);
+                    camera.lookAt(target);
+                }
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            window.robot___UNIQUE_ID__ = {
+                toggleRotation: function() {
+                    isAutoRotate = !isAutoRotate;
+                },
+                resetView: function() {
+                    var d = data.dimension;
+                    camera.position.set(d * 2.5, d * 2.0, d * 2.5);
+                    controls.target.set(0, 0, d / 3);
+                    controls.update();
+                }
+            };
+        }
+    })();
+    </script>
+</body>
+</html>
