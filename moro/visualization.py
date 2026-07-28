@@ -482,13 +482,15 @@ class ThreeJSBackend:
         str
             Rendered HTML document.
         """
+        from IPython.display import HTML
+
         if style is None:
             style = VisualizationStyle()
 
         unique_id = uuid.uuid4().hex[:8]
         payload = _scene_to_payload(scene_data)
 
-        return _render_html_template(
+        html = _render_html_template(
             "threejs_viewer.html",
             {
                 "unique_id": unique_id,
@@ -498,29 +500,8 @@ class ThreeJSBackend:
             },
         )
 
-    @staticmethod
-    def render_notebook(scene_data, width=800, height=600):
-        """
-        Render the robot scene as an interactive HTML view inside a Jupyter
-        notebook.
-
-        Parameters
-        ----------
-        scene_data : SceneData
-            Evaluated robot data.
-        width : int
-            Canvas width in pixels.
-        height : int
-            Canvas height in pixels.
-
-        Returns
-        -------
-        display : IPython.display.HTML
-        """
-        from IPython.display import HTML
-
-        html = ThreeJSBackend.render(scene_data, width=width, height=height)
         return HTML(html)
+    
 
     @staticmethod
     def animate(
@@ -551,13 +532,13 @@ class ThreeJSBackend:
         """
         from IPython.display import HTML
 
+        if style is None:
+            style = VisualizationStyle()
+
         if not scene_data_list:
             raise ValueError(
                 "scene_data_list must contain at least one scene."
             )
-
-        if style is None:
-            style = VisualizationStyle()
 
         unique_id = uuid.uuid4().hex[:8]
         payloads = _scenes_to_payload(scene_data_list)
@@ -633,26 +614,6 @@ class RobotVisualizer:
                 f"Available backends: 'matplotlib', 'threejs'."
             )
 
-    def plot_notebook(self, num_vals, width=800, height=600):
-        """
-        Convenience method to render the robot inside a Jupyter notebook
-        using Three.js.
-
-        Parameters
-        ----------
-        num_vals : dict
-            Dictionary mapping symbolic joint variables to numerical values.
-        width : int
-            Canvas width in pixels.
-        height : int
-            Canvas height in pixels.
-
-        Returns
-        -------
-        IPython.display.HTML
-        """
-        scene_data = evaluate_robot(self.robot, num_vals)
-        return ThreeJSBackend.render_notebook(scene_data, width=width, height=height)
 
     # ---- Animation --------------------------------------------------------
 
@@ -690,27 +651,3 @@ class RobotVisualizer:
                 f"Unknown backend '{backend}'. "
                 f"Available backends: 'matplotlib', 'threejs'."
             )
-
-    def animate_notebook(self, num_vals_list, width=800, height=600):
-        """
-        Convenience method to create an interactive animation inside a Jupyter
-        notebook using Three.js.
-
-        Parameters
-        ----------
-        num_vals_list : list of dict
-            Each element is a ``dict`` mapping symbolic joint variables to
-            numerical values for one frame of the animation.
-        width : int
-            Canvas width in pixels.
-        height : int
-            Canvas height in pixels.
-
-        Returns
-        -------
-        IPython.display.HTML
-        """
-        scene_data_list = [
-            evaluate_robot(self.robot, nv) for nv in num_vals_list
-        ]
-        return ThreeJSBackend.animate(scene_data_list, width=width, height=height)
