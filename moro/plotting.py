@@ -396,6 +396,74 @@ def plot_diagram_threejs(self, num_vals, width=800, height=600):
     
     return HTML(html_template)
 
+def plot_diagram(robot,num_vals):
+    """
+    Draw a simple wire-diagram or kinematic-diagram of the manipulator.
+
+    Parameters
+    ----------
+
+    num_vals : dict
+        Dictionary like: {svar1: nvalue1, svar2: nvalue2, ...}, 
+        where svar1, svar2, ... are symbolic variables that are 
+        currently used in model, and nvalue1, nvalue2, ... 
+        are the numerical values that will substitute these variables.
+
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111,projection='3d')
+    
+    # Ts = robot.Ts
+    points = []
+    Ti_0 = []
+    points.append(zeros(1,3))
+    for i in range(robot.dof):
+        Ti_0.append(robot.T_i0(i+1).subs(num_vals))
+        points.append((robot.T_i0(i+1)[:3,3]).subs(num_vals))
+        
+    X = [float(k[0]) for k in points]
+    Y = [float(k[1]) for k in points]
+    Z = [float(k[2]) for k in points]
+    ax.plot(X,Y,Z, "o-", color="#778877", lw=3)
+    ax.plot([0],[0],[0], "mo", markersize=6)
+    # ax.set_axis_off()
+    ax.view_init(30,30)
+    
+    px,py,pz = float(X[-1]),float(Y[-1]),float(Z[-1])
+    dim = max([px,py,pz])
+    
+    draw_uvw(robot,eye(4),ax, dim)
+    for T in Ti_0:
+        draw_uvw(robot,T, ax, dim)
+        
+    ax.set_xlim(-dim, dim)
+    ax.set_ylim(-dim, dim)
+    ax.set_zlim(-dim, dim)
+    plt.show()
+
+def draw_uvw(robot,H,ax,sz=1):
+    """
+    Draw the u,v,w axes of a frame defined by the homogeneous transformation matrix H.
+
+    Parameters
+    ----------
+
+    H: sympy.matrices.dense.MutableDenseMatrix
+        Homogeneous transformation matrix that defines the frame to be drawn.
+    ax: matplotlib.axes._subplots.Axes3DSubplot
+        The 3D axis where the frame will be drawn.
+    sz: float
+        The length of the axes to be drawn.
+    """
+    u = H[:3,0]
+    v = H[:3,1]
+    w = H[:3,2]
+    o = H[:3,3]
+    L = sz/5
+    ax.quiver(o[0],o[1],o[2],u[0],u[1],u[2],color="r", length=L)
+    ax.quiver(o[0],o[1],o[2],v[0],v[1],v[2],color="g", length=L)
+    ax.quiver(o[0],o[1],o[2],w[0],w[1],w[2],color="b", length=L)
+
 
 
 if __name__=="__main__":

@@ -167,3 +167,104 @@ def solve_inverse_kinematics(self,pose,q0=None):
         # # raise NotImplementedError("This method hasn't been implemented yet")
         ikin_sol = ikin.pieper_method(pose,*self.Ts, variables, initial_guesses, joint_limits)
     return ikin_sol
+
+
+#### RigidBody2D
+
+class RigidBody2D(object):
+    """
+    Defines a rigid body (two-dimensional) through a series of points that 
+    make it up.
+    
+    Parameters
+    ----------
+    
+    points: list, tuple
+        A list of 2-lists (or list of 2-tuples) containing the 
+        N-points that make up the rigid body.
+
+    Examples
+    --------
+
+    >>> points = [(0,0), (1,0), (0,1)]
+    >>> rb = RigidBody2D(points)
+
+    """
+    def __init__(self,points):
+        self._points = points # Points
+        self.Hs = [eye(4),] # Transformation matrices
+        
+    def restart(self):
+        """
+        Restart to initial coordinates of the rigid body
+        """
+        self.Hs = [eye(4),]
+    
+    @property
+    def points(self):
+        _points = []
+        H = self.H #
+        for p in self._points:
+            Q = Matrix([p[0],p[1],0,1]) # Homogeneous coordinates
+            _points.append(H*Q)
+        return _points
+    
+    @property
+    def H(self):
+        _h = eye(4)
+        for _mth in self.Hs:
+            _h = _h*_mth
+        return _h
+
+    def rotate(self,angle):
+        """
+        Rotates the rigid body around z-axis.
+        """
+        R = htmrot(angle, axis="z") # Applying rotation
+        self.Hs.append(R)
+    
+    def move(self,q):
+        """
+        Moves the rigid body
+        """
+        D = htmtra(q) # Applying translation
+        self.Hs.append(D)
+        
+    def draw(self,color="r",kaxis=None):
+        """
+        Draw the rigid body
+        """
+        X,Y = [],[]
+        cx,cy = self.get_centroid()
+        for p in self.points:
+            X.append(p[0])
+            Y.append(p[1])
+        plt.fill(X,Y,color,alpha=0.8)
+        plt.plot(cx,cy,"r.")
+        plt.axis('equal')
+        plt.grid(ls="--")
+        
+        O = self.H[:3,3]
+        U = self.H[:3,0]
+        V = self.H[:3,1]
+        plt.quiver(float(O[0]), float(O[1]), float(U[0]), float(U[1]), 
+                   color="r", zorder=1000, scale=kaxis)
+        plt.quiver(float(O[0]), float(O[1]), float(V[0]), float(V[1]), 
+                   color="g", zorder=1001, scale=kaxis)
+        self.ax = plt.gca()
+
+    def _gca(self):
+        return self.ax
+
+    def get_centroid(self):
+        """
+        Return the centroid of the rigid body
+        """
+        n = len(self.points)
+        sx,sy = 0,0
+        for point in self.points:
+            sx += point[0]
+            sy += point[1]
+        cx = sx/n
+        cy = sy/n
+        return cx,cy
