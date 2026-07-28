@@ -13,6 +13,7 @@ from sympy.matrices import Matrix, eye
 
 from moro.core import Robot
 from moro.util import sympy_matrix_to_numpy_float
+from dataclasses import dataclass
 
 __all__ = [
     "RobotVisualizer",
@@ -26,29 +27,69 @@ __all__ = [
 # Data container
 # ---------------------------------------------------------------------------
 
+@dataclass(slots=True)
 class SceneData:
     """
-    Holds the evaluated (numerical) data of a robot at a given configuration.
-
-    Attributes
-    ----------
-    joints : list of list of float
-        Position [x, y, z] of each joint (including the base frame at index 0).
-        Length = dof + 1.
-    frames : list of dict
-        Frame data for each link frame. Each dict has keys:
-            'position' : [x, y, z]
-            'x'        : [x, y, z]   direction of the x-axis
-            'y'        : [x, y, z]   direction of the y-axis
-            'z'        : [x, y, z]   direction of the z-axis
-        Length = dof + 1 (frame 0 is the base frame).
-    dimension : float
-        A characteristic dimension of the robot (used for scaling the view).
+    Evaluated data of a robot configuration.
     """
-    def __init__(self, joints, frames, dimension):
-        self.joints = joints
-        self.frames = frames
-        self.dimension = dimension
+    joints: list[np.ndarray]
+    frames: list["FrameData"]
+    dimension: float
+
+
+@dataclass(slots=True)
+class FrameData:
+    """
+    Numerical homogeneous transformation of one robot frame.
+    """
+
+    T: np.ndarray
+
+    @property
+    def position(self):
+        return self.T[:3, 3]
+
+    @property
+    def rotation(self):
+        return self.T[:3, :3]
+
+    @property
+    def x(self):
+        return self.rotation[:, 0]
+
+    @property
+    def y(self):
+        return self.rotation[:, 1]
+
+    @property
+    def z(self):
+        return self.rotation[:, 2]
+
+
+
+# class SceneData:
+#     """
+#     Holds the evaluated (numerical) data of a robot at a given configuration.
+
+#     Attributes
+#     ----------
+#     joints : list of list of float
+#         Position [x, y, z] of each joint (including the base frame at index 0).
+#         Length = dof + 1.
+#     frames : list of dict
+#         Frame data for each link frame. Each dict has keys:
+#             'position' : [x, y, z]
+#             'x'        : [x, y, z]   direction of the x-axis
+#             'y'        : [x, y, z]   direction of the y-axis
+#             'z'        : [x, y, z]   direction of the z-axis
+#         Length = dof + 1 (frame 0 is the base frame).
+#     dimension : float
+#         A characteristic dimension of the robot (used for scaling the view).
+#     """
+#     def __init__(self, joints, frames, dimension):
+#         self.joints = joints
+#         self.frames = frames
+#         self.dimension = dimension
 
 
 # ---------------------------------------------------------------------------
@@ -79,12 +120,7 @@ def evaluate_robot(robot, num_vals):
 
     # Base frame (index 0)
     joints.append([0.0, 0.0, 0.0])
-    frames.append({
-        "position": [0.0, 0.0, 0.0],
-        "x": [1.0, 0.0, 0.0],
-        "y": [0.0, 1.0, 0.0],
-        "z": [0.0, 0.0, 1.0],
-    })
+    frames.append(FrameData(np.eye(4)))
 
     # Link frames
     for i in range(1, robot.dof + 1):
@@ -94,12 +130,7 @@ def evaluate_robot(robot, num_vals):
         pos = [float(Ti_num[j, 3]) for j in range(3)]
         joints.append(pos)
 
-        frames.append({
-            "position": pos,
-            "x": [float(Ti_num[j, 0]) for j in range(3)],
-            "y": [float(Ti_num[j, 1]) for j in range(3)],
-            "z": [float(Ti_num[j, 2]) for j in range(3)],
-        })
+        frames.append(FrameData(Ti_num))
 
     # Characteristic dimension for view scaling
     all_coords = [c for joint in joints for c in joint]
@@ -231,9 +262,9 @@ class MatplotlibBackend:
         # --- Frames ---
         if show_frames:
             for frame in frames:
-                origin = frame["position"]
+                origin = frame.position
                 for axis_name, color in zip(("x", "y", "z"), ("r", "g", "b")):
-                    direction = frame[axis_name]
+                    direction = getattr(frame, axis_name)
                     ax.quiver(
                         origin[0], origin[1], origin[2],
                         direction[0], direction[1], direction[2],
@@ -321,6 +352,7 @@ class MatplotlibBackend:
             fig, update, frames=len(scene_data_list),
             init_func=init, interval=interval, blit=False,
         )
+        plt.show()
         return anim
 
 
@@ -371,10 +403,10 @@ class ThreeJSBackend:
             "joints": scene_data.joints,
             "frames": [
                 {
-                    "position": f["position"],
-                    "x": f["x"],
-                    "y": f["y"],
-                    "z": f["z"],
+                    "position": f.position.tolist(),
+                    "x": f.x.tolist(),
+                    "y": f.y.tolist(),
+                    "z": f.z.tolist(),
                 }
                 for f in scene_data.frames
             ],
@@ -658,10 +690,10 @@ class ThreeJSBackend:
                 "joints": sd.joints,
                 "frames": [
                     {
-                        "position": f["position"],
-                        "x": f["x"],
-                        "y": f["y"],
-                        "z": f["z"],
+                        "position": f.position.tolist(),
+                        "x": f.x.tolist(),
+                        "y": f.y.tolist(),
+                        "z": f.z.tolist(),
                     }
                     for f in sd.frames
                 ],
