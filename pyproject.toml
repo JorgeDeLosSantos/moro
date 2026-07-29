@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moro"
-dynamic = ["version"]
+version = "0.4.0.dev0"
 
 description = "Python library for kinematic and dynamic modeling of robots"
 readme = "README.md"
@@ -46,10 +46,6 @@ classifiers = [
 Homepage = "https://github.com/JorgeDeLosSantos/moro"
 Repository = "https://github.com/JorgeDeLosSantos/moro"
 Issues = "https://github.com/JorgeDeLosSantos/moro/issues"
-
-
-[tool.setuptools.dynamic]
-version = { attr = "moro.version.__version__" }
 
 
 [tool.setuptools.packages.find]
