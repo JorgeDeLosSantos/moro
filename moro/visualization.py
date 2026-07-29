@@ -28,7 +28,7 @@ __all__ = [
     "evaluate_robot",
     "SceneData",
     "FrameData",
-    "VisualizationStyle"
+    "VisualizationStyle",
 ]
 
 
@@ -154,8 +154,9 @@ def evaluate_robot(robot, num_vals):
     frames = []
 
     # Base frame (index 0)
-    joints.append([0.0, 0.0, 0.0])
-    frames.append(FrameData(np.eye(4)))
+    base_frame = FrameData(np.eye(4))
+    frames.append(base_frame)
+    joints.append(base_frame.position.copy())
 
     # Link frames
     for i in range(1, robot.dof + 1):
@@ -165,7 +166,7 @@ def evaluate_robot(robot, num_vals):
         frame = FrameData(Ti_num)
 
         frames.append(frame)
-        joints.append(frame.position)
+        joints.append(frame.position.copy())
 
     # Characteristic dimension for view scaling
     all_coords = [c for joint in joints for c in joint]
@@ -179,16 +180,33 @@ def evaluate_robot(robot, num_vals):
 _PLACEHOLDER_PATTERN = re.compile(r"__[A-Z][A-Z0-9_]*__")
 
 
-def _render_html_template(
-    template_name: str,
+def _replace_placeholders(
+    template: str,
     replacements: dict[str, Any],
 ) -> str:
-    template = (
-        files("moro.templates")
-        .joinpath(template_name)
-        .read_text(encoding="utf-8")
-    )
+    """
+    Replace ``__PLACEHOLDER__`` tokens in *template* with the corresponding
+    values from *replacements*.
 
+    Parameters
+    ----------
+    template : str
+        String containing ``__PLACEHOLDER__`` tokens.
+    replacements : dict[str, Any]
+        Mapping of placeholder names (without the leading/trailing underscores)
+        to their replacement values.
+
+    Returns
+    -------
+    str
+        Template with all placeholders replaced.
+
+    Raises
+    ------
+    ValueError
+        If a replacement key does not match any placeholder in the template,
+        or if there are unresolved placeholders remaining after substitution.
+    """
     html = template
 
     for name, value in replacements.items():
@@ -196,8 +214,7 @@ def _render_html_template(
 
         if placeholder not in html:
             raise ValueError(
-                f"Placeholder {placeholder!r} was not found "
-                f"in template {template_name!r}."
+                f"Placeholder {placeholder!r} was not found in template."
             )
 
         html = html.replace(placeholder, str(value))
@@ -206,11 +223,39 @@ def _render_html_template(
 
     if unresolved:
         raise ValueError(
-            f"Unresolved placeholders in {template_name!r}: "
-            f"{unresolved}"
+            f"Unresolved placeholders in template: {unresolved}"
         )
 
     return html
+
+
+def _render_html_template(
+    template_name: str,
+    replacements: dict[str, Any],
+) -> str:
+    """
+    Load a template file from the ``moro.templates`` package and replace
+    its ``__PLACEHOLDER__`` tokens.
+
+    Parameters
+    ----------
+    template_name : str
+        Name of the template file (e.g. ``"threejs_viewer.html"``).
+    replacements : dict[str, Any]
+        Mapping of placeholder names to replacement values.
+
+    Returns
+    -------
+    str
+        Fully rendered template string.
+    """
+    template = (
+        files("moro.templates")
+        .joinpath(template_name)
+        .read_text(encoding="utf-8")
+    )
+
+    return _replace_placeholders(template, replacements)
 
 
 
@@ -433,7 +478,7 @@ class MatplotlibBackend:
             fig, update, frames=len(scene_data_list),
             init_func=init, interval=interval, blit=False,
         )
-        plt.show()
+        
         return anim
 
 
@@ -461,7 +506,7 @@ class ThreeJSBackend:
         width: int = 800,
         height: int = 600,
         style: VisualizationStyle | None = None,
-    ) -> str:
+    ):
         """
         Generate an interactive Three.js HTML view.
 
@@ -479,8 +524,8 @@ class ThreeJSBackend:
 
         Returns
         -------
-        str
-            Rendered HTML document.
+        IPython.display.HTML
+            HTML display object containing the interactive view.
         """
         from IPython.display import HTML
 
