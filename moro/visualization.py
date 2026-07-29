@@ -29,6 +29,7 @@ __all__ = [
     "SceneData",
     "FrameData",
     "VisualizationStyle",
+    "_replace_placeholders",
 ]
 
 
@@ -445,6 +446,11 @@ class MatplotlibBackend:
         import matplotlib.pyplot as plt
         from matplotlib.animation import FuncAnimation
         from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+        if not scene_data_list:
+            raise ValueError(
+                "scene_data_list must contain at least one scene."
+            )
 
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111, projection="3d")
