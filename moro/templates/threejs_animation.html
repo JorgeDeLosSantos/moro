@@ -4,45 +4,123 @@
     <meta charset="utf-8">
     <style>
         body { margin: 0; overflow: hidden; background-color: #f5f5f5; }
+
         #controls-__UNIQUE_ID__ {
-            position: absolute; top: 10px; left: 10px;
+            position: absolute;
+            top: 10px;
+            left: 10px;
             background: rgba(255, 255, 255, 0.95);
-            padding: 10px; border-radius: 5px;
-            font-family: Arial, sans-serif; font-size: 12px;
-            z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            min-width: 200px;
+            padding: 8px;
+            border-radius: 6px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            min-width: 220px;
         }
-        #controls-__UNIQUE_ID__ button {
-            margin: 2px; padding: 5px 10px; cursor: pointer;
-            border: none; color: white; border-radius: 3px;
+
+        #controls-__UNIQUE_ID__ .control-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 4px;
         }
-        #controls-__UNIQUE_ID__ input[type=range] { width: 100%; }
-        #status-__UNIQUE_ID__ { margin-top: 5px; padding: 5px; font-size: 10px; color: #666; }
+
+        #controls-__UNIQUE_ID__ button,
+        #controls-__UNIQUE_ID__ select {
+            margin: 0;
+            padding: 5px 9px;
+            cursor: pointer;
+            border: none;
+            color: white;
+            background: #4CAF50;
+            border-radius: 3px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+
+        #controls-__UNIQUE_ID__ button:hover,
+        #controls-__UNIQUE_ID__ select:hover {
+            background: #449d48;
+        }
+
+        #play-button-__UNIQUE_ID__ {
+            background: #2196F3 !important;
+        }
+
+        #play-button-__UNIQUE_ID__:hover {
+            background: #1976D2 !important;
+        }
+
+        #controls-__UNIQUE_ID__ .frame-control {
+            margin-top: 6px;
+        }
+
+        #controls-__UNIQUE_ID__ input[type=range] {
+            width: 100%;
+        }
+
+        #status-__UNIQUE_ID__ {
+            margin-top: 5px;
+            padding: 5px;
+            font-size: 10px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
     <div id="controls-__UNIQUE_ID__">
-        <button onclick="window.robot___UNIQUE_ID__.toggleRotation()"
-                style="background:#4CAF50;">&#9654; Rotate</button>
-        <button onclick="window.robot___UNIQUE_ID__.togglePlay()"
-                style="background:#2196F3;">&#9654; Play</button>
-        <button onclick="window.robot___UNIQUE_ID__.resetView()"
-                style="background:#4CAF50;">&#x21bb; Reset</button>
-        <div>
-            <label>Frame:
+        <div class="control-row">
+            <button onclick="window.robot___UNIQUE_ID__.setView('front')">
+                Front
+            </button>
+            <button onclick="window.robot___UNIQUE_ID__.setView('top')">
+                Top
+            </button>
+            <button onclick="window.robot___UNIQUE_ID__.setView('isometric')">
+                Isometric
+            </button>
+        </div>
+
+        <div class="control-row">
+            <select id="cam-type-__UNIQUE_ID__"
+                    onchange="window.robot___UNIQUE_ID__.setCameraType(this.value)">
+                <option value="perspective">Perspective</option>
+                <option value="orthographic" selected>Orthographic</option>
+            </select>
+
+            <button id="play-button-__UNIQUE_ID__"
+                    onclick="window.robot___UNIQUE_ID__.togglePlay()">
+                &#9654; Play
+            </button>
+
+            <button onclick="window.robot___UNIQUE_ID__.resetView()">
+                &#x21bb; Reset
+            </button>
+        </div>
+
+        <div class="frame-control">
+            <label>
+                Frame:
                 <span id="frameLabel-__UNIQUE_ID__">0</span> / __LAST_FRAME__
             </label>
-            <input type="range" id="slider-__UNIQUE_ID__" min="0"
-                   max="__LAST_FRAME__" value="0" step="1"
-                   oninput="window.robot___UNIQUE_ID__.goToFrame(parseInt(this.value))">
+            <input type="range"
+                   id="slider-__UNIQUE_ID__"
+                   min="0"
+                   max="__LAST_FRAME__"
+                   value="0"
+                   step="1"
+                   oninput="window.robot___UNIQUE_ID__.goToFrame(parseInt(this.value, 10))">
         </div>
+
         <div id="status-__UNIQUE_ID__">Loading...</div>
     </div>
+
     <div id="container-__UNIQUE_ID__"></div>
 
     <script>
     (function() {
-        if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
+        if (typeof THREE !== 'undefined' &&
+                typeof THREE.OrbitControls !== 'undefined') {
             initRobot___UNIQUE_ID__();
         } else {
             var scripts = [
@@ -50,19 +128,22 @@
                 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'
             ];
             var loaded = 0;
+
             scripts.forEach(function(src) {
-                var s = document.createElement('script');
-                s.src = src;
-                s.onload = function() {
+                var script = document.createElement('script');
+                script.src = src;
+                script.onload = function() {
                     loaded++;
-                    if (loaded === scripts.length) initRobot___UNIQUE_ID__();
+                    if (loaded === scripts.length) {
+                        initRobot___UNIQUE_ID__();
+                    }
                 };
-                s.onerror = function() {
-                    document.getElementById('status-__UNIQUE_ID__').innerHTML =
-                        'Error loading Three.js';
-                    document.getElementById('status-__UNIQUE_ID__').style.color = 'red';
+                script.onerror = function() {
+                    var status = document.getElementById('status-__UNIQUE_ID__');
+                    status.innerHTML = 'Error loading Three.js';
+                    status.style.color = 'red';
                 };
-                document.head.appendChild(s);
+                document.head.appendChild(script);
             });
         }
 
@@ -71,11 +152,23 @@
             var container = document.getElementById('container-__UNIQUE_ID__');
             var slider = document.getElementById('slider-__UNIQUE_ID__');
             var frameLabel = document.getElementById('frameLabel-__UNIQUE_ID__');
+            var playButton = document.getElementById('play-button-__UNIQUE_ID__');
+            var cameraSelect = document.getElementById('cam-type-__UNIQUE_ID__');
+            var status = document.getElementById('status-__UNIQUE_ID__');
 
-            var scene, camera, renderer, controls, robotGroup;
+            var scene;
+            var camera;
+            var perspectiveCamera;
+            var orthographicCamera;
+            var renderer;
+            var controls;
+            var robotGroup;
+
             var currentFrame = 0;
-            var isAutoRotate = false, isPlaying = false;
+            var isPlaying = false;
             var playInterval = null;
+            var activeCameraType = 'orthographic';
+            var currentView = 'isometric';
 
             var dim = framesData[0].dimension;
 
@@ -83,19 +176,43 @@
                 scene = new THREE.Scene();
                 scene.background = new THREE.Color(0xf5f5f5);
 
-                camera = new THREE.PerspectiveCamera(
-                    50, __WIDTH__ / __HEIGHT__, 0.1, dim * 10
+                var width = __WIDTH__;
+                var height = __HEIGHT__;
+                var aspect = width / height;
+                var nearPlane = Math.max(dim * 0.001, 0.01);
+                var farPlane = Math.max(dim * 50, 1000);
+
+                perspectiveCamera = new THREE.PerspectiveCamera(
+                    50,
+                    aspect,
+                    nearPlane,
+                    farPlane
                 );
-                var camDist = dim * 2.5;
-                camera.position.set(camDist, camDist * 0.8, camDist);
-                camera.lookAt(0, 0, dim / 3);
+
+                var orthoHeight = dim * 3.0;
+                var orthoWidth = orthoHeight * aspect;
+
+                orthographicCamera = new THREE.OrthographicCamera(
+                    -orthoWidth / 2,
+                    orthoWidth / 2,
+                    orthoHeight / 2,
+                    -orthoHeight / 2,
+                    -farPlane,
+                    farPlane
+                );
+
+                // Robotics convention: Z is the vertical axis.
+                perspectiveCamera.up.set(0, 0, 1);
+                orthographicCamera.up.set(0, 0, 1);
+
+                camera = orthographicCamera;
 
                 renderer = new THREE.WebGLRenderer({ antialias: true });
-                renderer.setSize(__WIDTH__, __HEIGHT__);
+                renderer.setSize(width, height);
                 renderer.setPixelRatio(window.devicePixelRatio);
                 container.appendChild(renderer.domElement);
 
-                // OrbitControls with CAD-like mapping
+                // OrbitControls with CAD-like mouse mapping.
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
                 controls.target.set(0, 0, dim / 3);
                 controls.enableDamping = true;
@@ -109,143 +226,280 @@
                     ONE: THREE.TOUCH.PAN,
                     TWO: THREE.TOUCH.DOLLY_PAN
                 };
-                controls.update();
 
-                // Lights
+                setView('isometric');
+
+                // Lights.
                 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
                 var dl1 = new THREE.DirectionalLight(0xffffff, 0.5);
                 dl1.position.set(dim, dim, dim);
                 scene.add(dl1);
+
                 var dl2 = new THREE.DirectionalLight(0xffffff, 0.3);
                 dl2.position.set(-dim, -dim, -dim);
                 scene.add(dl2);
 
+                // Grid on the XY plane (Z = 0).
                 var gridSize = dim * 2.5;
-                scene.add(new THREE.GridHelper(gridSize, 20, 0x888888, 0xcccccc));
+                var grid = new THREE.GridHelper(
+                    gridSize,
+                    20,
+                    0x888888,
+                    0xcccccc
+                );
+                grid.rotation.x = Math.PI / 2;
+                scene.add(grid);
                 scene.add(new THREE.AxesHelper(dim / 4));
 
                 robotGroup = new THREE.Group();
                 scene.add(robotGroup);
 
-                // Draw initial frame
                 drawRobot(framesData[0]);
-
                 animate();
 
-                document.getElementById('status-__UNIQUE_ID__').innerHTML =
-                    'Ready &mdash; ' + framesData.length + ' frames';
-                document.getElementById('status-__UNIQUE_ID__').style.color = 'green';
-            } catch (e) {
-                document.getElementById('status-__UNIQUE_ID__').innerHTML =
-                    'Error: ' + e.message;
-                document.getElementById('status-__UNIQUE_ID__').style.color = 'red';
+                status.innerHTML =
+                    'Ready &mdash; ' + framesData.length +
+                    ' frames | Middle drag to orbit | Left/Right drag to pan | Wheel to zoom';
+                status.style.color = 'green';
+            } catch (error) {
+                status.innerHTML = 'Error: ' + error.message;
+                status.style.color = 'red';
             }
 
-            function drawRobot(d) {
+            function clearRobotGroup() {
                 while (robotGroup.children.length > 0) {
-                    robotGroup.remove(robotGroup.children[0]);
+                    var child = robotGroup.children[0];
+                    robotGroup.remove(child);
+
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(function(material) {
+                                material.dispose();
+                            });
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
                 }
+            }
 
-                var joints = d.joints, frames = d.frames;
+            function drawRobot(data) {
+                clearRobotGroup();
 
-                // Links
+                var joints = data.joints;
+                var frames = data.frames;
+
+                // Links.
                 var linkMat = new THREE.MeshPhongMaterial({
-                    color: 0x778877, shininess: 30, side: THREE.DoubleSide
+                    color: 0x778877,
+                    shininess: 30,
+                    side: THREE.DoubleSide
                 });
+
                 for (var i = 0; i < joints.length - 1; i++) {
                     var start = new THREE.Vector3().fromArray(joints[i]);
-                    var end   = new THREE.Vector3().fromArray(joints[i+1]);
-                    var dir   = new THREE.Vector3().subVectors(end, start);
-                    var len   = dir.length();
-                    if (len < 1e-6) continue;
+                    var end = new THREE.Vector3().fromArray(joints[i + 1]);
+                    var direction = new THREE.Vector3().subVectors(end, start);
+                    var length = direction.length();
+
+                    if (length < 1e-6) {
+                        continue;
+                    }
+
                     var radius = Math.max(dim * 0.015, 0.3);
-                    var cyl = new THREE.Mesh(
-                        new THREE.CylinderGeometry(radius, radius, len, 8),
+                    var cylinder = new THREE.Mesh(
+                        new THREE.CylinderGeometry(radius, radius, length, 8),
                         linkMat
                     );
-                    var mid = start.clone().add(dir.clone().multiplyScalar(0.5));
-                    cyl.position.copy(mid);
-                    cyl.quaternion.setFromUnitVectors(
-                        new THREE.Vector3(0, 1, 0),
-                        dir.clone().normalize()
+
+                    var midpoint = start.clone().add(
+                        direction.clone().multiplyScalar(0.5)
                     );
-                    robotGroup.add(cyl);
+                    cylinder.position.copy(midpoint);
+                    cylinder.quaternion.setFromUnitVectors(
+                        new THREE.Vector3(0, 1, 0),
+                        direction.clone().normalize()
+                    );
+                    robotGroup.add(cylinder);
                 }
 
-                // Joints
+                // Joints.
                 var jointMat = new THREE.MeshPhongMaterial({
-                    color: 0xff1493, shininess: 50
+                    color: 0xff1493,
+                    shininess: 50
                 });
                 var baseMat = new THREE.MeshPhongMaterial({
-                    color: 0xff00ff, shininess: 50
+                    color: 0xff00ff,
+                    shininess: 50
                 });
-                joints.forEach(function(pos, idx) {
-                    var radius = idx === 0
+
+                joints.forEach(function(position, index) {
+                    var radius = index === 0
                         ? Math.max(dim * 0.03, 0.6)
                         : Math.max(dim * 0.02, 0.4);
-                    var mat = idx === 0 ? baseMat : jointMat;
+                    var material = index === 0 ? baseMat : jointMat;
                     var sphere = new THREE.Mesh(
-                        new THREE.SphereGeometry(radius, 16, 16), mat
+                        new THREE.SphereGeometry(radius, 16, 16),
+                        material
                     );
-                    sphere.position.fromArray(pos);
+                    sphere.position.fromArray(position);
                     robotGroup.add(sphere);
                 });
 
-                // Frames (using AxesHelper)
-                var axesLen = Math.max(dim / 6, 1.0);
-                frames.forEach(function(f) {
-                    var origin = new THREE.Vector3().fromArray(f.position);
-                    var axes = new THREE.AxesHelper(axesLen);
-                    axes.position.copy(origin);
+                // Coordinate frames.
+                // The payload stores the local frame axes expressed in the
+                // world frame. THREE.Matrix4.makeBasis expects those vectors
+                // as the columns of the rotation matrix, matching FrameData.x,
+                // FrameData.y and FrameData.z.
+                var axesLength = Math.max(dim / 6, 1.0);
+                frames.forEach(function(frame) {
+                    var xAxis = new THREE.Vector3().fromArray(frame.x).normalize();
+                    var yAxis = new THREE.Vector3().fromArray(frame.y).normalize();
+                    var zAxis = new THREE.Vector3().fromArray(frame.z).normalize();
+
+                    var rotationMatrix = new THREE.Matrix4();
+                    rotationMatrix.makeBasis(xAxis, yAxis, zAxis);
+
+                    var axes = new THREE.AxesHelper(axesLength);
+                    axes.position.fromArray(frame.position);
+                    axes.quaternion.setFromRotationMatrix(rotationMatrix);
                     robotGroup.add(axes);
                 });
             }
 
-            function goToFrame(idx) {
-                currentFrame = idx;
-                drawRobot(framesData[idx]);
-                slider.value = idx;
-                frameLabel.textContent = idx;
+            function goToFrame(index) {
+                if (!Number.isFinite(index)) {
+                    return;
+                }
+
+                index = Math.max(0, Math.min(index, framesData.length - 1));
+                currentFrame = index;
+                drawRobot(framesData[index]);
+                slider.value = index;
+                frameLabel.textContent = index;
+            }
+
+            function updatePlayButton() {
+                playButton.innerHTML = isPlaying
+                    ? '&#10074;&#10074; Pause'
+                    : '&#9654; Play';
+                playButton.setAttribute('aria-pressed', String(isPlaying));
+            }
+
+            function startPlayback() {
+                if (playInterval !== null) {
+                    return;
+                }
+
+                isPlaying = true;
+                updatePlayButton();
+
+                playInterval = window.setInterval(function() {
+                    var nextFrame = (currentFrame + 1) % framesData.length;
+                    goToFrame(nextFrame);
+                }, 100);
+            }
+
+            function pausePlayback() {
+                isPlaying = false;
+                updatePlayButton();
+
+                if (playInterval !== null) {
+                    window.clearInterval(playInterval);
+                    playInterval = null;
+                }
+            }
+
+            function togglePlay() {
+                if (isPlaying) {
+                    pausePlayback();
+                } else {
+                    startPlayback();
+                }
+            }
+
+            function setView(viewName) {
+                var distance = dim * 2.5;
+                var target = controls.target;
+                var position = new THREE.Vector3();
+
+                switch (viewName) {
+                    case 'front':
+                        position.set(0, -distance, target.z);
+                        break;
+                    case 'top':
+                        position.set(0, 0, distance);
+                        break;
+                    case 'isometric':
+                        position.set(distance, distance * 0.8, distance);
+                        break;
+                    default:
+                        return;
+                }
+
+                camera.position.copy(position);
+                camera.lookAt(target);
+                controls.update();
+                currentView = viewName;
+            }
+
+            function setCameraType(type) {
+                if (type !== 'perspective' && type !== 'orthographic') {
+                    return;
+                }
+
+                if (type === activeCameraType) {
+                    cameraSelect.value = type;
+                    return;
+                }
+
+                var newCamera = type === 'perspective'
+                    ? perspectiveCamera
+                    : orthographicCamera;
+
+                newCamera.position.copy(camera.position);
+                newCamera.quaternion.copy(camera.quaternion);
+                newCamera.up.copy(camera.up);
+
+                camera = newCamera;
+                activeCameraType = type;
+                controls.object = camera;
+                controls.update();
+                cameraSelect.value = type;
+            }
+
+            function resetView() {
+                controls.target.set(0, 0, dim / 3);
+
+                if (activeCameraType !== 'orthographic') {
+                    setCameraType('orthographic');
+                }
+
+                orthographicCamera.zoom = 1;
+                orthographicCamera.updateProjectionMatrix();
+                perspectiveCamera.zoom = 1;
+                perspectiveCamera.updateProjectionMatrix();
+
+                setView('isometric');
             }
 
             function animate() {
                 requestAnimationFrame(animate);
-                if (isAutoRotate) {
-                    var target = controls.target;
-                    var offset = camera.position.clone().sub(target);
-                    var theta = 0.005;
-                    var cos = Math.cos(theta);
-                    var sin = Math.sin(theta);
-                    var x = offset.x * cos - offset.z * sin;
-                    var z = offset.x * sin + offset.z * cos;
-                    camera.position.set(target.x + x, camera.position.y, target.z + z);
-                    camera.lookAt(target);
-                }
                 controls.update();
                 renderer.render(scene, camera);
             }
 
             window.robot___UNIQUE_ID__ = {
-                toggleRotation: function() {
-                    isAutoRotate = !isAutoRotate;
-                },
-                togglePlay: function() {
-                    isPlaying = !isPlaying;
-                    if (isPlaying) {
-                        playInterval = setInterval(function() {
-                            var next = (currentFrame + 1) % framesData.length;
-                            goToFrame(next);
-                        }, 100);
-                    } else {
-                        clearInterval(playInterval);
-                    }
-                },
+                togglePlay: togglePlay,
                 goToFrame: goToFrame,
-                resetView: function() {
-                    camera.position.set(dim * 2.5, dim * 2.0, dim * 2.5);
-                    controls.target.set(0, 0, dim / 3);
-                    controls.update();
-                }
+                setView: setView,
+                setCameraType: setCameraType,
+                resetView: resetView
             };
         }
     })();
