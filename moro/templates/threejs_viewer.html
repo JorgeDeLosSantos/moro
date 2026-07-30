@@ -123,6 +123,7 @@
 
         function initRobot___UNIQUE_ID__() {
             var data = __ROBOT_DATA__;
+            var style = data.style;
             var container = document.getElementById('container-__UNIQUE_ID__');
 
             var scene;
@@ -140,6 +141,19 @@
             var height = __HEIGHT__;
             var aspect = width / height;
             var sceneScale = Math.max(Number(data.dimension) || 0, 1);
+            var resolvedStyle = {
+                frameScale: style.frame_scale !== null
+                    ? Number(style.frame_scale)
+                    : Math.max(sceneScale / 6, 1.0),
+                jointRadius: style.joint_size !== null
+                    ? Number(style.joint_size)
+                    : Math.max(sceneScale * 0.02, 0.4),
+                baseRadius: style.base_size !== null
+                    ? Number(style.base_size)
+                    : Math.max(sceneScale * 0.03, 0.6),
+                linkRadius: Math.max(sceneScale * 0.015, 0.3)
+                    * (Number(style.link_linewidth) / 3)
+            };
 
             try {
                 scene = new THREE.Scene();
@@ -209,15 +223,17 @@
                 scene.add(dl2);
 
                 // Grid on the XY plane for the Z-up convention.
-                var gridSize = sceneScale * 2.5;
-                var grid = new THREE.GridHelper(
-                    gridSize,
-                    20,
-                    0x888888,
-                    0xcccccc
-                );
-                grid.rotation.x = Math.PI / 2;
-                scene.add(grid);
+                if (style.show_grid) {
+                    var gridSize = sceneScale * 2.5;
+                    var grid = new THREE.GridHelper(
+                        gridSize,
+                        20,
+                        0x888888,
+                        0xcccccc
+                    );
+                    grid.rotation.x = Math.PI / 2;
+                    scene.add(grid);
+                }
 
                 scene.add(new THREE.AxesHelper(sceneScale / 4));
 
@@ -246,95 +262,109 @@
                 var frames = d.frames;
 
                 // Links
-                var linkMat = new THREE.MeshPhongMaterial({
-                    color: 0x778877,
-                    shininess: 30,
-                    side: THREE.DoubleSide
-                });
+                if (style.show_links) {
+                    var linkMat = new THREE.MeshPhongMaterial({
+                        color: style.link_color,
+                        shininess: 30,
+                        side: THREE.DoubleSide
+                    });
 
-                for (var i = 0; i < joints.length - 1; i++) {
-                    var start = new THREE.Vector3().fromArray(joints[i]);
-                    var end = new THREE.Vector3().fromArray(joints[i + 1]);
-                    var dir = new THREE.Vector3().subVectors(end, start);
-                    var len = dir.length();
+                    for (var i = 0; i < joints.length - 1; i++) {
+                        var start = new THREE.Vector3().fromArray(joints[i]);
+                        var end = new THREE.Vector3().fromArray(joints[i + 1]);
+                        var dir = new THREE.Vector3().subVectors(end, start);
+                        var len = dir.length();
 
-                    if (len < 1e-6) {
-                        continue;
+                        if (len < 1e-6) {
+                            continue;
+                        }
+
+                        var cylinder = new THREE.Mesh(
+                            new THREE.CylinderGeometry(
+                                resolvedStyle.linkRadius,
+                                resolvedStyle.linkRadius,
+                                len,
+                                8
+                            ),
+                            linkMat
+                        );
+
+                        var midpoint = start.clone().add(
+                            dir.clone().multiplyScalar(0.5)
+                        );
+
+                        cylinder.position.copy(midpoint);
+                        cylinder.quaternion.setFromUnitVectors(
+                            new THREE.Vector3(0, 1, 0),
+                            dir.clone().normalize()
+                        );
+
+                        robotGroup.add(cylinder);
                     }
-
-                    var radius = Math.max(sceneScale * 0.015, 0.3);
-                    var cylinder = new THREE.Mesh(
-                        new THREE.CylinderGeometry(radius, radius, len, 8),
-                        linkMat
-                    );
-
-                    var midpoint = start.clone().add(
-                        dir.clone().multiplyScalar(0.5)
-                    );
-
-                    cylinder.position.copy(midpoint);
-                    cylinder.quaternion.setFromUnitVectors(
-                        new THREE.Vector3(0, 1, 0),
-                        dir.clone().normalize()
-                    );
-
-                    robotGroup.add(cylinder);
                 }
 
                 // Joints
-                var jointMat = new THREE.MeshPhongMaterial({
-                    color: 0xff1493,
-                    shininess: 50
-                });
+                if (style.show_joints) {
+                    var jointMat = new THREE.MeshPhongMaterial({
+                        color: style.joint_color,
+                        shininess: 50
+                    });
 
-                var baseMat = new THREE.MeshPhongMaterial({
-                    color: 0xff00ff,
-                    shininess: 50
-                });
+                    var baseMat = new THREE.MeshPhongMaterial({
+                        color: style.base_color,
+                        shininess: 50
+                    });
 
-                joints.forEach(function(position, index) {
-                    var radius = index === 0
-                        ? Math.max(sceneScale * 0.03, 0.6)
-                        : Math.max(sceneScale * 0.02, 0.4);
+                    joints.forEach(function(position, index) {
+                        if (index === 0 && !style.show_base) {
+                            return;
+                        }
 
-                    var material = index === 0 ? baseMat : jointMat;
-                    var sphere = new THREE.Mesh(
-                        new THREE.SphereGeometry(radius, 16, 16),
-                        material
-                    );
+                        var radius = index === 0
+                            ? resolvedStyle.baseRadius
+                            : resolvedStyle.jointRadius;
 
-                    sphere.position.fromArray(position);
-                    robotGroup.add(sphere);
-                });
+                        var material = index === 0 ? baseMat : jointMat;
+                        var sphere = new THREE.Mesh(
+                            new THREE.SphereGeometry(radius, 16, 16),
+                            material
+                        );
+
+                        sphere.position.fromArray(position);
+                        robotGroup.add(sphere);
+                    });
+                }
 
                 // Frames
-                var axesLength = Math.max(sceneScale / 6, 1.0);
+                if (style.show_frames) {
+                    frames.forEach(function(frame) {
+                        var origin = new THREE.Vector3().fromArray(frame.position);
+                        var xAxis = new THREE.Vector3().fromArray(frame.x);
+                        var yAxis = new THREE.Vector3().fromArray(frame.y);
+                        var zAxis = new THREE.Vector3().fromArray(frame.z);
 
-                frames.forEach(function(frame) {
-                    var origin = new THREE.Vector3().fromArray(frame.position);
-                    var xAxis = new THREE.Vector3().fromArray(frame.x);
-                    var yAxis = new THREE.Vector3().fromArray(frame.y);
-                    var zAxis = new THREE.Vector3().fromArray(frame.z);
+                        /*
+                         * FrameData stores the local axes as the columns of the
+                         * rotation matrix R = [x y z]. Matrix4.set receives its
+                         * values row by row, so the components must be arranged
+                         * accordingly.
+                         */
+                        var rotationMatrix = new THREE.Matrix4();
+                        rotationMatrix.set(
+                            xAxis.x, yAxis.x, zAxis.x, 0,
+                            xAxis.y, yAxis.y, zAxis.y, 0,
+                            xAxis.z, yAxis.z, zAxis.z, 0,
+                            0,       0,       0,       1
+                        );
 
-                    /*
-                     * FrameData stores the local axes as the columns of the
-                     * rotation matrix R = [x y z]. Matrix4.set receives its
-                     * values row by row, so the components must be arranged
-                     * accordingly.
-                     */
-                    var rotationMatrix = new THREE.Matrix4();
-                    rotationMatrix.set(
-                        xAxis.x, yAxis.x, zAxis.x, 0,
-                        xAxis.y, yAxis.y, zAxis.y, 0,
-                        xAxis.z, yAxis.z, zAxis.z, 0,
-                        0,       0,       0,       1
-                    );
-
-                    var axes = new THREE.AxesHelper(axesLength);
-                    axes.position.copy(origin);
-                    axes.setRotationFromMatrix(rotationMatrix);
-                    robotGroup.add(axes);
-                });
+                        var axes = new THREE.AxesHelper(
+                            resolvedStyle.frameScale
+                        );
+                        axes.position.copy(origin);
+                        axes.setRotationFromMatrix(rotationMatrix);
+                        robotGroup.add(axes);
+                    });
+                }
             }
 
             function setView(viewName, resetTarget) {

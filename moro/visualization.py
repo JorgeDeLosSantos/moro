@@ -292,6 +292,27 @@ def _scenes_to_payload(scene_data_list: list[SceneData]) -> list[dict]:
 
 
 
+def _style_to_payload(style: VisualizationStyle) -> dict:
+    """
+    Convert a visualization style into a JSON-serializable dictionary.
+    """
+    return {
+        "show_frames": style.show_frames,
+        "show_links": style.show_links,
+        "show_joints": style.show_joints,
+        "show_base": style.show_base,
+        "show_grid": style.show_grid,
+        "link_color": style.link_color,
+        "joint_color": style.joint_color,
+        "base_color": style.base_color,
+        "frame_scale": style.frame_scale,
+        "joint_size": style.joint_size,
+        "base_size": style.base_size,
+        "link_linewidth": style.link_linewidth,
+    }
+
+
+
 # ---------------------------------------------------------------------------
 # Matplotlib backend
 # ---------------------------------------------------------------------------
@@ -525,8 +546,7 @@ class ThreeJSBackend:
         height : int
             Canvas height in pixels.
         style : VisualizationStyle or None
-            Visualization style. Currently reserved for future Three.js
-            styling support.
+            Style configuration controlling visibility, colors, and sizes.
 
         Returns
         -------
@@ -540,6 +560,7 @@ class ThreeJSBackend:
 
         unique_id = uuid.uuid4().hex[:8]
         payload = _scene_to_payload(scene_data)
+        payload["style"] = _style_to_payload(style)
 
         html = _render_html_template(
             "threejs_viewer.html",
@@ -573,8 +594,7 @@ class ThreeJSBackend:
         height : int
             Canvas height in pixels.
         style : VisualizationStyle or None
-            Visualization style. Currently reserved for future Three.js
-            styling support.
+            Style configuration controlling visibility, colors, and sizes.
 
         Returns
         -------
@@ -593,6 +613,10 @@ class ThreeJSBackend:
 
         unique_id = uuid.uuid4().hex[:8]
         payloads = _scenes_to_payload(scene_data_list)
+        animation_payload = {
+            "frames": payloads,
+            "style": _style_to_payload(style),
+        }
 
         html = _render_html_template(
             "threejs_animation.html",
@@ -600,7 +624,7 @@ class ThreeJSBackend:
                 "unique_id": unique_id,
                 "width": width,
                 "height": height,
-                "frames_data": json.dumps(payloads),
+                "animation_data": json.dumps(animation_payload),
                 "last_frame": len(payloads) - 1,
             },
         )
@@ -651,7 +675,7 @@ class RobotVisualizer:
         -------
         Depends on the backend:
             - ``"matplotlib"`` : ``(fig, ax)`` tuple.
-            - ``"threejs"``    : HTML string.
+            - ``"threejs"``    : ``IPython.display.HTML``.
         """
         scene_data = evaluate_robot(self.robot, num_vals)
 
