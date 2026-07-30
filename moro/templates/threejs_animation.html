@@ -170,7 +170,124 @@
             var activeCameraType = 'orthographic';
             var currentView = 'isometric';
 
-            var dim = framesData[0].dimension;
+            // Compute one global bounding box for the complete animation.
+            // The resulting scale remains fixed while frames are played, so links,
+            // joints and coordinate axes do not change size between frames.
+            var animationBounds = computeAnimationBounds(framesData);
+            var sceneCenter = animationBounds.center;
+            var dim = animationBounds.dimension * 1.15;
+
+            function computeAnimationBounds(animationData) {
+                var minPoint = new THREE.Vector3(
+                    Infinity,
+                    Infinity,
+                    Infinity
+                );
+                var maxPoint = new THREE.Vector3(
+                    -Infinity,
+                    -Infinity,
+                    -Infinity
+                );
+                var largestDeclaredDimension = 0;
+                var pointCount = 0;
+
+                function expandBounds(position) {
+                    if (!Array.isArray(position) || position.length < 3) {
+                        return;
+                    }
+
+                    var x = Number(position[0]);
+                    var y = Number(position[1]);
+                    var z = Number(position[2]);
+
+                    if (
+                        !Number.isFinite(x) ||
+                        !Number.isFinite(y) ||
+                        !Number.isFinite(z)
+                    ) {
+                        return;
+                    }
+
+                    var point = new THREE.Vector3(x, y, z);
+                    minPoint.min(point);
+                    maxPoint.max(point);
+                    pointCount++;
+                }
+
+                animationData.forEach(function(frameData) {
+                    var declaredDimension = Number(frameData.dimension);
+                    if (
+                        Number.isFinite(declaredDimension) &&
+                        declaredDimension > 0
+                    ) {
+                        largestDeclaredDimension = Math.max(
+                            largestDeclaredDimension,
+                            declaredDimension
+                        );
+                    }
+
+                    if (Array.isArray(frameData.joints)) {
+                        frameData.joints.forEach(expandBounds);
+                    }
+
+                    if (Array.isArray(frameData.frames)) {
+                        frameData.frames.forEach(function(frame) {
+                            expandBounds(frame.position);
+                        });
+                    }
+                });
+
+                if (pointCount === 0) {
+                    var fallbackDimension = Math.max(
+                        largestDeclaredDimension,
+                        1
+                    );
+                    return {
+                        min: new THREE.Vector3(
+                            -fallbackDimension / 2,
+                            -fallbackDimension / 2,
+                            -fallbackDimension / 2
+                        ),
+                        max: new THREE.Vector3(
+                            fallbackDimension / 2,
+                            fallbackDimension / 2,
+                            fallbackDimension / 2
+                        ),
+                        center: new THREE.Vector3(0, 0, 0),
+                        size: new THREE.Vector3(
+                            fallbackDimension,
+                            fallbackDimension,
+                            fallbackDimension
+                        ),
+                        dimension: fallbackDimension
+                    };
+                }
+
+                var size = new THREE.Vector3().subVectors(
+                    maxPoint,
+                    minPoint
+                );
+                var center = new THREE.Vector3()
+                    .addVectors(minPoint, maxPoint)
+                    .multiplyScalar(0.5);
+                var measuredDimension = Math.max(
+                    size.x,
+                    size.y,
+                    size.z
+                );
+
+                return {
+                    min: minPoint,
+                    max: maxPoint,
+                    center: center,
+                    size: size,
+                    dimension: Math.max(
+                        measuredDimension,
+                        largestDeclaredDimension,
+                        1
+                    )
+                };
+            }
 
             try {
                 scene = new THREE.Scene();
@@ -214,7 +331,7 @@
 
                 // OrbitControls with CAD-like mouse mapping.
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.target.set(0, 0, dim / 3);
+                controls.target.copy(sceneCenter);
                 controls.enableDamping = true;
                 controls.dampingFactor = 0.1;
                 controls.mouseButtons = {
@@ -240,17 +357,33 @@
                 dl2.position.set(-dim, -dim, -dim);
                 scene.add(dl2);
 
-                // Grid on the XY plane (Z = 0).
-                var gridSize = dim * 2.5;
+                // Grid on the global XY plane (Z = 0). Its center must remain
+                // at the world origin so that it agrees with the robot base frame.
+                // The size is made symmetric about the origin and large enough to
+                // contain the complete animation, even when its bounds are offset.
+                var gridHalfExtent = Math.max(
+                    Math.abs(animationBounds.min.x),
+                    Math.abs(animationBounds.max.x),
+                    Math.abs(animationBounds.min.y),
+                    Math.abs(animationBounds.max.y),
+                    dim / 2
+                );
+                var gridSize = Math.max(gridHalfExtent * 2.4, dim * 2.5);
+                var gridDivisions = 20;
                 var grid = new THREE.GridHelper(
                     gridSize,
-                    20,
+                    gridDivisions,
                     0x888888,
                     0xcccccc
                 );
                 grid.rotation.x = Math.PI / 2;
+                grid.position.set(0, 0, 0);
                 scene.add(grid);
-                scene.add(new THREE.AxesHelper(dim / 4));
+
+                // Global coordinate system at the world origin.
+                var worldAxes = new THREE.AxesHelper(dim / 4);
+                worldAxes.position.set(0, 0, 0);
+                scene.add(worldAxes);
 
                 robotGroup = new THREE.Group();
                 scene.add(robotGroup);
@@ -426,23 +559,23 @@
             function setView(viewName) {
                 var distance = dim * 2.5;
                 var target = controls.target;
-                var position = new THREE.Vector3();
+                var offset = new THREE.Vector3();
 
                 switch (viewName) {
                     case 'front':
-                        position.set(0, -distance, target.z);
+                        offset.set(0, -distance, 0);
                         break;
                     case 'top':
-                        position.set(0, 0, distance);
+                        offset.set(0, 0, distance);
                         break;
                     case 'isometric':
-                        position.set(distance, distance * 0.8, distance);
+                        offset.set(distance, distance * 0.8, distance);
                         break;
                     default:
                         return;
                 }
 
-                camera.position.copy(position);
+                camera.position.copy(target).add(offset);
                 camera.lookAt(target);
                 controls.update();
                 currentView = viewName;
@@ -474,7 +607,7 @@
             }
 
             function resetView() {
-                controls.target.set(0, 0, dim / 3);
+                controls.target.copy(sceneCenter);
 
                 if (activeCameraType !== 'orthographic') {
                     setCameraType('orthographic');
