@@ -11,7 +11,12 @@ from typing import Optional
 from sympy import lambdify
 from moro.util import is_position_vector
 
-__all__ = ["solve_position_ik", "IKSolution"]
+__all__ = [
+    "solve_position_ik",
+    "solve_position_trajectory",
+    "IKSolution",
+    "IKTrajectorySolution",
+]
 
 # --- Outcome Messages ---
 MSG_CONVERGED = "Converged successfully."
@@ -22,6 +27,8 @@ MSG_NUMERICAL_FK = "Numerical failure while evaluating the forward kinematics."
 MSG_NUMERICAL_JACOBIAN = "Numerical failure while evaluating the Jacobian."
 MSG_NUMERICAL_UPDATE = "Numerical failure while computing the joint update."
 MSG_NUMERICAL_CCD = "Numerical failure during CCD evaluation."
+MSG_TRAJECTORY_CONVERGED = "Trajectory solved successfully."
+MSG_TRAJECTORY_FAILED = "Trajectory failed at target index {index}: {reason}"
 
 
 # --- Public Result Type ---
@@ -92,6 +99,78 @@ class IKSolution:
             f"IKSolution(q={self.q}, {status}, "
             f"method={self.method}, iters={self.iterations}, "
             f"error={self.error:.2e})"
+        )
+
+
+@dataclass
+class IKTrajectorySolution:
+    """
+    Represents the global result of solving a sequence of position IK targets.
+
+    Attributes
+    ----------
+    solutions : list of IKSolution
+        Per-target IK results in processing order. The list includes the
+        failing solution when convergence stops at an intermediate target.
+    converged : bool
+        True only when all targets converged.
+    failed_index : int, optional
+        Index of the first non-converged target. It is None when all targets
+        converged.
+    message : str
+        Short global outcome message.
+    """
+
+    solutions: list
+    converged: bool
+    failed_index: Optional[int] = None
+    message: str = ""
+
+    def __post_init__(self):
+        self.solutions = list(self.solutions)
+        for idx, solution in enumerate(self.solutions):
+            if not isinstance(solution, IKSolution):
+                raise TypeError(
+                    f"solutions[{idx}] must be an instance of IKSolution."
+                )
+
+        self.converged = bool(self.converged)
+
+        if self.failed_index is not None:
+            if isinstance(self.failed_index, bool) or not isinstance(self.failed_index, Integral):
+                raise ValueError("failed_index must be None or a non-negative integer.")
+            if int(self.failed_index) < 0:
+                raise ValueError("failed_index must be None or a non-negative integer.")
+            self.failed_index = int(self.failed_index)
+
+        if self.converged and self.failed_index is not None:
+            raise ValueError("failed_index must be None when converged is True.")
+
+        self.message = str(self.message)
+
+    @property
+    def qs(self):
+        """Return per-target joint vectors in processing order."""
+        return [list(solution.q) for solution in self.solutions]
+
+    @property
+    def errors(self):
+        """Return per-target final error norms in processing order."""
+        return [solution.error for solution in self.solutions]
+
+    @property
+    def iterations(self):
+        """Return per-target iteration counts in processing order."""
+        return [solution.iterations for solution in self.solutions]
+
+    def __repr__(self):
+        status = "Converged" if self.converged else "Did not converge"
+        return (
+            "IKTrajectorySolution("
+            f"points={len(self.solutions)}, "
+            f"status={status}, "
+            f"failed_index={self.failed_index}"
+            ")"
         )
 
 
@@ -228,6 +307,83 @@ def _as_finite_vector(value, size, name):
         raise ValueError(f"{name} must contain only finite values.")
 
     return vec
+
+
+def _prepare_target_positions(target_positions):
+    """Validate and normalize a trajectory target sequence to a list of 3D vectors."""
+    if isinstance(target_positions, np.ndarray):
+        arr = np.asarray(target_positions)
+
+        if arr.ndim == 1 and arr.shape[0] == 3:
+            raise ValueError(
+                "target_positions must be a trajectory with shape (m, 3), "
+                "not a single 3-element vector."
+            )
+
+        if arr.ndim != 2 or arr.shape[1] != 3:
+            raise ValueError("target_positions must have shape (m, 3).")
+
+        if arr.shape[0] == 0:
+            raise ValueError("target_positions must contain at least one target.")
+
+        normalized = []
+        for idx, row in enumerate(arr):
+            try:
+                target = np.asarray(row, dtype=float).reshape(-1)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"target_positions[{idx}] must contain exactly 3 finite numeric values."
+                ) from exc
+
+            if target.size != 3 or not _is_finite_array(target):
+                raise ValueError(
+                    f"target_positions[{idx}] must contain exactly 3 finite numeric values."
+                )
+
+            normalized.append(target.tolist())
+
+        return normalized
+
+    if isinstance(target_positions, (str, bytes)):
+        raise ValueError("target_positions must be an iterable of 3D targets.")
+
+    try:
+        items = list(target_positions)
+    except TypeError as exc:
+        raise ValueError("target_positions must be an iterable of 3D targets.") from exc
+
+    if len(items) == 0:
+        raise ValueError("target_positions must contain at least one target.")
+
+    if len(items) == 3:
+        try:
+            single_target = np.asarray(items, dtype=float).reshape(-1)
+        except (TypeError, ValueError):
+            single_target = None
+
+        if single_target is not None and single_target.size == 3 and _is_finite_array(single_target):
+            raise ValueError(
+                "target_positions must be a trajectory with shape (m, 3), "
+                "not a single 3-element vector."
+            )
+
+    normalized = []
+    for idx, target in enumerate(items):
+        try:
+            target_vec = np.asarray(target, dtype=float).reshape(-1)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"target_positions[{idx}] must contain exactly 3 finite numeric values."
+            ) from exc
+
+        if target_vec.size != 3 or not _is_finite_array(target_vec):
+            raise ValueError(
+                f"target_positions[{idx}] must contain exactly 3 finite numeric values."
+            )
+
+        normalized.append(target_vec.tolist())
+
+    return normalized
 
 
 def _validate_solver_options(method, tol, max_iter, damping, damping_scale):
@@ -1275,4 +1431,147 @@ def solve_position_ik(
         step_tol,
         error_change_tol,
         stagnation_iterations,
+    )
+
+
+def solve_position_trajectory(
+    robot,
+    target_positions,
+    q0,
+    *,
+    parameters=None,
+    method="lm",
+    joint_limits=None,
+    tol=1e-6,
+    max_iter=None,
+    damping=1.0,
+    damping_scale=0.5,
+    random_state=None,
+    step_tol=1e-12,
+    error_change_tol=1e-12,
+    stagnation_iterations=5,
+):
+    """
+    Solve position IK for a sequence of Cartesian position targets.
+
+    This function is a thin orchestration layer over ``solve_position_ik``.
+    It solves each target sequentially and reuses each converged solution as
+    the initial guess for the next target.
+
+    Parameters
+    ----------
+    robot : Robot
+        Robot model with forward kinematics and Jacobian support.
+    target_positions : iterable or numpy.ndarray
+        Sequence of position targets with shape ``(m, 3)``. A single vector
+        with shape ``(3,)`` is rejected to avoid ambiguity with
+        ``solve_position_ik``.
+    q0 : list or numpy.ndarray
+        Initial joint seed for the first target. This argument is required.
+    parameters : dict-like, optional
+        Symbol substitutions passed directly to ``solve_position_ik``.
+    method : str, optional
+        Solver method passed to ``solve_position_ik``.
+    joint_limits : list of tuples, optional
+        Joint limits passed to ``solve_position_ik``.
+    tol : float, optional
+        Position error tolerance passed to ``solve_position_ik``.
+    max_iter : int, optional
+        Maximum iterations passed to ``solve_position_ik``.
+    damping : float, optional
+        LM damping parameter passed to ``solve_position_ik``.
+    damping_scale : float, optional
+        LM damping scale passed to ``solve_position_ik``.
+    random_state : None, int, or numpy.random.Generator, optional
+        Forwarded for API consistency with ``solve_position_ik``. With
+        mandatory ``q0`` and sequential seeding, it typically has no effect.
+    step_tol : float, optional
+        Stagnation step tolerance passed to ``solve_position_ik``.
+    error_change_tol : float, optional
+        Stagnation error-change tolerance passed to ``solve_position_ik``.
+    stagnation_iterations : int, optional
+        Stagnation iteration count passed to ``solve_position_ik``.
+
+    Returns
+    -------
+    IKTrajectorySolution
+        Trajectory-level result. Processing stops at the first non-converged
+        target, and the failing solution is included in ``solutions``.
+
+    Notes
+    -----
+    This utility does not perform interpolation, timing, smoothing, full-pose
+    orientation IK, branch optimization, or global trajectory planning.
+    Reusing the previous solution can improve local continuity but does not
+    guarantee global branch continuity.
+
+    The returned ``trajectory.qs`` can be used directly as a sequence of joint
+    configurations for animation pipelines.
+
+    Examples
+    --------
+    >>> import moro as mr
+    >>> from moro.abc import l1, l2, q1, q2
+    >>> from moro.inverse_kinematics import solve_position_trajectory
+    >>>
+    >>> robot = mr.Robot((l1, 0, 0, q1, "r"), (l2, 0, 0, q2, "r"))
+    >>> targets = [
+    ...     [1.5, 0.2, 0.0],
+    ...     [1.4, 0.4, 0.0],
+    ...     [1.2, 0.6, 0.0],
+    ... ]
+    >>> trajectory = solve_position_trajectory(
+    ...     robot,
+    ...     targets,
+    ...     q0=[0.1, 0.1],
+    ...     parameters={l1: 1.0, l2: 1.0},
+    ... )
+    >>> trajectory.qs
+    """
+    targets = _prepare_target_positions(target_positions)
+
+    if isinstance(q0, np.ndarray):
+        q_seed = np.asarray(q0, dtype=float).reshape(-1).copy()
+    else:
+        try:
+            q_seed = list(q0)
+        except TypeError:
+            q_seed = q0
+
+    solutions = []
+    for index, target in enumerate(targets):
+        solution = solve_position_ik(
+            robot,
+            target,
+            q0=q_seed,
+            parameters=parameters,
+            method=method,
+            joint_limits=joint_limits,
+            tol=tol,
+            max_iter=max_iter,
+            damping=damping,
+            damping_scale=damping_scale,
+            random_state=random_state,
+            step_tol=step_tol,
+            error_change_tol=error_change_tol,
+            stagnation_iterations=stagnation_iterations,
+        )
+
+        solutions.append(solution)
+        if not solution.converged:
+            reason = solution.message if solution.message else "Solver did not converge."
+            return IKTrajectorySolution(
+                solutions=solutions,
+                converged=False,
+                failed_index=index,
+                message=MSG_TRAJECTORY_FAILED.format(index=index, reason=reason),
+            )
+
+        q_seed = list(solution.q)
+
+    return IKTrajectorySolution(
+        solutions=solutions,
+        converged=True,
+        failed_index=None,
+        message=MSG_TRAJECTORY_CONVERGED,
     )

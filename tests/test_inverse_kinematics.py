@@ -6,7 +6,12 @@ import sympy as sp
 import numpy as np
 from moro.core import Robot
 import moro.inverse_kinematics as ik_module
-from moro.inverse_kinematics import solve_position_ik, IKSolution
+from moro.inverse_kinematics import (
+    solve_position_ik,
+    solve_position_trajectory,
+    IKSolution,
+    IKTrajectorySolution,
+)
 from moro.abc import q1, q2
 
 
@@ -102,6 +107,324 @@ class TestIKSolution:
         assert "method=lm" in text
         assert "iters=7" in text
         assert "error=" in text
+
+
+class TestIKTrajectorySolution:
+    """Tests for the IKTrajectorySolution data class."""
+
+    def test_creation_and_attributes(self):
+        sol1 = IKSolution([0.1, 0.2], True, 3, 1e-9, residual=[0.0, 0.0, 0.0])
+        sol2 = IKSolution([0.2, 0.3], True, 4, 2e-9, residual=[0.0, 0.0, 0.0])
+
+        traj = IKTrajectorySolution(
+            solutions=(sol1, sol2),
+            converged=1,
+            failed_index=None,
+            message=123,
+        )
+
+        assert isinstance(traj.solutions, list)
+        assert len(traj.solutions) == 2
+        assert traj.converged is True
+        assert traj.failed_index is None
+        assert traj.message == "123"
+
+    def test_rejects_non_iksolution_elements(self):
+        sol = IKSolution([0.1], True, 1, 0.0, residual=[0.0, 0.0, 0.0])
+        with pytest.raises(TypeError, match="solutions\\[1\\]"):
+            IKTrajectorySolution(solutions=[sol, "bad"], converged=False)
+
+    def test_failed_index_validation(self):
+        sol = IKSolution([0.1], False, 1, 0.1, residual=[0.1, 0.0, 0.0])
+
+        with pytest.raises(ValueError, match="failed_index"):
+            IKTrajectorySolution(solutions=[sol], converged=False, failed_index=-1)
+
+        with pytest.raises(ValueError, match="failed_index"):
+            IKTrajectorySolution(solutions=[sol], converged=False, failed_index=1.2)
+
+    def test_converged_requires_none_failed_index(self):
+        sol = IKSolution([0.1], True, 1, 0.0, residual=[0.0, 0.0, 0.0])
+        with pytest.raises(ValueError, match="failed_index"):
+            IKTrajectorySolution(solutions=[sol], converged=True, failed_index=0)
+
+    def test_properties_qs_errors_and_iterations(self):
+        sol1 = IKSolution([0.1, 0.2], True, 3, 1e-4, residual=[1e-4, 0.0, 0.0])
+        sol2 = IKSolution([0.2, 0.4], False, 5, 2e-3, residual=[2e-3, 0.0, 0.0])
+
+        traj = IKTrajectorySolution(
+            solutions=[sol1, sol2],
+            converged=False,
+            failed_index=1,
+            message="failed",
+        )
+
+        assert traj.qs == [[0.1, 0.2], [0.2, 0.4]]
+        assert traj.errors == [1e-4, 2e-3]
+        assert traj.iterations == [3, 5]
+
+    def test_qs_returns_copies(self):
+        sol = IKSolution([0.3, 0.4], True, 2, 0.0, residual=[0.0, 0.0, 0.0])
+        traj = IKTrajectorySolution(solutions=[sol], converged=True)
+
+        qs = traj.qs
+        qs[0][0] = -123.0
+
+        assert traj.solutions[0].q == [0.3, 0.4]
+
+    def test_repr_is_compact(self):
+        sol = IKSolution([0.1], False, 2, 1e-2, residual=[1e-2, 0.0, 0.0])
+        traj = IKTrajectorySolution(
+            solutions=[sol],
+            converged=False,
+            failed_index=0,
+            message="failed",
+        )
+
+        text = repr(traj)
+        assert "IKTrajectorySolution" in text
+        assert "points=1" in text
+        assert "failed_index=0" in text
+        assert "IKSolution(" not in text
+
+
+class TestSolvePositionTrajectory:
+    """Tests for the solve_position_trajectory function."""
+
+    def test_rr_trajectory_reachable(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        q_refs = [[0.2, 0.3], [0.25, 0.35], [0.3, 0.4], [0.35, 0.45]]
+        targets = [end_effector_position(rr, q) for q in q_refs]
+
+        trajectory = solve_position_trajectory(
+            rr,
+            targets,
+            q0=[0.1, 0.1],
+            method="lm",
+            tol=1e-8,
+        )
+
+        assert trajectory.converged is True
+        assert trajectory.failed_index is None
+        assert len(trajectory.solutions) == len(targets)
+        assert len(trajectory.qs) == len(targets)
+
+        for solution, target in zip(trajectory.solutions, targets):
+            assert isinstance(solution, IKSolution)
+            assert_reaches_target(rr, solution, target)
+
+    def test_mixed_pr_trajectory_reachable(self):
+        pr = Robot((0, 0, q1, 0, "p"), (1.0, 0, 0, q2, "r"))
+        q_refs = [[0.3, 0.2], [0.4, 0.25], [0.5, 0.3], [0.6, 0.35]]
+        targets = [end_effector_position(pr, q) for q in q_refs]
+
+        trajectory = solve_position_trajectory(
+            pr,
+            targets,
+            q0=[0.1, 0.1],
+            method="ccd",
+            tol=1e-8,
+            max_iter=1000,
+        )
+
+        assert trajectory.converged is True
+        assert trajectory.failed_index is None
+        assert len(trajectory.solutions) == len(targets)
+
+        for solution, target in zip(trajectory.solutions, targets):
+            assert_reaches_target(pr, solution, target, atol=1e-6)
+
+    def test_symbolic_parameters_are_supported(self):
+        ls1, ls2 = sp.symbols("ls1 ls2")
+        robot = Robot((ls1, 0, 0, q1, "r"), (ls2, 0, 0, q2, "r"))
+        original_T = robot.T
+
+        q_refs = [[0.3, 0.4], [0.35, 0.45], [0.4, 0.5]]
+        params = {ls1: 1.0, ls2: 1.0}
+        targets = [end_effector_position(robot, q, parameters=params) for q in q_refs]
+
+        trajectory = solve_position_trajectory(
+            robot,
+            targets,
+            q0=[0.2, 0.2],
+            parameters=params,
+            method="newton",
+            tol=1e-8,
+        )
+
+        assert trajectory.converged is True
+        assert trajectory.failed_index is None
+        assert len(trajectory.solutions) == len(targets)
+
+        for solution, target in zip(trajectory.solutions, targets):
+            assert_reaches_target(robot, solution, target, parameters=params)
+
+        assert robot.T == original_T
+        assert ls1 in robot.T.free_symbols
+        assert ls2 in robot.T.free_symbols
+
+    def test_reuses_previous_solution_as_seed(self, monkeypatch):
+        received_q0 = []
+
+        def fake_solver(
+            robot,
+            target_position,
+            q0=None,
+            joint_limits=None,
+            tol=1e-6,
+            max_iter=None,
+            method="lm",
+            damping=1.0,
+            damping_scale=0.5,
+            *,
+            parameters=None,
+            random_state=None,
+            step_tol=1e-12,
+            error_change_tol=1e-12,
+            stagnation_iterations=5,
+        ):
+            received_q0.append(list(q0))
+            q_next = [q0[0] + 1.0, q0[1] + 2.0]
+            return IKSolution(
+                q=q_next,
+                converged=True,
+                iterations=1,
+                error=0.0,
+                method=method,
+                residual=[0.0, 0.0, 0.0],
+                message="Converged successfully.",
+            )
+
+        monkeypatch.setattr(ik_module, "solve_position_ik", fake_solver)
+
+        trajectory = solve_position_trajectory(
+            robot=object(),
+            target_positions=[[1.0, 0.0, 0.0], [1.1, 0.1, 0.0], [1.2, 0.2, 0.0]],
+            q0=[0.1, 0.2],
+        )
+
+        assert trajectory.converged is True
+        assert received_q0[0] == [0.1, 0.2]
+        assert received_q0[1] == [1.1, 2.2]
+        assert received_q0[2] == [2.1, 4.2]
+
+    def test_stops_on_first_failure_and_keeps_failing_solution(self, monkeypatch):
+        call_count = {"n": 0}
+
+        def fake_solver(
+            robot,
+            target_position,
+            q0=None,
+            joint_limits=None,
+            tol=1e-6,
+            max_iter=None,
+            method="lm",
+            damping=1.0,
+            damping_scale=0.5,
+            *,
+            parameters=None,
+            random_state=None,
+            step_tol=1e-12,
+            error_change_tol=1e-12,
+            stagnation_iterations=5,
+        ):
+            idx = call_count["n"]
+            call_count["n"] += 1
+
+            if idx == 0:
+                return IKSolution(
+                    q=[0.3, 0.4],
+                    converged=True,
+                    iterations=2,
+                    error=0.0,
+                    method=method,
+                    residual=[0.0, 0.0, 0.0],
+                    message="Converged successfully.",
+                )
+
+            if idx == 1:
+                return IKSolution(
+                    q=[0.6, 0.7],
+                    converged=False,
+                    iterations=50,
+                    error=0.5,
+                    method=method,
+                    residual=[0.5, 0.0, 0.0],
+                    message="Maximum number of iterations reached.",
+                )
+
+            pytest.fail("solve_position_ik should not be called after first failure.")
+
+        monkeypatch.setattr(ik_module, "solve_position_ik", fake_solver)
+
+        trajectory = solve_position_trajectory(
+            robot=object(),
+            target_positions=[[1.0, 0.0, 0.0], [1.2, 0.2, 0.0], [1.3, 0.3, 0.0]],
+            q0=[0.1, 0.2],
+        )
+
+        assert trajectory.converged is False
+        assert trajectory.failed_index == 1
+        assert len(trajectory.solutions) == 2
+        assert "target index 1" in trajectory.message
+        assert "Maximum number of iterations reached." in trajectory.message
+
+    def test_rejects_empty_target_positions(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        with pytest.raises(ValueError, match="at least one target"):
+            solve_position_trajectory(rr, [], q0=[0.1, 0.1])
+
+    def test_rejects_target_with_two_components(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        with pytest.raises(ValueError, match=r"target_positions\[1\]"):
+            solve_position_trajectory(rr, [[1.0, 0.0, 0.0], [0.5, 0.1]], q0=[0.1, 0.1])
+
+    def test_rejects_target_with_four_components(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        with pytest.raises(ValueError, match=r"target_positions\[0\]"):
+            solve_position_trajectory(rr, [[1.0, 0.0, 0.0, 0.0]], q0=[0.1, 0.1])
+
+    def test_rejects_target_with_nan(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        with pytest.raises(ValueError, match=r"target_positions\[0\]"):
+            solve_position_trajectory(rr, [[np.nan, 0.0, 0.0]], q0=[0.1, 0.1])
+
+    def test_rejects_target_with_inf(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        with pytest.raises(ValueError, match=r"target_positions\[0\]"):
+            solve_position_trajectory(rr, [[np.inf, 0.0, 0.0]], q0=[0.1, 0.1])
+
+    def test_rejects_target_with_non_numeric_value(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        with pytest.raises(ValueError, match=r"target_positions\[0\]"):
+            solve_position_trajectory(rr, [["x", 0.0, 0.0]], q0=[0.1, 0.1])
+
+    def test_rejects_single_vector_numpy_array(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        with pytest.raises(ValueError, match="single 3-element vector"):
+            solve_position_trajectory(rr, np.array([1.0, 0.0, 0.0]), q0=[0.1, 0.1])
+
+    def test_accepts_matrix_numpy_array(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        q_refs = [[0.2, 0.3], [0.25, 0.35], [0.3, 0.4]]
+        targets = np.asarray([end_effector_position(rr, q) for q in q_refs], dtype=float)
+
+        trajectory = solve_position_trajectory(rr, targets, q0=[0.1, 0.1], tol=1e-8)
+
+        assert trajectory.converged is True
+        assert len(trajectory.solutions) == targets.shape[0]
+
+    def test_integration_with_iksolution_outputs(self):
+        rr = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        q_refs = [[0.2, 0.4], [0.3, 0.5], [0.35, 0.55]]
+        targets = [end_effector_position(rr, q) for q in q_refs]
+
+        trajectory = solve_position_trajectory(rr, targets, q0=[0.1, 0.1], tol=1e-8)
+
+        assert trajectory.converged is True
+        assert all(isinstance(solution, IKSolution) for solution in trajectory.solutions)
+        assert trajectory.errors == [solution.error for solution in trajectory.solutions]
+        assert trajectory.qs == [solution.q for solution in trajectory.solutions]
 
 
 class TestSolvePositionIK:
