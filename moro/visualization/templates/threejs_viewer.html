@@ -90,6 +90,10 @@
     <div id="container-__UNIQUE_ID__"></div>
 
     <script>
+__COMMON_SCRIPT__
+    </script>
+
+    <script>
     (function() {
         if (
             typeof THREE !== 'undefined' &&
@@ -125,6 +129,7 @@
             var data = __ROBOT_DATA__;
             var style = data.style;
             var container = document.getElementById('container-__UNIQUE_ID__');
+            var status = document.getElementById('status-__UNIQUE_ID__');
 
             var scene;
             var camera;
@@ -141,49 +146,22 @@
             var height = __HEIGHT__;
             var aspect = width / height;
             var sceneScale = Math.max(Number(data.dimension) || 0, 1);
-            var resolvedStyle = {
-                frameScale: style.frame_scale !== null
-                    ? Number(style.frame_scale)
-                    : Math.max(sceneScale / 6, 1.0),
-                jointRadius: style.joint_size !== null
-                    ? Number(style.joint_size)
-                    : Math.max(sceneScale * 0.02, 0.4),
-                baseRadius: style.base_size !== null
-                    ? Number(style.base_size)
-                    : Math.max(sceneScale * 0.03, 0.6),
-                linkRadius: Math.max(sceneScale * 0.015, 0.3)
-                    * (Number(style.link_linewidth) / 3)
-            };
+            var resolvedStyle = window.MoroThreeJS.resolveStyle(
+                style,
+                sceneScale
+            );
 
             try {
                 scene = new THREE.Scene();
                 scene.background = new THREE.Color(0xf5f5f5);
 
-                var nearPlane = Math.max(sceneScale * 0.001, 0.01);
-                var farPlane = Math.max(sceneScale * 50, 1000);
+                var cameraSet = window.MoroThreeJS.createCameras({
+                    aspect: aspect,
+                    sceneScale: sceneScale
+                });
 
-                perspectiveCamera = new THREE.PerspectiveCamera(
-                    50,
-                    aspect,
-                    nearPlane,
-                    farPlane
-                );
-
-                var orthoHeight = sceneScale * 3.0;
-                var orthoWidth = orthoHeight * aspect;
-
-                orthographicCamera = new THREE.OrthographicCamera(
-                    -orthoWidth / 2,
-                    orthoWidth / 2,
-                    orthoHeight / 2,
-                    -orthoHeight / 2,
-                    nearPlane,
-                    farPlane
-                );
-
-                // Robotics convention: Z is the vertical axis.
-                perspectiveCamera.up.set(0, 0, 1);
-                orthographicCamera.up.set(0, 0, 1);
+                perspectiveCamera = cameraSet.perspectiveCamera;
+                orthographicCamera = cameraSet.orthographicCamera;
 
                 camera = orthographicCamera;
 
@@ -192,47 +170,28 @@
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 container.appendChild(renderer.domElement);
 
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.target.copy(getDefaultTarget());
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.1;
-                controls.mouseButtons = {
-                    LEFT: THREE.MOUSE.PAN,
-                    MIDDLE: THREE.MOUSE.ROTATE,
-                    RIGHT: THREE.MOUSE.PAN
-                };
-                controls.touches = {
-                    ONE: THREE.TOUCH.PAN,
-                    TWO: THREE.TOUCH.DOLLY_PAN
-                };
-
-                controls.addEventListener('start', function() {
-                    currentView = 'custom';
-                    updateStatus();
+                controls = window.MoroThreeJS.setupOrbitControls({
+                    camera: camera,
+                    domElement: renderer.domElement,
+                    target: getDefaultTarget(),
+                    onStart: function() {
+                        currentView = 'custom';
+                        updateStatus();
+                    }
                 });
 
-                // Lights
-                scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-
-                var dl1 = new THREE.DirectionalLight(0xffffff, 0.5);
-                dl1.position.set(sceneScale, sceneScale, sceneScale);
-                scene.add(dl1);
-
-                var dl2 = new THREE.DirectionalLight(0xffffff, 0.3);
-                dl2.position.set(-sceneScale, -sceneScale, -sceneScale);
-                scene.add(dl2);
+                window.MoroThreeJS.createLights(scene, sceneScale);
 
                 // Grid on the XY plane for the Z-up convention.
                 if (style.show_grid) {
-                    var gridSize = sceneScale * 2.5;
-                    var grid = new THREE.GridHelper(
-                        gridSize,
-                        20,
-                        0x888888,
-                        0xcccccc
-                    );
-                    grid.rotation.x = Math.PI / 2;
-                    scene.add(grid);
+                    window.MoroThreeJS.createGrid(scene, {
+                        gridSize: sceneScale * 2.5,
+                        gridDivisions: 20,
+                        primaryColor: 0x888888,
+                        secondaryColor: 0xcccccc,
+                        rotateToXY: true,
+                        position: [0, 0, 0]
+                    });
                 }
 
                 scene.add(new THREE.AxesHelper(sceneScale / 4));
@@ -244,7 +203,6 @@
                 setView('isometric', true);
                 animate();
             } catch (e) {
-                var status = document.getElementById('status-__UNIQUE_ID__');
                 status.innerHTML = 'Error: ' + e.message;
                 status.style.color = 'red';
             }
@@ -258,113 +216,14 @@
             }
 
             function drawRobot(d) {
-                var joints = d.joints;
-                var frames = d.frames;
-
-                // Links
-                if (style.show_links) {
-                    var linkMat = new THREE.MeshPhongMaterial({
-                        color: style.link_color,
-                        shininess: 30,
-                        side: THREE.DoubleSide
-                    });
-
-                    for (var i = 0; i < joints.length - 1; i++) {
-                        var start = new THREE.Vector3().fromArray(joints[i]);
-                        var end = new THREE.Vector3().fromArray(joints[i + 1]);
-                        var dir = new THREE.Vector3().subVectors(end, start);
-                        var len = dir.length();
-
-                        if (len < 1e-6) {
-                            continue;
-                        }
-
-                        var cylinder = new THREE.Mesh(
-                            new THREE.CylinderGeometry(
-                                resolvedStyle.linkRadius,
-                                resolvedStyle.linkRadius,
-                                len,
-                                8
-                            ),
-                            linkMat
-                        );
-
-                        var midpoint = start.clone().add(
-                            dir.clone().multiplyScalar(0.5)
-                        );
-
-                        cylinder.position.copy(midpoint);
-                        cylinder.quaternion.setFromUnitVectors(
-                            new THREE.Vector3(0, 1, 0),
-                            dir.clone().normalize()
-                        );
-
-                        robotGroup.add(cylinder);
-                    }
-                }
-
-                // Joints
-                if (style.show_joints) {
-                    var jointMat = new THREE.MeshPhongMaterial({
-                        color: style.joint_color,
-                        shininess: 50
-                    });
-
-                    var baseMat = new THREE.MeshPhongMaterial({
-                        color: style.base_color,
-                        shininess: 50
-                    });
-
-                    joints.forEach(function(position, index) {
-                        if (index === 0 && !style.show_base) {
-                            return;
-                        }
-
-                        var radius = index === 0
-                            ? resolvedStyle.baseRadius
-                            : resolvedStyle.jointRadius;
-
-                        var material = index === 0 ? baseMat : jointMat;
-                        var sphere = new THREE.Mesh(
-                            new THREE.SphereGeometry(radius, 16, 16),
-                            material
-                        );
-
-                        sphere.position.fromArray(position);
-                        robotGroup.add(sphere);
-                    });
-                }
-
-                // Frames
-                if (style.show_frames) {
-                    frames.forEach(function(frame) {
-                        var origin = new THREE.Vector3().fromArray(frame.position);
-                        var xAxis = new THREE.Vector3().fromArray(frame.x);
-                        var yAxis = new THREE.Vector3().fromArray(frame.y);
-                        var zAxis = new THREE.Vector3().fromArray(frame.z);
-
-                        /*
-                         * FrameData stores the local axes as the columns of the
-                         * rotation matrix R = [x y z]. Matrix4.set receives its
-                         * values row by row, so the components must be arranged
-                         * accordingly.
-                         */
-                        var rotationMatrix = new THREE.Matrix4();
-                        rotationMatrix.set(
-                            xAxis.x, yAxis.x, zAxis.x, 0,
-                            xAxis.y, yAxis.y, zAxis.y, 0,
-                            xAxis.z, yAxis.z, zAxis.z, 0,
-                            0,       0,       0,       1
-                        );
-
-                        var axes = new THREE.AxesHelper(
-                            resolvedStyle.frameScale
-                        );
-                        axes.position.copy(origin);
-                        axes.setRotationFromMatrix(rotationMatrix);
-                        robotGroup.add(axes);
-                    });
-                }
+                window.MoroThreeJS.clearGroup(robotGroup);
+                window.MoroThreeJS.createRobotMeshes({
+                    robotGroup: robotGroup,
+                    data: d,
+                    style: style,
+                    resolvedStyle: resolvedStyle,
+                    normalizeFrameAxes: false
+                });
             }
 
             function setView(viewName, resetTarget) {
@@ -374,128 +233,41 @@
                     controls.target.copy(getDefaultTarget());
                 }
 
-                var target = controls.target.clone();
-                var position = new THREE.Vector3();
-
-                switch (viewName) {
-                    case 'front':
-                        // Camera on the negative-Y side, looking toward +Y.
-                        camera.up.set(0, 0, 1);
-                        position.set(
-                            target.x,
-                            target.y - distance,
-                            target.z
-                        );
-                        break;
-
-                    case 'top':
-                        // Use +Y as screen-up to avoid a vector parallel
-                        // to the viewing direction.
-                        camera.up.set(0, 1, 0);
-                        position.set(
-                            target.x,
-                            target.y,
-                            target.z + distance
-                        );
-                        break;
-
-                    case 'isometric':
-                        camera.up.set(0, 0, 1);
-                        position.set(
-                            target.x + distance,
-                            target.y + distance * 0.8,
-                            target.z + distance
-                        );
-                        break;
-
-                    default:
-                        return;
+                if (!window.MoroThreeJS.setPresetView({
+                    camera: camera,
+                    target: controls.target.clone(),
+                    distance: distance,
+                    viewName: viewName
+                })) {
+                    return;
                 }
-
-                camera.position.copy(position);
-                camera.lookAt(target);
-                camera.updateProjectionMatrix();
 
                 controls.update();
                 currentView = viewName;
                 updateStatus();
             }
 
-            function syncOrthographicFromPerspective() {
-                var distance = perspectiveCamera.position.distanceTo(
-                    controls.target
-                );
-
-                var fov = THREE.MathUtils.degToRad(
-                    perspectiveCamera.fov
-                );
-
-                var visibleHeight = 2 * distance * Math.tan(fov / 2);
-                var visibleWidth = visibleHeight * aspect;
-
-                orthographicCamera.left = -visibleWidth / 2;
-                orthographicCamera.right = visibleWidth / 2;
-                orthographicCamera.top = visibleHeight / 2;
-                orthographicCamera.bottom = -visibleHeight / 2;
-                orthographicCamera.zoom = 1;
-                orthographicCamera.updateProjectionMatrix();
-            }
-
-            function syncPerspectiveFromOrthographic() {
-                var visibleHeight = (
-                    orthographicCamera.top - orthographicCamera.bottom
-                ) / orthographicCamera.zoom;
-
-                var fov = THREE.MathUtils.degToRad(
-                    perspectiveCamera.fov
-                );
-
-                var distance = visibleHeight / (
-                    2 * Math.tan(fov / 2)
-                );
-
-                var direction = orthographicCamera.position
-                    .clone()
-                    .sub(controls.target)
-                    .normalize();
-
-                perspectiveCamera.position.copy(
-                    controls.target.clone().add(
-                        direction.multiplyScalar(distance)
-                    )
-                );
-            }
-
             function setCameraType(type) {
-                if (
-                    type !== 'perspective' &&
-                    type !== 'orthographic'
-                ) {
+                var result = window.MoroThreeJS.switchCameraType({
+                    type: type,
+                    activeCameraType: activeCameraType,
+                    camera: camera,
+                    perspectiveCamera: perspectiveCamera,
+                    orthographicCamera: orthographicCamera,
+                    controls: controls,
+                    aspect: aspect,
+                    synchronizeProjection: true
+                });
+
+                if (!result.changed) {
+                    if (type === activeCameraType) {
+                        document.getElementById('cam-type-__UNIQUE_ID__').value = type;
+                    }
                     return;
                 }
 
-                if (type === activeCameraType) {
-                    return;
-                }
-
-                var previousCamera = camera;
-
-                if (type === 'orthographic') {
-                    syncOrthographicFromPerspective();
-                    camera = orthographicCamera;
-                    camera.position.copy(previousCamera.position);
-                } else {
-                    camera = perspectiveCamera;
-                    syncPerspectiveFromOrthographic();
-                }
-
-                camera.quaternion.copy(previousCamera.quaternion);
-                camera.up.copy(previousCamera.up);
-                camera.updateProjectionMatrix();
-
-                activeCameraType = type;
-                controls.object = camera;
-                controls.update();
+                camera = result.camera;
+                activeCameraType = result.activeCameraType;
 
                 document.getElementById(
                     'cam-type-__UNIQUE_ID__'
@@ -517,10 +289,6 @@
                 var viewName = currentView === 'custom'
                     ? 'Custom'
                     : currentView.charAt(0).toUpperCase() + currentView.slice(1);
-
-                var status = document.getElementById(
-                    'status-__UNIQUE_ID__'
-                );
 
                 status.innerHTML =
                     cameraName + ' | ' + viewName +

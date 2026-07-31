@@ -16,6 +16,15 @@ from .style import VisualizationStyle
 _PLACEHOLDER_PATTERN = re.compile(r"__[A-Z][A-Z0-9_]*__")
 
 
+def _load_template_resource(resource_name: str) -> str:
+    """Load one resource from ``moro.visualization.templates``."""
+    return (
+        files("moro.visualization.templates")
+        .joinpath(resource_name)
+        .read_text(encoding="utf-8")
+    )
+
+
 def _replace_placeholders(
     template: str,
     replacements: dict[str, Any],
@@ -47,12 +56,15 @@ def _render_html_template(
     replacements: dict[str, Any],
 ) -> str:
     """Load and render a template from ``moro.visualization.templates``."""
-    template = (
-        files("moro.visualization.templates")
-        .joinpath(template_name)
-        .read_text(encoding="utf-8")
-    )
-    return _replace_placeholders(template, replacements)
+    template = _load_template_resource(template_name)
+    replacement_values = dict(replacements)
+
+    if "__COMMON_SCRIPT__" in template and "common_script" not in replacement_values:
+        replacement_values["common_script"] = _load_template_resource(
+            "threejs_common.js"
+        )
+
+    return _replace_placeholders(template, replacement_values)
 
 
 def _scene_to_payload(scene_data: SceneData) -> dict:

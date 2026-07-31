@@ -118,6 +118,10 @@
     <div id="container-__UNIQUE_ID__"></div>
 
     <script>
+__COMMON_SCRIPT__
+    </script>
+
+    <script>
     (function() {
         if (typeof THREE !== 'undefined' &&
                 typeof THREE.OrbitControls !== 'undefined') {
@@ -178,19 +182,7 @@
             var animationBounds = computeAnimationBounds(framesData);
             var sceneCenter = animationBounds.center;
             var dim = animationBounds.dimension * 1.15;
-            var resolvedStyle = {
-                frameScale: style.frame_scale !== null
-                    ? Number(style.frame_scale)
-                    : Math.max(dim / 6, 1.0),
-                jointRadius: style.joint_size !== null
-                    ? Number(style.joint_size)
-                    : Math.max(dim * 0.02, 0.4),
-                baseRadius: style.base_size !== null
-                    ? Number(style.base_size)
-                    : Math.max(dim * 0.03, 0.6),
-                linkRadius: Math.max(dim * 0.015, 0.3)
-                    * (Number(style.link_linewidth) / 3)
-            };
+            var resolvedStyle = window.MoroThreeJS.resolveStyle(style, dim);
 
             function computeAnimationBounds(animationData) {
                 var minPoint = new THREE.Vector3(
@@ -314,28 +306,17 @@
                 var nearPlane = Math.max(dim * 0.001, 0.01);
                 var farPlane = Math.max(dim * 50, 1000);
 
-                perspectiveCamera = new THREE.PerspectiveCamera(
-                    50,
-                    aspect,
-                    nearPlane,
-                    farPlane
-                );
+                var cameraSet = window.MoroThreeJS.createCameras({
+                    aspect: aspect,
+                    sceneScale: dim,
+                    nearPlane: nearPlane,
+                    farPlane: farPlane,
+                    orthographicNear: -farPlane,
+                    orthographicFar: farPlane
+                });
 
-                var orthoHeight = dim * 3.0;
-                var orthoWidth = orthoHeight * aspect;
-
-                orthographicCamera = new THREE.OrthographicCamera(
-                    -orthoWidth / 2,
-                    orthoWidth / 2,
-                    orthoHeight / 2,
-                    -orthoHeight / 2,
-                    -farPlane,
-                    farPlane
-                );
-
-                // Robotics convention: Z is the vertical axis.
-                perspectiveCamera.up.set(0, 0, 1);
-                orthographicCamera.up.set(0, 0, 1);
+                perspectiveCamera = cameraSet.perspectiveCamera;
+                orthographicCamera = cameraSet.orthographicCamera;
 
                 camera = orthographicCamera;
 
@@ -344,33 +325,15 @@
                 renderer.setPixelRatio(window.devicePixelRatio);
                 container.appendChild(renderer.domElement);
 
-                // OrbitControls with CAD-like mouse mapping.
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.target.copy(sceneCenter);
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.1;
-                controls.mouseButtons = {
-                    LEFT: THREE.MOUSE.PAN,
-                    MIDDLE: THREE.MOUSE.ROTATE,
-                    RIGHT: THREE.MOUSE.PAN
-                };
-                controls.touches = {
-                    ONE: THREE.TOUCH.PAN,
-                    TWO: THREE.TOUCH.DOLLY_PAN
-                };
+                controls = window.MoroThreeJS.setupOrbitControls({
+                    camera: camera,
+                    domElement: renderer.domElement,
+                    target: sceneCenter
+                });
 
                 setView('isometric');
 
-                // Lights.
-                scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-
-                var dl1 = new THREE.DirectionalLight(0xffffff, 0.5);
-                dl1.position.set(dim, dim, dim);
-                scene.add(dl1);
-
-                var dl2 = new THREE.DirectionalLight(0xffffff, 0.3);
-                dl2.position.set(-dim, -dim, -dim);
-                scene.add(dl2);
+                window.MoroThreeJS.createLights(scene, dim);
 
                 // Grid on the global XY plane (Z = 0). Its center must remain
                 // at the world origin so that it agrees with the robot base frame.
@@ -385,16 +348,15 @@
                         dim / 2
                     );
                     var gridSize = Math.max(gridHalfExtent * 2.4, dim * 2.5);
-                    var gridDivisions = 20;
-                    var grid = new THREE.GridHelper(
-                        gridSize,
-                        gridDivisions,
-                        0x888888,
-                        0xcccccc
-                    );
-                    grid.rotation.x = Math.PI / 2;
-                    grid.position.set(0, 0, 0);
-                    scene.add(grid);
+
+                    window.MoroThreeJS.createGrid(scene, {
+                        gridSize: gridSize,
+                        gridDivisions: 20,
+                        primaryColor: 0x888888,
+                        secondaryColor: 0xcccccc,
+                        rotateToXY: true,
+                        position: [0, 0, 0]
+                    });
                 }
 
                 // Global coordinate system at the world origin.
@@ -417,124 +379,15 @@
                 status.style.color = 'red';
             }
 
-            function clearRobotGroup() {
-                while (robotGroup.children.length > 0) {
-                    var child = robotGroup.children[0];
-                    robotGroup.remove(child);
-
-                    if (child.geometry) {
-                        child.geometry.dispose();
-                    }
-
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(function(material) {
-                                material.dispose();
-                            });
-                        } else {
-                            child.material.dispose();
-                        }
-                    }
-                }
-            }
-
             function drawRobot(data) {
-                clearRobotGroup();
-
-                var joints = data.joints;
-                var frames = data.frames;
-
-                // Links.
-                if (style.show_links) {
-                    var linkMat = new THREE.MeshPhongMaterial({
-                        color: style.link_color,
-                        shininess: 30,
-                        side: THREE.DoubleSide
-                    });
-
-                    for (var i = 0; i < joints.length - 1; i++) {
-                        var start = new THREE.Vector3().fromArray(joints[i]);
-                        var end = new THREE.Vector3().fromArray(joints[i + 1]);
-                        var direction = new THREE.Vector3().subVectors(end, start);
-                        var length = direction.length();
-
-                        if (length < 1e-6) {
-                            continue;
-                        }
-
-                        var cylinder = new THREE.Mesh(
-                            new THREE.CylinderGeometry(
-                                resolvedStyle.linkRadius,
-                                resolvedStyle.linkRadius,
-                                length,
-                                8
-                            ),
-                            linkMat
-                        );
-
-                        var midpoint = start.clone().add(
-                            direction.clone().multiplyScalar(0.5)
-                        );
-                        cylinder.position.copy(midpoint);
-                        cylinder.quaternion.setFromUnitVectors(
-                            new THREE.Vector3(0, 1, 0),
-                            direction.clone().normalize()
-                        );
-                        robotGroup.add(cylinder);
-                    }
-                }
-
-                // Joints.
-                if (style.show_joints) {
-                    var jointMat = new THREE.MeshPhongMaterial({
-                        color: style.joint_color,
-                        shininess: 50
-                    });
-                    var baseMat = new THREE.MeshPhongMaterial({
-                        color: style.base_color,
-                        shininess: 50
-                    });
-
-                    joints.forEach(function(position, index) {
-                        if (index === 0 && !style.show_base) {
-                            return;
-                        }
-
-                        var radius = index === 0
-                            ? resolvedStyle.baseRadius
-                            : resolvedStyle.jointRadius;
-                        var material = index === 0 ? baseMat : jointMat;
-                        var sphere = new THREE.Mesh(
-                            new THREE.SphereGeometry(radius, 16, 16),
-                            material
-                        );
-                        sphere.position.fromArray(position);
-                        robotGroup.add(sphere);
-                    });
-                }
-
-                // Coordinate frames.
-                // The payload stores the local frame axes expressed in the
-                // world frame. THREE.Matrix4.makeBasis expects those vectors
-                // as the columns of the rotation matrix, matching FrameData.x,
-                // FrameData.y and FrameData.z.
-                if (style.show_frames) {
-                    frames.forEach(function(frame) {
-                        var xAxis = new THREE.Vector3().fromArray(frame.x).normalize();
-                        var yAxis = new THREE.Vector3().fromArray(frame.y).normalize();
-                        var zAxis = new THREE.Vector3().fromArray(frame.z).normalize();
-
-                        var rotationMatrix = new THREE.Matrix4();
-                        rotationMatrix.makeBasis(xAxis, yAxis, zAxis);
-
-                        var axes = new THREE.AxesHelper(
-                            resolvedStyle.frameScale
-                        );
-                        axes.position.fromArray(frame.position);
-                        axes.quaternion.setFromRotationMatrix(rotationMatrix);
-                        robotGroup.add(axes);
-                    });
-                }
+                window.MoroThreeJS.clearGroup(robotGroup);
+                window.MoroThreeJS.createRobotMeshes({
+                    robotGroup: robotGroup,
+                    data: data,
+                    style: style,
+                    resolvedStyle: resolvedStyle,
+                    normalizeFrameAxes: true
+                });
             }
 
             function goToFrame(index) {
@@ -589,52 +442,41 @@
             }
 
             function setView(viewName) {
-                var distance = dim * 2.5;
-                var target = controls.target;
-                var offset = new THREE.Vector3();
-
-                switch (viewName) {
-                    case 'front':
-                        offset.set(0, -distance, 0);
-                        break;
-                    case 'top':
-                        offset.set(0, 0, distance);
-                        break;
-                    case 'isometric':
-                        offset.set(distance, distance * 0.8, distance);
-                        break;
-                    default:
-                        return;
+                if (!window.MoroThreeJS.setPresetView({
+                    camera: camera,
+                    target: controls.target.clone(),
+                    distance: dim * 2.5,
+                    viewName: viewName,
+                    topUp: [0, 0, 1]
+                })) {
+                    return;
                 }
 
-                camera.position.copy(target).add(offset);
-                camera.lookAt(target);
                 controls.update();
                 currentView = viewName;
             }
 
             function setCameraType(type) {
-                if (type !== 'perspective' && type !== 'orthographic') {
-                    return;
+                var result = window.MoroThreeJS.switchCameraType({
+                    type: type,
+                    activeCameraType: activeCameraType,
+                    camera: camera,
+                    perspectiveCamera: perspectiveCamera,
+                    orthographicCamera: orthographicCamera,
+                    controls: controls,
+                    aspect: aspect,
+                    synchronizeProjection: false
+                });
+
+                if (!result.changed) {
+                    if (type === activeCameraType) {
+                        cameraSelect.value = type;
+                    }
+                        return;
                 }
 
-                if (type === activeCameraType) {
-                    cameraSelect.value = type;
-                    return;
-                }
-
-                var newCamera = type === 'perspective'
-                    ? perspectiveCamera
-                    : orthographicCamera;
-
-                newCamera.position.copy(camera.position);
-                newCamera.quaternion.copy(camera.quaternion);
-                newCamera.up.copy(camera.up);
-
-                camera = newCamera;
-                activeCameraType = type;
-                controls.object = camera;
-                controls.update();
+                camera = result.camera;
+                activeCameraType = result.activeCameraType;
                 cameraSelect.value = type;
             }
 

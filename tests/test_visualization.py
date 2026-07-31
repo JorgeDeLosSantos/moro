@@ -23,8 +23,10 @@ from moro.visualization import (
     _replace_placeholders,
     _scene_to_payload,
     _scenes_to_payload,
+    _style_to_payload,
     evaluate_robot,
 )
+from moro.visualization.threejs_backend import _load_template_resource
 
 
 @pytest.fixture
@@ -261,8 +263,17 @@ def test_render_html_template_replaces_placeholders():
     assert "__WIDTH__" not in html
     assert "__HEIGHT__" not in html
     assert "__ROBOT_DATA__" not in html
+    assert "__COMMON_SCRIPT__" not in html
     assert "robot123" in html
     assert "800" in html
+    assert "window.MoroThreeJS" in html
+
+
+def test_load_template_resource_reads_common_script():
+    common_script = _load_template_resource("threejs_common.js")
+
+    assert "window.MoroThreeJS" in common_script
+    assert "createCameras" in common_script
 
 
 # ========================================
@@ -362,6 +373,8 @@ def test_threejs_backend_returns_html(scene_data):
     assert "THREE.Scene" in result.data
     assert "__ROBOT_DATA__" not in result.data
     assert "__UNIQUE_ID__" not in result.data
+    assert "__COMMON_SCRIPT__" not in result.data
+    assert "window.MoroThreeJS" in result.data
 
 
 def test_threejs_backend_animate_empty_list_raises():
@@ -470,7 +483,49 @@ def test_threejs_backend_animate_returns_html(scene_data):
     assert isinstance(result, HTML)
     assert "__FRAMES_DATA__" not in result.data
     assert "__UNIQUE_ID__" not in result.data
+    assert "__COMMON_SCRIPT__" not in result.data
+    assert "window.MoroThreeJS" in result.data
     assert "THREE.Scene" in result.data
+
+
+def test_threejs_backend_outputs_have_no_unresolved_placeholders(scene_data):
+    render_html = ThreeJSBackend.render(scene_data).data
+    animate_html = ThreeJSBackend.animate([scene_data, scene_data]).data
+
+    assert "__" not in render_html
+    assert "__" not in animate_html
+
+
+def test_style_to_payload_preserves_custom_values():
+    style = VisualizationStyle(
+        show_frames=False,
+        show_links=False,
+        show_joints=True,
+        show_base=False,
+        show_grid=False,
+        link_color="#112233",
+        joint_color="#445566",
+        base_color="#778899",
+        frame_scale=2.5,
+        joint_size=0.7,
+        base_size=0.9,
+        link_linewidth=4,
+    )
+
+    payload = _style_to_payload(style)
+
+    assert payload["show_frames"] is False
+    assert payload["show_links"] is False
+    assert payload["show_joints"] is True
+    assert payload["show_base"] is False
+    assert payload["show_grid"] is False
+    assert payload["link_color"] == "#112233"
+    assert payload["joint_color"] == "#445566"
+    assert payload["base_color"] == "#778899"
+    assert payload["frame_scale"] == 2.5
+    assert payload["joint_size"] == 0.7
+    assert payload["base_size"] == 0.9
+    assert payload["link_linewidth"] == 4
 
 
 # ---------------------------------------------------------------------------
