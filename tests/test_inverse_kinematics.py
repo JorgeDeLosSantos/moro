@@ -5,6 +5,7 @@ import pytest
 import sympy as sp
 import numpy as np
 from moro.core import Robot
+import moro.inverse_kinematics as ik_module
 from moro.inverse_kinematics import solve_position_ik, IKSolution
 from moro.abc import q1, q2
 
@@ -31,6 +32,14 @@ def assert_within_joint_limits(q_values, limits):
         assert lower <= q_value <= upper
 
 
+def assert_solution_residual_consistency(solution):
+    """Assert finite residual consistency for converged solutions."""
+    assert isinstance(solution.residual, list)
+    assert len(solution.residual) == 3
+    assert np.all(np.isfinite(solution.residual))
+    assert np.isclose(solution.error, np.linalg.norm(solution.residual))
+
+
 class TestIKSolution:
     """Tests for the IKSolution data class."""
 
@@ -41,6 +50,15 @@ class TestIKSolution:
         assert sol.iterations == 5
         assert sol.error == 1e-8
         assert sol.method == "lm"
+        assert sol.residual is None
+        assert sol.message == ""
+
+    def test_legacy_constructor_without_new_fields(self):
+        sol = IKSolution(0.5, True, 1, 0.0)
+        assert sol.q == [0.5]
+        assert sol.method == "lm"
+        assert sol.residual is None
+        assert sol.message == ""
 
     def test_repr_converged(self):
         sol = IKSolution([0.5], converged=True, iterations=3, error=1e-6)
@@ -55,6 +73,20 @@ class TestIKSolution:
         sol = IKSolution(0.5, converged=True, iterations=1, error=0.0)
         assert sol.q == [0.5]
 
+    def test_iterable_q_converted_to_list(self):
+        sol = IKSolution(np.array([0.1, 0.2]), converged=False, iterations=0, error=1.0)
+        assert sol.q == [0.1, 0.2]
+
+    def test_numpy_residual_converted_to_list(self):
+        sol = IKSolution(
+            [0.2],
+            converged=False,
+            iterations=2,
+            error=0.3,
+            residual=np.array([0.1, 0.2, 0.0]),
+        )
+        assert sol.residual == [0.1, 0.2, 0.0]
+
     def test_custom_method_in_repr(self):
         sol = IKSolution([0.2], converged=True, iterations=4, error=1e-8, method="newton")
         assert "newton" in repr(sol)
@@ -62,6 +94,14 @@ class TestIKSolution:
     def test_ccd_method_in_repr(self):
         sol = IKSolution([0.2], converged=True, iterations=4, error=1e-8, method="ccd")
         assert "ccd" in repr(sol)
+
+    def test_repr_keeps_main_information(self):
+        sol = IKSolution([0.2, -0.1], converged=False, iterations=7, error=2e-2, method="lm")
+        text = repr(sol)
+        assert "IKSolution" in text
+        assert "method=lm" in text
+        assert "iters=7" in text
+        assert "error=" in text
 
 
 class TestSolvePositionIK:
@@ -84,6 +124,26 @@ class TestSolvePositionIK:
         with pytest.raises(ValueError, match="DOF"):
             solve_position_ik(rr, [1.0, 0.0, 0.0],
                               joint_limits=[(-np.pi, np.pi)])
+
+    @pytest.mark.parametrize("method", ["newton", "lm", "ccd"])
+    def test_converged_solution_exposes_residual_and_message(self, method):
+        rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
+        q_known = [np.pi / 3, np.pi / 6]
+        T_known = rr.T.subs({q1: q_known[0], q2: q_known[1]})
+        target = [float(T_known[0, 3]), float(T_known[1, 3]), float(T_known[2, 3])]
+
+        sol = solve_position_ik(
+            rr,
+            target,
+            q0=[0.4, 0.4],
+            method=method,
+            tol=1e-8,
+            max_iter=1000 if method == "ccd" else 200,
+        )
+
+        assert sol.converged is True
+        assert sol.message == "Converged successfully."
+        assert_solution_residual_consistency(sol)
 
     # --- CCD tests ---
 
@@ -142,19 +202,13 @@ class TestSolvePositionIK:
 
         assert_within_joint_limits(sol.q, limits)
 
-    def test_ccd_random_initial_guess(self, monkeypatch):
+    def test_ccd_random_initial_guess(self):
         """CCD: Without providing q0, should still find a solution."""
         rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
         target = [1.5, 0.0, 0.0]
 
-        monkeypatch.setattr(
-            np.random,
-            "uniform",
-            lambda lower, upper: np.array([0.4, -0.8], dtype=float),
-        )
-
         sol = solve_position_ik(
-            rr, target, method="ccd", tol=1e-6, max_iter=1000
+            rr, target, method="ccd", tol=1e-6, max_iter=1000, random_state=42
         )
 
         assert sol.converged is True
@@ -198,11 +252,15 @@ class TestSolvePositionIK:
             method="ccd",
             joint_limits=[(0.0, 0.1)],
             tol=1e-12,
+            step_tol=0.0,
+            error_change_tol=0.0,
+            stagnation_iterations=501,
         )
 
         assert sol.converged is False
         assert sol.method == "ccd"
         assert sol.iterations == 500
+        assert sol.message == "Maximum number of iterations reached."
 
     # --- Levenberg-Marquardt tests ---
 
@@ -255,18 +313,12 @@ class TestSolvePositionIK:
 
         assert_within_joint_limits(sol.q, limits)
 
-    def test_lm_random_initial_guess(self, monkeypatch):
+    def test_lm_random_initial_guess(self):
         """LM: Without providing q0, should still find a solution."""
         rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
         target = [1.5, 0.0, 0.0]
 
-        monkeypatch.setattr(
-            np.random,
-            "uniform",
-            lambda lower, upper: np.array([0.4, -0.8], dtype=float),
-        )
-
-        sol = solve_position_ik(rr, target, tol=1e-6, max_iter=100)
+        sol = solve_position_ik(rr, target, tol=1e-6, max_iter=100, random_state=42)
 
         assert sol.converged is True
         assert_reaches_target(rr, sol, target, atol=1e-5)
@@ -369,11 +421,14 @@ class TestSolvePositionIK:
         sol = solve_position_ik(
             robot,
             target,
-            q0=[0.2, 0.2],
+            q0=[0.8, 0.8],
             method=method,
             parameters={ls1: 1.0, ls2: 1.0},
             tol=1e-8,
             max_iter=1000 if method == "ccd" else 200,
+            step_tol=0.0,
+            error_change_tol=0.0,
+            stagnation_iterations=1001 if method == "ccd" else 201,
         )
 
         assert sol.converged is True
@@ -568,6 +623,211 @@ class TestSolvePositionIK:
         with pytest.raises(ValueError, match="damping_scale"):
             solve_position_ik(rr, [1.0, 0.0, 0.0], q0=[0.1, 0.1], damping_scale=bad_scale)
 
+    @pytest.mark.parametrize("bad_step_tol", [-1e-9, np.nan, np.inf, True])
+    def test_invalid_step_tol_raises_error(self, bad_step_tol):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="step_tol"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], q0=[0.1, 0.1], step_tol=bad_step_tol)
+
+    @pytest.mark.parametrize("bad_error_change_tol", [-1e-9, np.nan, np.inf])
+    def test_invalid_error_change_tol_raises_error(self, bad_error_change_tol):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="error_change_tol"):
+            solve_position_ik(
+                rr,
+                [1.0, 0.0, 0.0],
+                q0=[0.1, 0.1],
+                error_change_tol=bad_error_change_tol,
+            )
+
+    @pytest.mark.parametrize("bad_stagnation_iterations", [0, 2.5, True])
+    def test_invalid_stagnation_iterations_raises_error(self, bad_stagnation_iterations):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="stagnation_iterations"):
+            solve_position_ik(
+                rr,
+                [1.0, 0.0, 0.0],
+                q0=[0.1, 0.1],
+                stagnation_iterations=bad_stagnation_iterations,
+            )
+
+    def test_random_state_bool_is_rejected(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="random_state"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], random_state=True)
+
+    def test_random_state_invalid_type_is_rejected(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises((TypeError, ValueError), match="random_state"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], random_state="42")
+
+    def test_newton_stagnates_when_joint_update_is_too_small(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        sol = solve_position_ik(
+            robot,
+            [0.0, 0.0, 1.0],
+            q0=[0.0],
+            method="newton",
+            joint_limits=[(0.0, 0.0)],
+            max_iter=50,
+            tol=1e-12,
+            stagnation_iterations=1,
+        )
+
+        assert sol.converged is False
+        assert sol.iterations < 50
+        assert sol.message == "Solver stagnated because the joint update became too small."
+
+    def test_lm_stagnates_when_joint_update_is_too_small(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        sol = solve_position_ik(
+            robot,
+            [0.0, 0.0, 1.0],
+            q0=[0.0],
+            method="lm",
+            joint_limits=[(0.0, 0.0)],
+            max_iter=50,
+            tol=1e-12,
+            stagnation_iterations=2,
+        )
+
+        assert sol.converged is False
+        assert sol.iterations < 50
+        assert sol.message == "Solver stagnated because the joint update became too small."
+
+    def test_ccd_stagnates_when_joint_update_is_too_small(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        sol = solve_position_ik(
+            robot,
+            [0.0, 0.0, 1.0],
+            q0=[0.0],
+            method="ccd",
+            joint_limits=[(0.0, 0.0)],
+            max_iter=50,
+            tol=1e-12,
+            stagnation_iterations=1,
+        )
+
+        assert sol.converged is False
+        assert sol.iterations < 50
+        assert sol.message == "Solver stagnated because the joint update became too small."
+
+    def test_stagnates_when_error_stops_improving(self):
+        rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
+        sol = solve_position_ik(
+            rr,
+            [10.0, 10.0, 0.0],
+            q0=[0.0, 0.0],
+            method="newton",
+            tol=1e-12,
+            max_iter=100,
+            step_tol=1e-20,
+            error_change_tol=1e6,
+            stagnation_iterations=2,
+        )
+
+        assert sol.converged is False
+        assert sol.iterations == 2
+        assert sol.message == "Solver stagnated because the position error stopped improving."
+
+    def test_same_integer_seed_is_reproducible_when_q0_is_none(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        target = [1.0, 0.0, 0.0]
+
+        sol1 = solve_position_ik(robot, target, method="newton", max_iter=1, random_state=42)
+        sol2 = solve_position_ik(robot, target, method="newton", max_iter=1, random_state=42)
+
+        np.testing.assert_allclose(sol1.q, sol2.q, atol=0.0)
+        assert sol1.converged == sol2.converged
+        assert sol1.iterations == sol2.iterations
+        assert sol1.message == sol2.message
+
+    def test_different_integer_seeds_change_initialization(self, monkeypatch):
+        rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
+        target = [1.0, 0.0, 0.0]
+        captured = []
+
+        def capture_solver(
+            fk_func,
+            j_func,
+            target,
+            q,
+            lower_bounds,
+            upper_bounds,
+            tol,
+            max_iter,
+            method,
+            damping,
+            damping_scale,
+            step_tol,
+            error_change_tol,
+            stagnation_iterations,
+        ):
+            captured.append(np.asarray(q, dtype=float).copy())
+            return IKSolution(
+                q=q,
+                converged=False,
+                iterations=0,
+                error=np.inf,
+                method=method,
+                residual=None,
+                message="Captured initial guess.",
+            )
+
+        monkeypatch.setattr(ik_module, "_solve_newton_or_lm", capture_solver)
+        solve_position_ik(rr, target, method="newton", max_iter=1, random_state=1)
+        solve_position_ik(rr, target, method="newton", max_iter=1, random_state=2)
+
+        assert len(captured) == 2
+        assert not np.allclose(captured[0], captured[1])
+
+    def test_q0_makes_random_state_irrelevant(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        target = [0.0, 0.0, 0.5]
+
+        sol1 = solve_position_ik(
+            robot,
+            target,
+            q0=[0.0],
+            method="newton",
+            random_state=1,
+            tol=1e-12,
+        )
+        sol2 = solve_position_ik(
+            robot,
+            target,
+            q0=[0.0],
+            method="newton",
+            random_state=2,
+            tol=1e-12,
+        )
+
+        np.testing.assert_allclose(sol1.q, sol2.q)
+        assert sol1.iterations == sol2.iterations
+        assert sol1.error == sol2.error
+
+    def test_random_state_accepts_numpy_generator(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        target = [1.0, 0.0, 0.0]
+        rng = np.random.default_rng(123)
+
+        sol = solve_position_ik(robot, target, method="newton", max_iter=1, random_state=rng)
+
+        assert isinstance(sol.q, list)
+
+    def test_global_numpy_random_state_is_not_modified(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        target = [1.0, 0.0, 0.0]
+
+        np.random.seed(2026)
+        expected_next = np.random.random()
+
+        np.random.seed(2026)
+        solve_position_ik(robot, target, method="newton", max_iter=1, random_state=42)
+        observed_next = np.random.random()
+
+        assert observed_next == expected_next
+
     def test_non_finite_during_execution_returns_controlled_failure(self):
         class FakeRobot:
             def __init__(self):
@@ -598,8 +858,32 @@ class TestSolvePositionIK:
 
         assert sol.converged is False
         assert np.isfinite(sol.q[0])
-        assert not np.isfinite(sol.error)
+        assert sol.residual is not None
+        assert np.isfinite(sol.error)
         assert sol.iterations == 0
+        assert sol.message == "Numerical failure while evaluating the Jacobian."
+
+    def test_failure_without_finite_fk_returns_none_residual(self, monkeypatch):
+        robot = Robot((0, 0, q1, 0, "p"))
+        target = [0.0, 0.0, 1.0]
+
+        original_safe_eval_vector = ik_module._safe_eval_vector
+        call_counter = {"count": 0}
+
+        def fail_after_first_fk(func, q, size):
+            call_counter["count"] += 1
+            if call_counter["count"] >= 2:
+                return None
+            return original_safe_eval_vector(func, q, size)
+
+        monkeypatch.setattr(ik_module, "_safe_eval_vector", fail_after_first_fk)
+
+        sol = solve_position_ik(robot, target, q0=[0.0], method="newton", max_iter=5)
+
+        assert sol.converged is False
+        assert sol.residual is None
+        assert not np.isfinite(sol.error)
+        assert sol.message == "Numerical failure while evaluating the forward kinematics."
 
     def test_iterations_are_zero_when_q0_already_converged(self):
         robot = Robot((0, 0, q1, 0, "p"))
@@ -628,10 +912,18 @@ class TestSolvePositionIK:
             joint_limits=[(0.0, 0.1)],
             max_iter=7,
             tol=1e-12,
+            step_tol=0.0,
+            error_change_tol=0.0,
+            stagnation_iterations=8,
         )
 
         assert sol.converged is False
         assert sol.iterations == 7
+        assert sol.message == "Maximum number of iterations reached."
+        assert sol.residual is not None
+        assert len(sol.residual) == 3
+        assert np.all(np.isfinite(sol.residual))
+        assert np.isclose(sol.error, np.linalg.norm(sol.residual))
 
     @pytest.mark.parametrize("method", ["newton", "lm"])
     def test_jacobian_methods_default_max_iter(self, method):
@@ -643,10 +935,14 @@ class TestSolvePositionIK:
             method=method,
             joint_limits=[(0.0, 0.1)],
             tol=1e-12,
+            step_tol=0.0,
+            error_change_tol=0.0,
+            stagnation_iterations=101,
         )
 
         assert sol.converged is False
         assert sol.iterations == 100
+        assert sol.message == "Maximum number of iterations reached."
 
     def test_ccd_rejects_unsupported_joint_type(self):
         robot = Robot((0, 0, q1, 0, "p"))

@@ -6,36 +6,83 @@ using SymPy as base library.
 """
 import numpy as np
 from numbers import Integral, Real
+from dataclasses import dataclass
+from typing import Optional
 from sympy import lambdify
 from moro.util import is_position_vector
 
 __all__ = ["solve_position_ik", "IKSolution"]
 
+MSG_CONVERGED = "Converged successfully."
+MSG_MAX_ITER = "Maximum number of iterations reached."
+MSG_STAGNATED_STEP = "Solver stagnated because the joint update became too small."
+MSG_STAGNATED_ERROR = "Solver stagnated because the position error stopped improving."
+MSG_NUMERICAL_FK = "Numerical failure while evaluating the forward kinematics."
+MSG_NUMERICAL_JACOBIAN = "Numerical failure while evaluating the Jacobian."
+MSG_NUMERICAL_UPDATE = "Numerical failure while computing the joint update."
+MSG_NUMERICAL_CCD = "Numerical failure during CCD evaluation."
 
+
+@dataclass
 class IKSolution:
     """
-    Represents the solution of an inverse kinematics problem.
+    Represents the result of a position inverse kinematics solve.
     
     Attributes
     ----------
     q : list
-        Joint variables that solve the IK problem.
+        Joint variables for the final solver state.
     converged : bool
-        Whether the solver converged to a solution.
+        Whether the solver reached the requested tolerance.
     iterations : int
-        Number of iterations performed.
+        Number of completed global iterations.
     error : float
-        Final position error (norm of the residual).
+        Final position error norm. It equals ``norm(residual)`` when
+        ``residual`` is finite; otherwise it is ``np.inf``.
     method : str
         Solver method used ("newton", "lm", or "ccd").
+    residual : list, optional
+        Final position residual ``target_position - current_position``.
+        It has three elements when available, or ``None`` for numerical
+        failures where no finite residual can be computed.
+    message : str
+        Human-readable solver outcome message.
     """
-    
-    def __init__(self, q, converged, iterations, error, method="lm"):
-        self.q = list(q) if hasattr(q, '__iter__') else [q]
-        self.converged = converged
-        self.iterations = iterations
-        self.error = error
-        self.method = method
+    q: list
+    converged: bool
+    iterations: int
+    error: float
+    method: str = "lm"
+    residual: Optional[list] = None
+    message: str = ""
+
+    def __post_init__(self):
+        self.q = list(self.q) if hasattr(self.q, "__iter__") else [self.q]
+
+        if self.residual is not None:
+            self.residual = list(self.residual) if hasattr(self.residual, "__iter__") else [self.residual]
+
+        self.converged = bool(self.converged)
+        self.iterations = int(self.iterations)
+        self.error = float(self.error)
+        self.method = str(self.method)
+        self.message = str(self.message)
+
+        if self.converged:
+            q_finite = _is_finite_array(self.q)
+            error_finite = np.isfinite(self.error)
+            if not q_finite or not error_finite:
+                raise ValueError(
+                    "A converged IKSolution requires finite joint values and finite error."
+                )
+
+        if self.residual is not None:
+            residual_arr = np.asarray(self.residual, dtype=float).reshape(-1)
+            if residual_arr.size != 3 or not _is_finite_array(residual_arr):
+                raise ValueError(
+                    "residual must be None or a finite 3-element vector."
+                )
+            self.residual = residual_arr.tolist()
     
     def __repr__(self):
         status = "Converged" if self.converged else "Did not converge"
@@ -44,6 +91,107 @@ class IKSolution:
             f"method={self.method}, iters={self.iterations}, "
             f"error={self.error:.2e})"
         )
+
+
+def _prepare_rng(random_state):
+    """Prepare a local NumPy Generator for reproducible random initialization."""
+    if random_state is None:
+        return np.random.default_rng()
+
+    if isinstance(random_state, bool):
+        raise ValueError(
+            "random_state must be None, an integer seed, or numpy.random.Generator."
+        )
+
+    if isinstance(random_state, Integral):
+        return np.random.default_rng(int(random_state))
+
+    if isinstance(random_state, np.random.Generator):
+        return random_state
+
+    raise TypeError(
+        "random_state must be None, an integer seed, or numpy.random.Generator."
+    )
+
+
+def _validate_stagnation_options(step_tol, error_change_tol, stagnation_iterations):
+    """Validate stagnation-detection options and normalize their types."""
+    if not isinstance(step_tol, Real) or isinstance(step_tol, bool) or not np.isfinite(float(step_tol)):
+        raise ValueError("step_tol must be a finite real number.")
+    if float(step_tol) < 0:
+        raise ValueError("step_tol must satisfy step_tol >= 0.")
+
+    if (
+        not isinstance(error_change_tol, Real)
+        or isinstance(error_change_tol, bool)
+        or not np.isfinite(float(error_change_tol))
+    ):
+        raise ValueError("error_change_tol must be a finite real number.")
+    if float(error_change_tol) < 0:
+        raise ValueError("error_change_tol must satisfy error_change_tol >= 0.")
+
+    if isinstance(stagnation_iterations, bool) or not isinstance(stagnation_iterations, Integral):
+        raise ValueError("stagnation_iterations must be an integer >= 1.")
+    if int(stagnation_iterations) < 1:
+        raise ValueError("stagnation_iterations must satisfy stagnation_iterations >= 1.")
+
+    return float(step_tol), float(error_change_tol), int(stagnation_iterations)
+
+
+def _compute_residual(target, position):
+    """Compute finite 3D residual target - position or return None."""
+    if target is None or position is None:
+        return None
+
+    try:
+        target_vec = np.asarray(target, dtype=float).reshape(-1)
+        pos_vec = np.asarray(position, dtype=float).reshape(-1)
+    except (TypeError, ValueError):
+        return None
+
+    if target_vec.size != 3 or pos_vec.size != 3:
+        return None
+
+    residual = target_vec - pos_vec
+    if not _is_finite_array(residual):
+        return None
+
+    return residual
+
+
+def _make_solution(
+    q,
+    converged,
+    iterations,
+    method,
+    *,
+    message="",
+    target=None,
+    position=None,
+    residual=None,
+):
+    """Create a consistent IKSolution with normalized fields and residual."""
+    q_safe = np.asarray(q, dtype=float).reshape(-1)
+    if not _is_finite_array(q_safe):
+        q_safe = np.zeros_like(q_safe)
+
+    residual_vec = _compute_residual(target, position) if residual is None else np.asarray(residual, dtype=float).reshape(-1)
+    if residual_vec is None or residual_vec.size != 3 or not _is_finite_array(residual_vec):
+        residual_out = None
+        error = np.inf
+    else:
+        residual_out = residual_vec.tolist()
+        error = float(np.linalg.norm(residual_vec))
+
+    return IKSolution(
+        q=q_safe.tolist(),
+        converged=bool(converged),
+        iterations=int(iterations),
+        error=error,
+        method=method,
+        residual=residual_out,
+        message=message,
+    )
 
 
 def _is_finite_array(arr):
@@ -178,10 +326,10 @@ def _prepare_joint_limits(robot, joint_limits):
     return lower_bounds, upper_bounds
 
 
-def _prepare_initial_guess(q0, n, lower_bounds, upper_bounds):
+def _prepare_initial_guess(q0, n, lower_bounds, upper_bounds, rng):
     """Validate and clip the initial guess."""
     if q0 is None:
-        return np.random.uniform(lower_bounds, upper_bounds)
+        return rng.uniform(lower_bounds, upper_bounds)
 
     try:
         q = np.asarray(q0, dtype=float).reshape(-1)
@@ -268,12 +416,17 @@ def _safe_eval_jacobian(func, q, n):
     return j_val
 
 
-def _failure_solution(q, iterations, method):
-    """Build a controlled non-converged solution with finite configuration."""
-    q_safe = np.asarray(q, dtype=float).reshape(-1)
-    if not _is_finite_array(q_safe):
-        q_safe = np.zeros_like(q_safe)
-    return IKSolution(q_safe, converged=False, iterations=iterations, error=np.inf, method=method)
+def _failure_solution(q, iterations, method, message, target=None, position=None):
+    """Build a controlled non-converged solution for numerical failures."""
+    return _make_solution(
+        q,
+        converged=False,
+        iterations=iterations,
+        method=method,
+        message=message,
+        target=target,
+        position=position,
+    )
 
 
 def _solve_newton_or_lm(
@@ -288,10 +441,15 @@ def _solve_newton_or_lm(
     method,
     damping,
     damping_scale,
+    step_tol,
+    error_change_tol,
+    stagnation_iterations,
 ):
     """Solve position IK using Newton-Raphson or Levenberg-Marquardt."""
     n = q.size
     completed_steps = 0
+    stalled_by_step = 0
+    stalled_by_error = 0
 
     p_current = _safe_eval_vector(fk_func, q, 3)
     if p_current is None:
@@ -313,14 +471,30 @@ def _solve_newton_or_lm(
         )
 
     if error_norm < tol:
-        return IKSolution(q, converged=True, iterations=0, error=error_norm, method=method)
+        return _make_solution(
+            q,
+            converged=True,
+            iterations=0,
+            method=method,
+            message=MSG_CONVERGED,
+            target=target,
+            position=p_current,
+            residual=error_vec,
+        )
 
     lam = damping
 
     for _ in range(max_iter):
         j_val = _safe_eval_jacobian(j_func, q, n)
         if j_val is None:
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_JACOBIAN,
+                target=target,
+                position=p_current,
+            )
 
         if method == "newton":
             if n == 3:
@@ -340,49 +514,168 @@ def _solve_newton_or_lm(
 
         dq = np.asarray(dq, dtype=float).reshape(-1)
         if dq.size != n or not _is_finite_array(dq):
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_UPDATE,
+                target=target,
+                position=p_current,
+            )
 
         q_trial = np.clip(q + dq, lower_bounds, upper_bounds)
         if not _is_finite_array(q_trial):
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_UPDATE,
+                target=target,
+                position=p_current,
+            )
+
+        step_norm = np.linalg.norm(q_trial - q)
+        if not np.isfinite(step_norm):
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_UPDATE,
+                target=target,
+                position=p_current,
+            )
 
         p_trial = _safe_eval_vector(fk_func, q_trial, 3)
         if p_trial is None:
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_FK,
+                target=target,
+            )
 
         trial_error_vec = target - p_trial
         if not _is_finite_array(trial_error_vec):
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_FK,
+                target=target,
+            )
 
         trial_error_norm = np.linalg.norm(trial_error_vec)
         if not np.isfinite(trial_error_norm):
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_FK,
+                target=target,
+            )
 
+        prev_error_norm = error_norm
+        accepted_step = True
         if method == "lm":
             # Rejected LM attempts still count as algorithm iterations.
             if trial_error_norm < error_norm:
                 lam *= damping_scale
-                q = q_trial
-                error_vec = trial_error_vec
-                error_norm = trial_error_norm
+                q_next = q_trial
+                p_next = p_trial
+                error_vec_next = trial_error_vec
+                error_norm_next = trial_error_norm
             else:
                 lam /= damping_scale
+                accepted_step = False
+                q_next = q
+                p_next = p_current
+                error_vec_next = error_vec
+                error_norm_next = error_norm
 
             if not np.isfinite(lam) or lam <= 0:
-                return _failure_solution(q, completed_steps, method)
-
-            completed_steps += 1
+                return _failure_solution(
+                    q,
+                    completed_steps,
+                    method,
+                    MSG_NUMERICAL_UPDATE,
+                    target=target,
+                    position=p_current,
+                )
         else:
-            q = q_trial
-            error_vec = trial_error_vec
-            error_norm = trial_error_norm
-            completed_steps += 1
+            q_next = q_trial
+            p_next = p_trial
+            error_vec_next = trial_error_vec
+            error_norm_next = trial_error_norm
+
+        completed_steps += 1
+
+        if step_tol > 0 and step_norm <= step_tol and error_norm_next >= tol:
+            stalled_by_step += 1
+        else:
+            stalled_by_step = 0
+
+        improvement = prev_error_norm - error_norm_next
+        if improvement <= error_change_tol:
+            stalled_by_error += 1
+        else:
+            stalled_by_error = 0
+
+        q = q_next
+        p_current = p_next
+        error_vec = error_vec_next
+        error_norm = error_norm_next
 
         if error_norm < tol:
-            return IKSolution(q, converged=True, iterations=completed_steps, error=error_norm, method=method)
+            return _make_solution(
+                q,
+                converged=True,
+                iterations=completed_steps,
+                method=method,
+                message=MSG_CONVERGED,
+                target=target,
+                position=p_current,
+                residual=error_vec,
+            )
 
-    final_error = error_norm if np.isfinite(error_norm) else np.inf
-    return IKSolution(q, converged=False, iterations=max_iter, error=final_error, method=method)
+        if (
+            stalled_by_step >= stagnation_iterations
+            and error_norm >= tol
+            and (method != "lm" or accepted_step or stagnation_iterations > 1)
+        ):
+            return _make_solution(
+                q,
+                converged=False,
+                iterations=completed_steps,
+                method=method,
+                message=MSG_STAGNATED_STEP,
+                target=target,
+                position=p_current,
+                residual=error_vec,
+            )
+
+        if stalled_by_error >= stagnation_iterations and error_norm >= tol:
+            return _make_solution(
+                q,
+                converged=False,
+                iterations=completed_steps,
+                method=method,
+                message=MSG_STAGNATED_ERROR,
+                target=target,
+                position=p_current,
+                residual=error_vec,
+            )
+
+    return _make_solution(
+        q,
+        converged=False,
+        iterations=max_iter,
+        method=method,
+        message=MSG_MAX_ITER,
+        target=target,
+        position=p_current,
+        residual=error_vec,
+    )
 
 
 def _solve_ccd(
@@ -396,11 +689,15 @@ def _solve_ccd(
     upper_bounds,
     tol,
     max_iter,
+    step_tol,
+    error_change_tol,
+    stagnation_iterations,
 ):
     """Solve position IK using CCD with robust finite-value checks."""
     n = q.size
     completed_steps = 0
     method = "ccd"
+    stalled_by_error = 0
 
     p_current = _safe_eval_vector(fk_func, q, 3)
     if p_current is None:
@@ -422,23 +719,63 @@ def _solve_ccd(
         )
 
     if init_error_norm < tol:
-        return IKSolution(q, converged=True, iterations=0, error=init_error_norm, method=method)
+        return _make_solution(
+            q,
+            converged=True,
+            iterations=0,
+            method=method,
+            message=MSG_CONVERGED,
+            target=target,
+            position=p_current,
+            residual=init_error_vec,
+        )
+
+    error_norm = init_error_norm
+    error_vec = init_error_vec
 
     for _ in range(max_iter):
+        q_before = q.copy()
         p_eff = _safe_eval_vector(fk_func, q, 3)
         if p_eff is None:
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_CCD,
+                target=target,
+            )
 
         error_vec = target - p_eff
         if not _is_finite_array(error_vec):
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_CCD,
+                target=target,
+            )
 
         error_norm = np.linalg.norm(error_vec)
         if not np.isfinite(error_norm):
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_CCD,
+                target=target,
+            )
 
         if error_norm < tol:
-            return IKSolution(q, converged=True, iterations=completed_steps, error=error_norm, method=method)
+            return _make_solution(
+                q,
+                converged=True,
+                iterations=completed_steps,
+                method=method,
+                message=MSG_CONVERGED,
+                target=target,
+                position=p_eff,
+                residual=error_vec,
+            )
 
         # One CCD global step is a full sweep from joint n down to 1.
         for i in range(n, 0, -1):
@@ -447,27 +784,57 @@ def _solve_ccd(
 
             p_joint = _safe_eval_vector(ro_funcs[joint_idx], q, 3)
             if p_joint is None:
-                return _failure_solution(q, completed_steps, method)
+                return _failure_solution(
+                    q,
+                    completed_steps,
+                    method,
+                    MSG_NUMERICAL_CCD,
+                    target=target,
+                )
 
             z_axis = _safe_eval_vector(z_funcs[joint_idx], q, 3)
             if z_axis is None:
-                return _failure_solution(q, completed_steps, method)
+                return _failure_solution(
+                    q,
+                    completed_steps,
+                    method,
+                    MSG_NUMERICAL_CCD,
+                    target=target,
+                )
 
             z_norm = np.linalg.norm(z_axis)
             if not np.isfinite(z_norm) or z_norm <= 1e-12:
-                return _failure_solution(q, completed_steps, method)
+                return _failure_solution(
+                    q,
+                    completed_steps,
+                    method,
+                    MSG_NUMERICAL_CCD,
+                    target=target,
+                )
             z_axis = z_axis / z_norm
 
             if joint_type == "r":
                 p_eff = _safe_eval_vector(fk_func, q, 3)
                 if p_eff is None:
-                    return _failure_solution(q, completed_steps, method)
+                    return _failure_solution(
+                        q,
+                        completed_steps,
+                        method,
+                        MSG_NUMERICAL_CCD,
+                        target=target,
+                    )
 
                 r_ie = p_eff - p_joint
                 r_it = target - p_joint
 
                 if not _is_finite_array(r_ie) or not _is_finite_array(r_it):
-                    return _failure_solution(q, completed_steps, method)
+                    return _failure_solution(
+                        q,
+                        completed_steps,
+                        method,
+                        MSG_NUMERICAL_CCD,
+                        target=target,
+                    )
 
                 u_ie = r_ie - np.dot(r_ie, z_axis) * z_axis
                 u_it = r_it - np.dot(r_it, z_axis) * z_axis
@@ -491,7 +858,13 @@ def _solve_ccd(
                 delta = np.arctan2(sin_theta, cos_theta)
 
                 if not np.isfinite(delta):
-                    return _failure_solution(q, completed_steps, method)
+                    return _failure_solution(
+                        q,
+                        completed_steps,
+                        method,
+                        MSG_NUMERICAL_CCD,
+                        target=target,
+                    )
 
                 q[joint_idx] = np.clip(
                     q[joint_idx] + delta,
@@ -503,15 +876,33 @@ def _solve_ccd(
                 # using stale values from previous joint updates in the same sweep.
                 p_eff = _safe_eval_vector(fk_func, q, 3)
                 if p_eff is None:
-                    return _failure_solution(q, completed_steps, method)
+                    return _failure_solution(
+                        q,
+                        completed_steps,
+                        method,
+                        MSG_NUMERICAL_CCD,
+                        target=target,
+                    )
 
                 error_vec = target - p_eff
                 if not _is_finite_array(error_vec):
-                    return _failure_solution(q, completed_steps, method)
+                    return _failure_solution(
+                        q,
+                        completed_steps,
+                        method,
+                        MSG_NUMERICAL_CCD,
+                        target=target,
+                    )
 
                 delta = np.dot(error_vec, z_axis)
                 if not np.isfinite(delta):
-                    return _failure_solution(q, completed_steps, method)
+                    return _failure_solution(
+                        q,
+                        completed_steps,
+                        method,
+                        MSG_NUMERICAL_CCD,
+                        target=target,
+                    )
 
                 q[joint_idx] = np.clip(
                     q[joint_idx] + delta,
@@ -526,35 +917,111 @@ def _solve_ccd(
                 )
 
             if not np.isfinite(q[joint_idx]):
-                return _failure_solution(q, completed_steps, method)
+                return _failure_solution(
+                    q,
+                    completed_steps,
+                    method,
+                    MSG_NUMERICAL_CCD,
+                    target=target,
+                )
 
         completed_steps += 1
 
         p_after = _safe_eval_vector(fk_func, q, 3)
         if p_after is None:
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_CCD,
+                target=target,
+            )
 
         error_after = target - p_after
         if not _is_finite_array(error_after):
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_CCD,
+                target=target,
+            )
 
         error_after_norm = np.linalg.norm(error_after)
         if not np.isfinite(error_after_norm):
-            return _failure_solution(q, completed_steps, method)
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_CCD,
+                target=target,
+            )
+
+        step_norm = np.linalg.norm(q - q_before)
+        if not np.isfinite(step_norm):
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_CCD,
+                target=target,
+            )
 
         if error_after_norm < tol:
-            return IKSolution(q, converged=True, iterations=completed_steps, error=error_after_norm, method=method)
+            return _make_solution(
+                q,
+                converged=True,
+                iterations=completed_steps,
+                method=method,
+                message=MSG_CONVERGED,
+                target=target,
+                position=p_after,
+                residual=error_after,
+            )
+
+        if step_tol > 0 and step_norm <= step_tol and error_after_norm >= tol:
+            return _make_solution(
+                q,
+                converged=False,
+                iterations=completed_steps,
+                method=method,
+                message=MSG_STAGNATED_STEP,
+                target=target,
+                position=p_after,
+                residual=error_after,
+            )
+
+        improvement = error_norm - error_after_norm
+        if improvement <= error_change_tol:
+            stalled_by_error += 1
+        else:
+            stalled_by_error = 0
+
+        if stalled_by_error >= stagnation_iterations and error_after_norm >= tol:
+            return _make_solution(
+                q,
+                converged=False,
+                iterations=completed_steps,
+                method=method,
+                message=MSG_STAGNATED_ERROR,
+                target=target,
+                position=p_after,
+                residual=error_after,
+            )
+
+        error_norm = error_after_norm
+        error_vec = error_after
 
     p_final = _safe_eval_vector(fk_func, q, 3)
-    if p_final is None:
-        return _failure_solution(q, max_iter, method)
-
-    final_error_vec = target - p_final
-    final_error = np.linalg.norm(final_error_vec)
-    if not np.isfinite(final_error):
-        final_error = np.inf
-
-    return IKSolution(q, converged=False, iterations=max_iter, error=final_error, method=method)
+    return _make_solution(
+        q,
+        converged=False,
+        iterations=max_iter,
+        method=method,
+        message=MSG_MAX_ITER,
+        target=target,
+        position=p_final,
+    )
 
 
 def solve_position_ik(
@@ -569,6 +1036,10 @@ def solve_position_ik(
     damping_scale=0.5,
     *,
     parameters=None,
+    random_state=None,
+    step_tol=1e-12,
+    error_change_tol=1e-12,
+    stagnation_iterations=5,
 ):
     """
     Solve the position inverse kinematics problem using Newton-Raphson,
@@ -604,12 +1075,30 @@ def solve_position_ik(
         Symbol substitutions for geometric constants and other non-joint
         symbols used by IK expressions. This mapping is applied locally using
         SymPy ``subs`` and does not modify ``robot`` or its cached expressions.
+    random_state : None, int, or numpy.random.Generator, optional
+        Random state used only when ``q0 is None``. When ``None``, a local
+        generator from ``np.random.default_rng()`` is used. Integer seeds
+        provide reproducible random initial guesses.
+    step_tol : float, optional
+        Stagnation threshold for effective joint movement. The effective step
+        is measured after applying joint limits:
+        ``norm(q_trial - q_current)`` for Newton/LM and
+        ``norm(q_after_sweep - q_before_sweep)`` for CCD.
+        Must satisfy ``step_tol >= 0``.
+    error_change_tol : float, optional
+        Stagnation threshold for error improvement. If
+        ``previous_error - current_error <= error_change_tol`` consecutively,
+        the solver can terminate due to stagnation.
+        Must satisfy ``error_change_tol >= 0``.
+    stagnation_iterations : int, optional
+        Number of consecutive stalled iterations (or CCD sweeps) required
+        before returning a stagnation result. Must be an integer >= 1.
 
     Returns
     -------
     IKSolution
-        An object containing the solution joint variables, convergence 
-        status, number of iterations, and final error.
+        An object containing the final joint variables, convergence status,
+        iteration count, final error norm, method, residual, and message.
 
     Raises
     ------
@@ -635,7 +1124,7 @@ def solve_position_ik(
         (\\mathbf{J}_p^T \\mathbf{J}_p + \\lambda^2 \\mathbf{I})^{-1}
         \\mathbf{J}_p^T \\, (\\mathbf{p}_d - \\mathbf{f}(\\mathbf{q}_k))
 
-    **CCD** (``method="ccd"``) adjusts one joint at a time from the 
+    **CCD** (``method="ccd"``) adjusts one joint at a time from the
     end-effector toward the base. For each revolute joint it computes 
     the angle that rotates the end-effector toward the target in the 
     plane perpendicular to the joint axis. For prismatic joints, it 
@@ -649,10 +1138,28 @@ def solve_position_ik(
     Joint limits are validated and used to clip every joint update. If ``q0``
     is provided, it is validated and clipped to joint limits before iterations.
 
+    ``residual`` is the 3D vector ``target_position - current_position`` at
+    termination whenever a finite value is available. ``error`` is the norm
+    of that residual when available; otherwise, ``error`` is ``np.inf`` and
+    ``residual`` is ``None`` (for example, after numerical failures).
+
+    ``message`` is a stable short description of the solver outcome
+    (converged, maximum iterations, stagnation reason, or numerical failure).
+
+    Stagnation can stop the solver early when the effective step becomes too
+    small or the position error stops improving for
+    ``stagnation_iterations`` consecutive iterations/sweeps.
+
+    If ``q0 is None``, random initialization is sampled with a local NumPy
+    Generator, so integer ``random_state`` values make initialization
+    reproducible without changing NumPy's global random state.
+
     ``iterations`` counts completed global algorithm steps: Newton/LM count
     one per attempted update; CCD counts one per full sweep from joint n to 1.
     Therefore, if the initial guess already satisfies the tolerance,
-    ``iterations`` is 0.
+    ``iterations`` is 0. If convergence is not reached, ``iterations`` equals
+    the number of completed attempts/sweeps at termination (or ``max_iter``
+    when the iteration limit is reached).
 
     Examples
     --------
@@ -670,6 +1177,14 @@ def solve_position_ik(
     ...     q0=[0.1, 0.1],
     ...     parameters={l1: 1.0, l2: 1.0},
     ... )
+    >>>
+    >>> # Reproducible random initialization (used only when q0 is None)
+    >>> sol = solve_position_ik(
+    ...     rr,
+    ...     [1.5, 0.5, 0.0],
+    ...     parameters={l1: 1.0, l2: 1.0},
+    ...     random_state=42,
+    ... )
     >>> 
     >>> # Newton-Raphson
     >>> sol = solve_position_ik(rr, [1.5, 0.5, 0.0], q0=[0.1, 0.1],
@@ -681,6 +1196,9 @@ def solve_position_ik(
     """
     tol, max_iter, damping, damping_scale = _validate_solver_options(
         method, tol, max_iter, damping, damping_scale
+    )
+    step_tol, error_change_tol, stagnation_iterations = _validate_stagnation_options(
+        step_tol, error_change_tol, stagnation_iterations
     )
 
     # Validate target position shape and then enforce finite numeric values.
@@ -707,7 +1225,8 @@ def solve_position_ik(
 
     fk_func = lambdify(sym_vars, fk_sym, modules="numpy")
 
-    q = _prepare_initial_guess(q0, n, lower_bounds, upper_bounds)
+    rng = _prepare_rng(random_state)
+    q = _prepare_initial_guess(q0, n, lower_bounds, upper_bounds, rng)
 
     if method == "ccd":
         ro_funcs = [lambdify(sym_vars, ro_syms[i], modules="numpy") for i in range(n)]
@@ -723,6 +1242,9 @@ def solve_position_ik(
             upper_bounds,
             tol,
             max_iter,
+            step_tol,
+            error_change_tol,
+            stagnation_iterations,
         )
 
     j_func = lambdify(sym_vars, j_sym, modules="numpy")
@@ -738,4 +1260,7 @@ def solve_position_ik(
         method,
         damping,
         damping_scale,
+        step_tol,
+        error_change_tol,
+        stagnation_iterations,
     )
