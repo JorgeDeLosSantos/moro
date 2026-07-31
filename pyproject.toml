@@ -53,6 +53,4 @@ include = ["moro*"]
 
 
 [tool.setuptools.package-data]
-moro = [
-    "templates/**/*",
-]
+"moro.visualization.templates" = ["*.html"]
