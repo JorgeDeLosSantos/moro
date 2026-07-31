@@ -9,6 +9,76 @@ window.MoroThreeJS = (function() {
         return num;
     }
 
+    function loadScriptWithId(scriptId, src, onLoad, onError) {
+        var existing = document.getElementById(scriptId);
+
+        if (existing) {
+            if (existing.getAttribute('data-loaded') === 'true') {
+                onLoad();
+                return;
+            }
+
+            existing.addEventListener('load', onLoad, { once: true });
+            existing.addEventListener('error', function() {
+                onError(new Error('Failed to load script: ' + src));
+            }, { once: true });
+            return;
+        }
+
+        var script = document.createElement('script');
+        script.id = scriptId;
+        script.src = src;
+        script.async = true;
+        script.onload = function() {
+            script.setAttribute('data-loaded', 'true');
+            onLoad();
+        };
+        script.onerror = function() {
+            onError(new Error('Failed to load script: ' + src));
+        };
+        document.head.appendChild(script);
+    }
+
+    function ensureThreeReady(onReady, onError) {
+        if (
+            typeof THREE !== 'undefined' &&
+            typeof THREE.OrbitControls !== 'undefined'
+        ) {
+            onReady();
+            return;
+        }
+
+        if (!window.__moroThreeReadyPromise) {
+            window.__moroThreeReadyPromise = new Promise(function(resolve, reject) {
+                loadScriptWithId(
+                    '__moro-three-r128__',
+                    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+                    function() {
+                        loadScriptWithId(
+                            '__moro-orbitcontrols-r128__',
+                            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
+                            function() {
+                                if (
+                                    typeof THREE === 'undefined' ||
+                                    typeof THREE.OrbitControls === 'undefined'
+                                ) {
+                                    reject(new Error('THREE or OrbitControls did not initialize correctly.'));
+                                    return;
+                                }
+
+                                resolve();
+                            },
+                            reject
+                        );
+                    },
+                    reject
+                );
+            });
+        }
+
+        window.__moroThreeReadyPromise.then(onReady).catch(onError);
+    }
+
     function resolveStyle(style, sceneScale) {
         return {
             frameScale: style.frame_scale !== null
@@ -732,6 +802,7 @@ window.MoroThreeJS = (function() {
         createLights: createLights,
         createPersistentRobotObjects: createPersistentRobotObjects,
         createRobotMeshes: createRobotMeshes,
+        ensureThreeReady: ensureThreeReady,
         resolveStyle: resolveStyle,
         resolveTrajectoryStyle: resolveTrajectoryStyle,
         setPresetView: setPresetView,

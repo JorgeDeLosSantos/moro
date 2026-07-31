@@ -127,28 +127,14 @@ __COMMON_SCRIPT__
                 typeof THREE.OrbitControls !== 'undefined') {
             initRobot___UNIQUE_ID__();
         } else {
-            var scripts = [
-                'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
-                'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'
-            ];
-            var loaded = 0;
-
-            scripts.forEach(function(src) {
-                var script = document.createElement('script');
-                script.src = src;
-                script.onload = function() {
-                    loaded++;
-                    if (loaded === scripts.length) {
-                        initRobot___UNIQUE_ID__();
-                    }
-                };
-                script.onerror = function() {
+            window.MoroThreeJS.ensureThreeReady(
+                initRobot___UNIQUE_ID__,
+                function(error) {
                     var status = document.getElementById('status-__UNIQUE_ID__');
-                    status.innerHTML = 'Error loading Three.js';
+                    status.innerHTML = 'Error loading Three.js: ' + error.message;
                     status.style.color = 'red';
-                };
-                document.head.appendChild(script);
-            });
+                }
+            );
         }
 
         function initRobot___UNIQUE_ID__() {

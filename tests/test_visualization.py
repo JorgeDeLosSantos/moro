@@ -437,6 +437,14 @@ def test_threejs_backend_returns_html(scene_data):
     assert "window.MoroThreeJS" in result.data
 
 
+def test_threejs_viewer_uses_sequential_script_loader(scene_data):
+    html = ThreeJSBackend.render(scene_data).data
+
+    assert "window.MoroThreeJS.ensureThreeReady(" in html
+    assert "window.__moroThreeReadyPromise" in html
+    assert "loadScriptWithId(" in html
+
+
 def test_threejs_backend_animate_empty_list_raises():
     with pytest.raises(ValueError, match="scene_data_list must contain at least one scene"):
         ThreeJSBackend.animate([])
@@ -663,6 +671,15 @@ def test_threejs_animation_does_not_create_trajectory_inside_go_to_frame(scene_d
     create_call_pos = html.index("setupTrajectoryLine();")
 
     assert create_call_pos < go_to_frame_pos
+
+
+def test_threejs_animation_uses_sequential_script_loader(scene_data):
+    html = ThreeJSBackend.animate([scene_data, scene_data]).data
+
+    assert "scripts.forEach(function(src)" not in html
+    assert "window.MoroThreeJS.ensureThreeReady(" in html
+    assert "window.__moroThreeReadyPromise" in html
+    assert "loadScriptWithId(" in html
 
 
 def test_threejs_backend_outputs_have_no_unresolved_placeholders(scene_data):
