@@ -488,6 +488,45 @@ def test_threejs_backend_animate_returns_html(scene_data):
     assert "THREE.Scene" in result.data
 
 
+def test_threejs_animation_uses_persistent_update_logic(scene_data):
+    result = ThreeJSBackend.animate([scene_data, scene_data])
+    html = result.data
+
+    assert "var linkMeshes = [];" in html
+    assert "var jointMeshes = [];" in html
+    assert "var frameHelpers = [];" in html
+    assert "function createRobotObjects(data, resolvedStyle)" in html
+    assert "function updateRobotObjects(data)" in html
+    assert "updateRobotObjects(framesData[index]);" in html
+
+    assert "drawRobot(framesData[index]);" not in html
+    assert "window.MoroThreeJS.clearGroup(robotGroup);" not in html
+
+
+def test_threejs_animation_contains_topology_consistency_error(scene_data):
+    result = ThreeJSBackend.animate([scene_data, scene_data])
+    html = result.data
+
+    assert "Inconsistent robot topology between animation frames." in html
+    assert "window.MoroThreeJS.assertRobotTopology" in html
+
+
+def test_threejs_backend_animate_serializes_style(scene_data):
+    style = VisualizationStyle(
+        show_links=False,
+        link_color="#112233",
+        link_linewidth=4,
+    )
+
+    result = ThreeJSBackend.animate([scene_data], style=style)
+    html = result.data
+
+    assert '"style"' in html
+    assert '"show_links": false' in html
+    assert '"link_color": "#112233"' in html
+    assert '"link_linewidth": 4' in html
+
+
 def test_threejs_backend_outputs_have_no_unresolved_placeholders(scene_data):
     render_html = ThreeJSBackend.render(scene_data).data
     animate_html = ThreeJSBackend.animate([scene_data, scene_data]).data

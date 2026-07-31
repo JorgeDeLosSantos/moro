@@ -438,6 +438,204 @@ window.MoroThreeJS = (function() {
         }
     }
 
+    function assertRobotTopology(referenceData, data) {
+        var expectedJointCount = Array.isArray(referenceData.joints)
+            ? referenceData.joints.length
+            : 0;
+        var expectedFrameCount = Array.isArray(referenceData.frames)
+            ? referenceData.frames.length
+            : 0;
+        var actualJointCount = Array.isArray(data.joints)
+            ? data.joints.length
+            : 0;
+        var actualFrameCount = Array.isArray(data.frames)
+            ? data.frames.length
+            : 0;
+
+        if (
+            expectedJointCount !== actualJointCount ||
+            expectedFrameCount !== actualFrameCount
+        ) {
+            throw new Error(
+                'Inconsistent robot topology between animation frames.'
+            );
+        }
+    }
+
+    function createPersistentRobotObjects(options) {
+        var robotGroup = options.robotGroup;
+        var data = options.data;
+        var style = options.style;
+        var resolvedStyle = options.resolvedStyle;
+        var normalizeFrameAxes = options.normalizeFrameAxes === true;
+
+        var joints = data.joints || [];
+        var frames = data.frames || [];
+
+        var linkMeshes = [];
+        var jointMeshes = [];
+        var frameHelpers = [];
+
+        if (style.show_links) {
+            var linkMaterial = new THREE.MeshPhongMaterial({
+                color: style.link_color,
+                shininess: 30,
+                side: THREE.DoubleSide
+            });
+            var linkGeometry = new THREE.CylinderGeometry(
+                resolvedStyle.linkRadius,
+                resolvedStyle.linkRadius,
+                1,
+                8
+            );
+
+            for (var i = 0; i < joints.length - 1; i++) {
+                var linkMesh = new THREE.Mesh(linkGeometry, linkMaterial);
+                robotGroup.add(linkMesh);
+                linkMeshes.push(linkMesh);
+            }
+        }
+
+        if (style.show_joints) {
+            var jointMaterial = new THREE.MeshPhongMaterial({
+                color: style.joint_color,
+                shininess: 50
+            });
+            var baseMaterial = new THREE.MeshPhongMaterial({
+                color: style.base_color,
+                shininess: 50
+            });
+            var jointGeometry = new THREE.SphereGeometry(
+                resolvedStyle.jointRadius,
+                16,
+                16
+            );
+            var baseGeometry = new THREE.SphereGeometry(
+                resolvedStyle.baseRadius,
+                16,
+                16
+            );
+
+            for (var j = 0; j < joints.length; j++) {
+                var isBase = j === 0;
+                var sphere = new THREE.Mesh(
+                    isBase ? baseGeometry : jointGeometry,
+                    isBase ? baseMaterial : jointMaterial
+                );
+
+                robotGroup.add(sphere);
+                jointMeshes.push(sphere);
+            }
+        }
+
+        if (style.show_frames) {
+            for (var k = 0; k < frames.length; k++) {
+                var axes = new THREE.AxesHelper(resolvedStyle.frameScale);
+                robotGroup.add(axes);
+                frameHelpers.push(axes);
+            }
+        }
+
+        return {
+            style: style,
+            normalizeFrameAxes: normalizeFrameAxes,
+            referenceData: data,
+            linkMeshes: linkMeshes,
+            jointMeshes: jointMeshes,
+            frameHelpers: frameHelpers,
+            _tmp: {
+                start: new THREE.Vector3(),
+                end: new THREE.Vector3(),
+                direction: new THREE.Vector3(),
+                xAxis: new THREE.Vector3(),
+                yAxis: new THREE.Vector3(),
+                zAxis: new THREE.Vector3(),
+                yUnit: new THREE.Vector3(0, 1, 0),
+                rotationMatrix: new THREE.Matrix4(),
+                quaternion: new THREE.Quaternion()
+            }
+        };
+    }
+
+    function updateLinkMesh(mesh, start, end, tmp) {
+        tmp.start.fromArray(start);
+        tmp.end.fromArray(end);
+        tmp.direction.subVectors(tmp.end, tmp.start);
+
+        var length = tmp.direction.length();
+
+        if (!Number.isFinite(length) || length < 1e-6) {
+            mesh.visible = false;
+            return;
+        }
+
+        mesh.visible = true;
+        mesh.position.copy(tmp.start).addScaledVector(tmp.direction, 0.5);
+
+        tmp.direction.multiplyScalar(1 / length);
+        mesh.quaternion.setFromUnitVectors(tmp.yUnit, tmp.direction);
+        mesh.scale.set(1, length, 1);
+    }
+
+    function updatePersistentRobotObjects(robotObjects, data) {
+        assertRobotTopology(robotObjects.referenceData, data);
+
+        var style = robotObjects.style;
+        var joints = data.joints || [];
+        var frames = data.frames || [];
+        var tmp = robotObjects._tmp;
+        var i;
+
+        if (style.show_links) {
+            for (i = 0; i < robotObjects.linkMeshes.length; i++) {
+                updateLinkMesh(
+                    robotObjects.linkMeshes[i],
+                    joints[i],
+                    joints[i + 1],
+                    tmp
+                );
+            }
+        }
+
+        if (style.show_joints) {
+            for (i = 0; i < robotObjects.jointMeshes.length; i++) {
+                var jointMesh = robotObjects.jointMeshes[i];
+                jointMesh.position.fromArray(joints[i]);
+                jointMesh.visible = i !== 0 || style.show_base;
+            }
+        }
+
+        if (style.show_frames) {
+            for (i = 0; i < robotObjects.frameHelpers.length; i++) {
+                var helper = robotObjects.frameHelpers[i];
+                var frame = frames[i];
+
+                helper.position.fromArray(frame.position);
+
+                tmp.xAxis.fromArray(frame.x);
+                tmp.yAxis.fromArray(frame.y);
+                tmp.zAxis.fromArray(frame.z);
+
+                if (robotObjects.normalizeFrameAxes) {
+                    tmp.xAxis.normalize();
+                    tmp.yAxis.normalize();
+                    tmp.zAxis.normalize();
+                }
+
+                tmp.rotationMatrix.set(
+                    tmp.xAxis.x, tmp.yAxis.x, tmp.zAxis.x, 0,
+                    tmp.xAxis.y, tmp.yAxis.y, tmp.zAxis.y, 0,
+                    tmp.xAxis.z, tmp.yAxis.z, tmp.zAxis.z, 0,
+                    0,           0,           0,           1
+                );
+
+                tmp.quaternion.setFromRotationMatrix(tmp.rotationMatrix);
+                helper.quaternion.copy(tmp.quaternion);
+                helper.visible = true;
+            }
+        }
+    }
+
     function disposeObject(object3d) {
         if (object3d.geometry) {
             object3d.geometry.dispose();
@@ -466,17 +664,20 @@ window.MoroThreeJS = (function() {
     }
 
     return {
+        assertRobotTopology: assertRobotTopology,
         clearGroup: clearGroup,
         createCameras: createCameras,
         createCylinderBetweenPoints: createCylinderBetweenPoints,
         createGrid: createGrid,
         createLights: createLights,
+        createPersistentRobotObjects: createPersistentRobotObjects,
         createRobotMeshes: createRobotMeshes,
         resolveStyle: resolveStyle,
         setPresetView: setPresetView,
         setupOrbitControls: setupOrbitControls,
         switchCameraType: switchCameraType,
         syncOrthographicFromPerspective: syncOrthographicFromPerspective,
-        syncPerspectiveFromOrthographic: syncPerspectiveFromOrthographic
+        syncPerspectiveFromOrthographic: syncPerspectiveFromOrthographic,
+        updatePersistentRobotObjects: updatePersistentRobotObjects
     };
 })();

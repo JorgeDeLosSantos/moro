@@ -169,6 +169,10 @@ __COMMON_SCRIPT__
             var renderer;
             var controls;
             var robotGroup;
+            var linkMeshes = [];
+            var jointMeshes = [];
+            var frameHelpers = [];
+            var robotObjects = null;
 
             var currentFrame = 0;
             var isPlaying = false;
@@ -367,7 +371,8 @@ __COMMON_SCRIPT__
                 robotGroup = new THREE.Group();
                 scene.add(robotGroup);
 
-                drawRobot(framesData[0]);
+                createRobotObjects(framesData[0], resolvedStyle);
+                updateRobotObjects(framesData[0]);
                 animate();
 
                 status.innerHTML =
@@ -379,15 +384,23 @@ __COMMON_SCRIPT__
                 status.style.color = 'red';
             }
 
-            function drawRobot(data) {
-                window.MoroThreeJS.clearGroup(robotGroup);
-                window.MoroThreeJS.createRobotMeshes({
+            function createRobotObjects(data, resolvedStyle) {
+                robotObjects = window.MoroThreeJS.createPersistentRobotObjects({
                     robotGroup: robotGroup,
                     data: data,
                     style: style,
                     resolvedStyle: resolvedStyle,
                     normalizeFrameAxes: true
                 });
+
+                linkMeshes = robotObjects.linkMeshes;
+                jointMeshes = robotObjects.jointMeshes;
+                frameHelpers = robotObjects.frameHelpers;
+            }
+
+            function updateRobotObjects(data) {
+                window.MoroThreeJS.assertRobotTopology(framesData[0], data);
+                window.MoroThreeJS.updatePersistentRobotObjects(robotObjects, data);
             }
 
             function goToFrame(index) {
@@ -397,7 +410,7 @@ __COMMON_SCRIPT__
 
                 index = Math.max(0, Math.min(index, framesData.length - 1));
                 currentFrame = index;
-                drawRobot(framesData[index]);
+                updateRobotObjects(framesData[index]);
                 slider.value = index;
                 frameLabel.textContent = index;
             }
