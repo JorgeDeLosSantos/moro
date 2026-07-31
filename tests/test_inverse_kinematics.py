@@ -314,3 +314,309 @@ class TestSolvePositionIK:
                                 method="newton", max_iter=50, tol=1e-6)
 
         assert sol.converged is False
+
+    # --- Additional validations requested for robustness ---
+
+    def test_target_position_with_nan_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="target_position"):
+            solve_position_ik(rr, [np.nan, 0.0, 0.0], q0=[0.1, 0.1])
+
+    def test_target_position_with_inf_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="target_position"):
+            solve_position_ik(rr, [np.inf, 0.0, 0.0], q0=[0.1, 0.1])
+
+    def test_symbolic_parameters_are_supported(self):
+        ls1, ls2 = sp.symbols("ls1 ls2")
+        robot = Robot((ls1, 0, 0, q1, "r"), (ls2, 0, 0, q2, "r"))
+        T_original = robot.T
+
+        q_known = [np.pi / 3, np.pi / 6]
+        substitutions = {ls1: 1.0, ls2: 1.0, q1: q_known[0], q2: q_known[1]}
+        T_known = robot.T.subs(substitutions)
+        target = [float(T_known[0, 3]), float(T_known[1, 3]), float(T_known[2, 3])]
+
+        sol = solve_position_ik(
+            robot,
+            target,
+            q0=[0.2, 0.2],
+            method="lm",
+            parameters={ls1: 1.0, ls2: 1.0},
+            tol=1e-8,
+        )
+
+        assert sol.converged is True
+
+        T_sol = robot.T.subs({ls1: 1.0, ls2: 1.0, q1: sol.q[0], q2: sol.q[1]})
+        pos_sol = [float(T_sol[0, 3]), float(T_sol[1, 3]), float(T_sol[2, 3])]
+        np.testing.assert_allclose(pos_sol, target, atol=1e-6)
+
+        # Ensure symbolic expressions on the robot object remain unchanged.
+        assert robot.T == T_original
+        assert ls1 in robot.T.free_symbols
+        assert ls2 in robot.T.free_symbols
+
+    def test_missing_symbolic_parameters_raise_clear_error(self):
+        ls1, ls2 = sp.symbols("ls1 ls2")
+        robot = Robot((ls1, 0, 0, q1, "r"), (ls2, 0, 0, q2, "r"))
+
+        with pytest.raises(ValueError, match="no numerical value"):
+            solve_position_ik(
+                robot,
+                [1.0, 0.0, 0.0],
+                q0=[0.1, 0.1],
+                parameters={ls1: 1.0},
+            )
+
+    def test_q0_shorter_than_dof_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="Expected size 2, got 1"):
+            solve_position_ik(rr, [1.5, 0.2, 0.0], q0=[0.1])
+
+    def test_q0_longer_than_dof_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="Expected size 2, got 3"):
+            solve_position_ik(rr, [1.5, 0.2, 0.0], q0=[0.1, 0.2, 0.3])
+
+    def test_q0_with_nan_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="q0"):
+            solve_position_ik(rr, [1.5, 0.2, 0.0], q0=[np.nan, 0.1])
+
+    def test_q0_with_inf_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="q0"):
+            solve_position_ik(rr, [1.5, 0.2, 0.0], q0=[np.inf, 0.1])
+
+    def test_q0_is_clipped_to_joint_limits(self):
+        rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
+        limits = [(-0.2, 0.2), (-0.1, 0.1)]
+        q_clipped = [0.2, -0.1]
+
+        T_target = rr.T.subs({q1: q_clipped[0], q2: q_clipped[1]})
+        target = [float(T_target[0, 3]), float(T_target[1, 3]), float(T_target[2, 3])]
+
+        sol = solve_position_ik(
+            rr,
+            target,
+            q0=[10.0, -10.0],
+            joint_limits=limits,
+            method="lm",
+            tol=1e-8,
+        )
+
+        assert sol.converged is True
+        assert sol.iterations == 0
+        np.testing.assert_allclose(sol.q, q_clipped, atol=1e-12)
+
+    def test_joint_limits_wrong_number_of_pairs(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="Expected 2, got 1"):
+            solve_position_ik(rr, [1.5, 0.2, 0.0], q0=[0.1, 0.1], joint_limits=[(-1, 1)])
+
+    def test_joint_limit_pair_with_wrong_length(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="exactly two elements"):
+            solve_position_ik(
+                rr,
+                [1.5, 0.2, 0.0],
+                q0=[0.1, 0.1],
+                joint_limits=[(-1, 1), (-2, 2, 3)],
+            )
+
+    def test_joint_limit_with_non_numeric_value(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="real numeric"):
+            solve_position_ik(
+                rr,
+                [1.5, 0.2, 0.0],
+                q0=[0.1, 0.1],
+                joint_limits=[(-1, 1), ("a", 2)],
+            )
+
+    def test_joint_limit_with_nan_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="finite"):
+            solve_position_ik(
+                rr,
+                [1.5, 0.2, 0.0],
+                q0=[0.1, 0.1],
+                joint_limits=[(-1, 1), (np.nan, 2)],
+            )
+
+    def test_joint_limit_with_inf_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="finite"):
+            solve_position_ik(
+                rr,
+                [1.5, 0.2, 0.0],
+                q0=[0.1, 0.1],
+                joint_limits=[(-1, 1), (-2, np.inf)],
+            )
+
+    def test_joint_limit_lower_greater_than_upper(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="greater than"):
+            solve_position_ik(
+                rr,
+                [1.5, 0.2, 0.0],
+                q0=[0.1, 0.1],
+                joint_limits=[(-1, 1), (2, -2)],
+            )
+
+    def test_joint_limit_lower_equal_upper_is_allowed(self):
+        rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
+        limits = [(0.0, 0.0), (-np.pi, np.pi)]
+
+        T_target = rr.T.subs({q1: 0.0, q2: 0.5})
+        target = [float(T_target[0, 3]), float(T_target[1, 3]), float(T_target[2, 3])]
+
+        sol = solve_position_ik(
+            rr,
+            target,
+            q0=[0.0, 0.2],
+            joint_limits=limits,
+            method="lm",
+            tol=1e-8,
+        )
+
+        assert sol.converged is True
+        assert abs(sol.q[0]) <= 1e-12
+
+    def test_robot_joint_limits_are_used_when_joint_limits_is_none(self):
+        rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
+        rr.joint_limits = [(0.0, 0.0), (-np.pi, np.pi)]
+
+        T_target = rr.T.subs({q1: 0.0, q2: 0.4})
+        target = [float(T_target[0, 3]), float(T_target[1, 3]), float(T_target[2, 3])]
+
+        sol = solve_position_ik(rr, target, q0=[1.0, 0.0], method="newton", tol=1e-8)
+        assert abs(sol.q[0]) <= 1e-12
+
+    @pytest.mark.parametrize("bad_tol", [0.0, -1e-6, np.nan, np.inf])
+    def test_invalid_tol_raises_error(self, bad_tol):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="tol"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], q0=[0.1, 0.1], tol=bad_tol)
+
+    @pytest.mark.parametrize("bad_iter", [0, -1])
+    def test_max_iter_non_positive_raises_error(self, bad_iter):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="max_iter"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], q0=[0.1, 0.1], max_iter=bad_iter)
+
+    def test_max_iter_non_integer_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="max_iter"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], q0=[0.1, 0.1], max_iter=3.5)
+
+    def test_max_iter_bool_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="max_iter"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], q0=[0.1, 0.1], max_iter=True)
+
+    @pytest.mark.parametrize("bad_damping", [0.0, -1.0, np.nan, np.inf])
+    def test_invalid_damping_raises_error(self, bad_damping):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="damping"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], q0=[0.1, 0.1], damping=bad_damping)
+
+    @pytest.mark.parametrize("bad_scale", [0.0, -0.2, 1.0, 1.2, np.nan, np.inf])
+    def test_invalid_damping_scale_raises_error(self, bad_scale):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="damping_scale"):
+            solve_position_ik(rr, [1.0, 0.0, 0.0], q0=[0.1, 0.1], damping_scale=bad_scale)
+
+    def test_non_finite_during_execution_returns_controlled_failure(self):
+        class FakeRobot:
+            def __init__(self):
+                self.dof = 1
+                self.qs = [q1]
+                self.joint_limits = [(-1.0, 1.0)]
+                self.T = sp.Matrix(
+                    [
+                        [1, 0, 0, q1],
+                        [0, 1, 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 0, 1],
+                    ]
+                )
+                self.J = sp.Matrix([[sp.nan], [0], [0], [0], [0], [1]])
+
+            def joint_type(self, i):
+                return "p"
+
+            def r_o(self, i):
+                return sp.Matrix([0, 0, 0])
+
+            def z(self, i):
+                return sp.Matrix([0, 0, 1])
+
+        robot = FakeRobot()
+        sol = solve_position_ik(robot, [0.5, 0.0, 0.0], q0=[0.0], method="newton", max_iter=5)
+
+        assert sol.converged is False
+        assert np.isfinite(sol.q[0])
+        assert not np.isfinite(sol.error)
+        assert sol.iterations == 0
+
+    def test_iterations_are_zero_when_q0_already_converged(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        target = [0.0, 0.0, 0.5]
+        sol = solve_position_ik(robot, target, q0=[0.5], method="newton", tol=1e-12)
+
+        assert sol.converged is True
+        assert sol.iterations == 0
+
+    def test_iterations_are_one_after_single_update(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        target = [0.0, 0.0, 0.5]
+        sol = solve_position_ik(robot, target, q0=[0.0], method="newton", tol=1e-12)
+
+        assert sol.converged is True
+        assert sol.iterations == 1
+
+    def test_iterations_equal_max_iter_when_not_converged(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        target = [0.0, 0.0, 10.0]
+        sol = solve_position_ik(
+            robot,
+            target,
+            q0=[0.0],
+            method="newton",
+            joint_limits=[(0.0, 0.1)],
+            max_iter=7,
+            tol=1e-12,
+        )
+
+        assert sol.converged is False
+        assert sol.iterations == 7
+
+    def test_ccd_prismatic_recomputes_error_within_sweep(self):
+        robot = Robot(
+            (0, -sp.pi / 2, q1, 0, "p"),
+            (1, 0, 0, q2, "r"),
+        )
+
+        q_goal = [0.6, 0.4]
+        T_goal = robot.T.subs({q1: q_goal[0], q2: q_goal[1]})
+        target = [float(T_goal[0, 3]), float(T_goal[1, 3]), float(T_goal[2, 3])]
+
+        sol = solve_position_ik(
+            robot,
+            target,
+            q0=[0.0, 0.0],
+            method="ccd",
+            max_iter=300,
+            tol=1e-8,
+            joint_limits=[(-2, 2), (-np.pi, np.pi)],
+        )
+
+        assert sol.method == "ccd"
+        assert sol.converged is True
+
+        T_sol = robot.T.subs({q1: sol.q[0], q2: sol.q[1]})
+        pos_sol = [float(T_sol[0, 3]), float(T_sol[1, 3]), float(T_sol[2, 3])]
+        err = np.linalg.norm(np.asarray(target) - np.asarray(pos_sol))
+        assert err < 1e-6
