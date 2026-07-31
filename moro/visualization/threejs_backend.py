@@ -92,6 +92,27 @@ def _scenes_to_payload(scene_data_list: list[SceneData]) -> list[dict]:
     return [_scene_to_payload(scene) for scene in scene_data_list]
 
 
+def _extract_end_effector_trajectory(
+    scene_data_list: list[SceneData],
+) -> list[list[float]]:
+    """Extract end-effector Cartesian positions from an animation sequence."""
+    trajectory: list[list[float]] = []
+
+    for index, scene in enumerate(scene_data_list):
+        if not scene.frames:
+            raise ValueError(
+                "Each scene must contain at least one frame to extract "
+                "end-effector trajectory "
+                f"(empty frames at index {index})."
+            )
+
+        trajectory.append(
+            scene.frames[-1].position.astype(float).tolist()
+        )
+
+    return trajectory
+
+
 def _style_to_payload(style: VisualizationStyle) -> dict:
     """Convert a visualization style into a JSON-serializable dictionary."""
     return {
@@ -107,6 +128,10 @@ def _style_to_payload(style: VisualizationStyle) -> dict:
         "joint_size": style.joint_size,
         "base_size": style.base_size,
         "link_linewidth": style.link_linewidth,
+        "show_trajectory": style.show_trajectory,
+        "trajectory_color": style.trajectory_color,
+        "trajectory_linewidth": style.trajectory_linewidth,
+        "trajectory_mode": style.trajectory_mode,
     }
 
 
@@ -162,6 +187,7 @@ class ThreeJSBackend:
         animation_payload = {
             "frames": frames_payload,
             "style": _style_to_payload(style),
+            "trajectory": _extract_end_effector_trajectory(scene_data_list),
         }
 
         html = _render_html_template(

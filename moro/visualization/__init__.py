@@ -10,6 +10,7 @@ from .visualizer import RobotVisualizer
 # Private helpers remain importable from ``moro.visualization`` temporarily so
 # existing internal tests do not need to change during the package migration.
 from .threejs_backend import (
+    _extract_end_effector_trajectory,
     _render_html_template,
     _replace_placeholders,
     _scene_to_payload,

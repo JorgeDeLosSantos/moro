@@ -19,6 +19,7 @@ from moro.visualization import (
     SceneData,
     ThreeJSBackend,
     VisualizationStyle,
+    _extract_end_effector_trajectory,
     _render_html_template,
     _replace_placeholders,
     _scene_to_payload,
@@ -48,6 +49,30 @@ def scene_data():
         ],
         dimension=1.5,
     )
+
+
+@pytest.fixture
+def scene_data_list():
+    """Small animation sequence with moving end-effector."""
+
+    def make_scene(x):
+        T0 = np.eye(4)
+        T1 = np.eye(4)
+        T1[:3, 3] = [x, 0.0, 0.0]
+
+        return SceneData(
+            joints=[
+                np.array([0.0, 0.0, 0.0]),
+                np.array([x, 0.0, 0.0]),
+            ],
+            frames=[
+                FrameData(T0),
+                FrameData(T1),
+            ],
+            dimension=max(1.5, abs(x) + 0.5),
+        )
+
+    return [make_scene(0.5), make_scene(1.0), make_scene(1.5)]
 
 
 @pytest.fixture
@@ -165,6 +190,20 @@ def test_visualization_style_all_visibility_flags():
     assert style.show_grid is False
 
 
+def test_visualization_style_trajectory_defaults():
+    style = VisualizationStyle()
+
+    assert style.show_trajectory is False
+    assert style.trajectory_color == "#1565c0"
+    assert style.trajectory_linewidth == 2
+    assert style.trajectory_mode == "full"
+
+
+def test_visualization_style_rejects_invalid_trajectory_mode():
+    with pytest.raises(ValueError, match="trajectory_mode"):
+        VisualizationStyle(trajectory_mode="invalid")
+
+
 # ========================================
 # Tests for _scene_to_payload function
 # ======================================
@@ -214,6 +253,27 @@ def test_scenes_to_payload_converts_multiple_scenes():
     assert payloads[1]["dimension"] == 2.0
     assert len(payloads[0]["joints"]) == 1
     assert len(payloads[1]["joints"]) == 2
+
+
+def test_extract_end_effector_trajectory(scene_data_list):
+    trajectory = _extract_end_effector_trajectory(scene_data_list)
+
+    assert trajectory == [
+        [0.5, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.5, 0.0, 0.0],
+    ]
+
+
+def test_extract_end_effector_trajectory_rejects_empty_frames():
+    empty_scene = SceneData(
+        joints=[np.zeros(3)],
+        frames=[],
+        dimension=1.0,
+    )
+
+    with pytest.raises(ValueError, match="at least one frame"):
+        _extract_end_effector_trajectory([empty_scene])
 
 
 # ========================================
@@ -463,6 +523,48 @@ def test_matplotlib_backend_animate_returns_func_animation(scene_data):
     anim._draw_was_started = True
 
 
+def test_matplotlib_backend_animate_without_trajectory_has_no_extra_line(scene_data_list):
+    style = VisualizationStyle(show_trajectory=False)
+    anim = MatplotlibBackend.animate(scene_data_list, style=style)
+
+    anim._init_func()
+    anim._func(2)
+    ax = anim._fig.axes[0]
+
+    assert len(ax.lines) == 1
+    anim._draw_was_started = True
+
+
+def test_matplotlib_backend_animate_with_trajectory_adds_line(scene_data_list):
+    style = VisualizationStyle(show_trajectory=True, trajectory_mode="full")
+    anim = MatplotlibBackend.animate(scene_data_list, style=style)
+
+    anim._init_func()
+    anim._func(2)
+    ax = anim._fig.axes[0]
+
+    assert len(ax.lines) == 2
+    anim._draw_was_started = True
+
+
+def test_matplotlib_backend_animate_trace_uses_points_until_current_frame(scene_data_list):
+    style = VisualizationStyle(show_trajectory=True, trajectory_mode="trace")
+    anim = MatplotlibBackend.animate(scene_data_list, style=style)
+
+    anim._init_func()
+    anim._func(1)
+    ax = anim._fig.axes[0]
+
+    trajectory_line = ax.lines[-1]
+    x_data, y_data, z_data = trajectory_line.get_data_3d()
+
+    np.testing.assert_allclose(np.asarray(x_data), [0.5, 1.0])
+    np.testing.assert_allclose(np.asarray(y_data), [0.0, 0.0])
+    np.testing.assert_allclose(np.asarray(z_data), [0.0, 0.0])
+
+    anim._draw_was_started = True
+
+
 def test_matplotlib_backend_animate_empty_list_raises():
     with pytest.raises(
         ValueError,
@@ -527,6 +629,42 @@ def test_threejs_backend_animate_serializes_style(scene_data):
     assert '"link_linewidth": 4' in html
 
 
+def test_threejs_backend_animate_includes_trajectory_payload(scene_data_list):
+    style = VisualizationStyle(
+        show_trajectory=True,
+        trajectory_color="#123456",
+        trajectory_linewidth=3,
+        trajectory_mode="trace",
+    )
+
+    result = ThreeJSBackend.animate(scene_data_list, style=style)
+    html = result.data
+
+    assert '"trajectory"' in html
+    assert '"show_trajectory": true' in html
+    assert '"trajectory_color": "#123456"' in html
+    assert '"trajectory_mode": "trace"' in html
+
+
+def test_threejs_animation_contains_trajectory_line_logic(scene_data_list):
+    style = VisualizationStyle(show_trajectory=True)
+    html = ThreeJSBackend.animate(scene_data_list, style=style).data
+
+    assert "THREE.Line" in html
+    assert "setDrawRange" in html
+    assert "function updateTrajectoryForFrame(frameIndex)" in html
+
+
+def test_threejs_animation_does_not_create_trajectory_inside_go_to_frame(scene_data_list):
+    style = VisualizationStyle(show_trajectory=True)
+    html = ThreeJSBackend.animate(scene_data_list, style=style).data
+
+    go_to_frame_pos = html.index("function goToFrame(index)")
+    create_call_pos = html.index("setupTrajectoryLine();")
+
+    assert create_call_pos < go_to_frame_pos
+
+
 def test_threejs_backend_outputs_have_no_unresolved_placeholders(scene_data):
     render_html = ThreeJSBackend.render(scene_data).data
     animate_html = ThreeJSBackend.animate([scene_data, scene_data]).data
@@ -549,6 +687,10 @@ def test_style_to_payload_preserves_custom_values():
         joint_size=0.7,
         base_size=0.9,
         link_linewidth=4,
+        show_trajectory=True,
+        trajectory_color="#335577",
+        trajectory_linewidth=2.5,
+        trajectory_mode="trace",
     )
 
     payload = _style_to_payload(style)
@@ -565,6 +707,10 @@ def test_style_to_payload_preserves_custom_values():
     assert payload["joint_size"] == 0.7
     assert payload["base_size"] == 0.9
     assert payload["link_linewidth"] == 4
+    assert payload["show_trajectory"] is True
+    assert payload["trajectory_color"] == "#335577"
+    assert payload["trajectory_linewidth"] == 2.5
+    assert payload["trajectory_mode"] == "trace"
 
 
 # ---------------------------------------------------------------------------

@@ -34,6 +34,14 @@ class VisualizationStyle:
         Base size. If None, derive it from the scene dimension.
     link_linewidth : float
         Link thickness. Three.js interprets it as a relative thickness factor.
+    show_trajectory : bool
+        Draw end-effector Cartesian trajectory in animations.
+    trajectory_color : str
+        Color used for the trajectory line.
+    trajectory_linewidth : float
+        Trajectory line thickness.
+    trajectory_mode : str
+        Trajectory display mode: ``"full"`` or ``"trace"``.
     """
 
     show_frames: bool = True
@@ -51,3 +59,13 @@ class VisualizationStyle:
     base_size: float | None = None
 
     link_linewidth: float = 3
+    show_trajectory: bool = False
+    trajectory_color: str = "#1565c0"
+    trajectory_linewidth: float = 2
+    trajectory_mode: str = "full"
+
+    def __post_init__(self):
+        if self.trajectory_mode not in {"full", "trace"}:
+            raise ValueError(
+                "trajectory_mode must be either 'full' or 'trace'"
+            )

@@ -25,6 +25,66 @@ window.MoroThreeJS = (function() {
         };
     }
 
+    function resolveTrajectoryStyle(style) {
+        return {
+            showTrajectory: style.show_trajectory === true,
+            trajectoryColor: style.trajectory_color || '#1565c0',
+            trajectoryLinewidth: toFiniteNumber(
+                style.trajectory_linewidth,
+                2
+            ),
+            trajectoryMode: style.trajectory_mode || 'full'
+        };
+    }
+
+    function createTrajectoryLine(trajectoryData, resolvedStyle) {
+        if (!Array.isArray(trajectoryData) || trajectoryData.length === 0) {
+            return null;
+        }
+
+        var points = trajectoryData
+            .map(function(position) {
+                if (!Array.isArray(position) || position.length < 3) {
+                    return null;
+                }
+
+                var x = Number(position[0]);
+                var y = Number(position[1]);
+                var z = Number(position[2]);
+
+                if (
+                    !Number.isFinite(x) ||
+                    !Number.isFinite(y) ||
+                    !Number.isFinite(z)
+                ) {
+                    return null;
+                }
+
+                return new THREE.Vector3(x, y, z);
+            })
+            .filter(function(point) {
+                return point !== null;
+            });
+
+        if (points.length === 0) {
+            return null;
+        }
+
+        var trajectoryGeometry = new THREE.BufferGeometry().setFromPoints(points);
+        var trajectoryMaterial = new THREE.LineBasicMaterial({
+            color: resolvedStyle.trajectoryColor,
+            linewidth: resolvedStyle.trajectoryLinewidth
+        });
+
+        var trajectoryLine = new THREE.Line(
+            trajectoryGeometry,
+            trajectoryMaterial
+        );
+
+        trajectoryLine.userData.trajectoryPointCount = points.length;
+        return trajectoryLine;
+    }
+
     function createCameras(options) {
         var sceneScale = Math.max(toFiniteNumber(options.sceneScale, 0), 1);
         var aspect = toFiniteNumber(options.aspect, 1);
@@ -673,11 +733,13 @@ window.MoroThreeJS = (function() {
         createPersistentRobotObjects: createPersistentRobotObjects,
         createRobotMeshes: createRobotMeshes,
         resolveStyle: resolveStyle,
+        resolveTrajectoryStyle: resolveTrajectoryStyle,
         setPresetView: setPresetView,
         setupOrbitControls: setupOrbitControls,
         switchCameraType: switchCameraType,
         syncOrthographicFromPerspective: syncOrthographicFromPerspective,
         syncPerspectiveFromOrthographic: syncPerspectiveFromOrthographic,
+        createTrajectoryLine: createTrajectoryLine,
         updatePersistentRobotObjects: updatePersistentRobotObjects
     };
 })();

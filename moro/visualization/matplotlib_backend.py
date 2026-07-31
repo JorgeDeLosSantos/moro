@@ -1,7 +1,10 @@
 """Matplotlib visualization backend."""
 
+import numpy as np
+
 from .data import SceneData
 from .style import VisualizationStyle
+from .threejs_backend import _extract_end_effector_trajectory
 
 
 class MatplotlibBackend:
@@ -135,12 +138,42 @@ class MatplotlibBackend:
         if style is None:
             style = VisualizationStyle()
 
-        dim = scene_data_list[0].dimension
+        dim = max(scene.dimension for scene in scene_data_list)
+        trajectory_points = np.array(
+            _extract_end_effector_trajectory(scene_data_list),
+            dtype=float,
+        )
+
+        bounds_points: list[np.ndarray] = []
+        for scene in scene_data_list:
+            if scene.joints:
+                bounds_points.append(np.asarray(scene.joints, dtype=float))
+            if scene.frames:
+                bounds_points.append(np.asarray([
+                    frame.position
+                    for frame in scene.frames
+                ], dtype=float))
+
+        if style.show_trajectory and trajectory_points.size > 0:
+            bounds_points.append(trajectory_points)
+
+        if bounds_points:
+            stacked = np.vstack(bounds_points)
+            mins = stacked.min(axis=0)
+            maxs = stacked.max(axis=0)
+            center = (mins + maxs) / 2
+            half_extent = max(np.max(maxs - mins) / 2, dim)
+        else:
+            center = np.zeros(3, dtype=float)
+            half_extent = dim
+
+        def apply_global_limits():
+            ax.set_xlim(center[0] - half_extent, center[0] + half_extent)
+            ax.set_ylim(center[1] - half_extent, center[1] + half_extent)
+            ax.set_zlim(center[2] - half_extent, center[2] + half_extent)
 
         def init():
-            ax.set_xlim(-dim, dim)
-            ax.set_ylim(-dim, dim)
-            ax.set_zlim(-dim, dim)
+            apply_global_limits()
             ax.set_xlabel("X")
             ax.set_ylabel("Y")
             ax.set_zlabel("Z")
@@ -154,6 +187,23 @@ class MatplotlibBackend:
                 ax=ax,
                 **kwargs,
             )
+
+            if style.show_trajectory and trajectory_points.size > 0:
+                if style.trajectory_mode == "trace":
+                    points = trajectory_points[:frame_index + 1]
+                else:
+                    points = trajectory_points
+
+                if points.size > 0:
+                    ax.plot(
+                        points[:, 0],
+                        points[:, 1],
+                        points[:, 2],
+                        color=style.trajectory_color,
+                        linewidth=style.trajectory_linewidth,
+                    )
+
+            apply_global_limits()
             return (ax,)
 
         return FuncAnimation(

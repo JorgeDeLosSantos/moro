@@ -155,6 +155,7 @@ __COMMON_SCRIPT__
             var animationData = __ANIMATION_DATA__;
             var framesData = animationData.frames;
             var style = animationData.style;
+            var trajectoryData = animationData.trajectory || [];
             var container = document.getElementById('container-__UNIQUE_ID__');
             var slider = document.getElementById('slider-__UNIQUE_ID__');
             var frameLabel = document.getElementById('frameLabel-__UNIQUE_ID__');
@@ -173,6 +174,7 @@ __COMMON_SCRIPT__
             var jointMeshes = [];
             var frameHelpers = [];
             var robotObjects = null;
+            var trajectoryLine = null;
 
             var currentFrame = 0;
             var isPlaying = false;
@@ -183,12 +185,17 @@ __COMMON_SCRIPT__
             // Compute one global bounding box for the complete animation.
             // The resulting scale remains fixed while frames are played, so links,
             // joints and coordinate axes do not change size between frames.
-            var animationBounds = computeAnimationBounds(framesData);
+            var animationBounds = computeAnimationBounds(
+                framesData,
+                trajectoryData
+            );
             var sceneCenter = animationBounds.center;
             var dim = animationBounds.dimension * 1.15;
             var resolvedStyle = window.MoroThreeJS.resolveStyle(style, dim);
+            var resolvedTrajectoryStyle =
+                window.MoroThreeJS.resolveTrajectoryStyle(style);
 
-            function computeAnimationBounds(animationData) {
+            function computeAnimationBounds(animationData, trajectoryData) {
                 var minPoint = new THREE.Vector3(
                     Infinity,
                     Infinity,
@@ -247,6 +254,10 @@ __COMMON_SCRIPT__
                         });
                     }
                 });
+
+                if (Array.isArray(trajectoryData)) {
+                    trajectoryData.forEach(expandBounds);
+                }
 
                 if (pointCount === 0) {
                     var fallbackDimension = Math.max(
@@ -371,8 +382,11 @@ __COMMON_SCRIPT__
                 robotGroup = new THREE.Group();
                 scene.add(robotGroup);
 
+                setupTrajectoryLine();
+
                 createRobotObjects(framesData[0], resolvedStyle);
                 updateRobotObjects(framesData[0]);
+                updateTrajectoryForFrame(0);
                 animate();
 
                 status.innerHTML =
@@ -403,6 +417,49 @@ __COMMON_SCRIPT__
                 window.MoroThreeJS.updatePersistentRobotObjects(robotObjects, data);
             }
 
+            function setupTrajectoryLine() {
+                if (!resolvedTrajectoryStyle.showTrajectory) {
+                    return;
+                }
+
+                trajectoryLine = window.MoroThreeJS.createTrajectoryLine(
+                    trajectoryData,
+                    resolvedTrajectoryStyle
+                );
+
+                if (trajectoryLine === null) {
+                    return;
+                }
+
+                scene.add(trajectoryLine);
+            }
+
+            function updateTrajectoryForFrame(frameIndex) {
+                if (trajectoryLine === null) {
+                    return;
+                }
+
+                var pointCount = trajectoryLine.userData.trajectoryPointCount || 0;
+
+                if (!resolvedTrajectoryStyle.showTrajectory || pointCount === 0) {
+                    trajectoryLine.visible = false;
+                    return;
+                }
+
+                trajectoryLine.visible = true;
+
+                if (resolvedTrajectoryStyle.trajectoryMode === 'trace') {
+                    var traceCount = Math.max(
+                        1,
+                        Math.min(frameIndex + 1, pointCount)
+                    );
+                    trajectoryLine.geometry.setDrawRange(0, traceCount);
+                    return;
+                }
+
+                trajectoryLine.geometry.setDrawRange(0, pointCount);
+            }
+
             function goToFrame(index) {
                 if (!Number.isFinite(index)) {
                     return;
@@ -411,6 +468,7 @@ __COMMON_SCRIPT__
                 index = Math.max(0, Math.min(index, framesData.length - 1));
                 currentFrame = index;
                 updateRobotObjects(framesData[index]);
+                updateTrajectoryForFrame(index);
                 slider.value = index;
                 frameLabel.textContent = index;
             }
