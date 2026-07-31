@@ -4,10 +4,8 @@ Moro is a Python library for kinematic and dynamic modeling of serial robots.
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
 """
-import matplotlib.pyplot as plt
 import sympy as sp
 from sympy import (
-    pi,
     prod,
     symbols,
     Matrix,
@@ -22,7 +20,7 @@ from sympy import (
     MatMul,
 )
 # Moro core dependencies
-from moro.transformations import dh, htmrot, htmtra
+from moro.transformations import dh
 from moro.util import (
     vector_in_hcoords,
     is_position_vector,
@@ -30,7 +28,7 @@ from moro.util import (
 )
 from moro.abc import t
 
-__all__ = ["Robot", "RigidBody2D"]
+__all__ = ["Robot"]
 
 class Robot:
     """
@@ -1029,11 +1027,6 @@ class Robot:
             
         return equations
     
-    def solve_inverse_kinematics(self,pose,q0=None):
-        """
-        Solve the inverse kinematics problem for a given end-effector pose. This method is not implemented yet and will be added in future versions of the library.
-        """
-        pass
     
     def _set_default_joint_limits(self):
         joint_limits = []
@@ -1078,74 +1071,6 @@ class Robot:
         joint_limits = self.joint_limits 
         joint_limits_num = [(float(a), float(b)) for (a,b) in joint_limits] 
         return joint_limits_num
-    
-    def plot_diagram(self,num_vals):
-        """
-        Draw a simple wire-diagram or kinematic-diagram of the manipulator.
-
-        Parameters
-        ----------
-
-        num_vals : dict
-            Dictionary like: {svar1: nvalue1, svar2: nvalue2, ...}, 
-            where svar1, svar2, ... are symbolic variables that are 
-            currently used in model, and nvalue1, nvalue2, ... 
-            are the numerical values that will substitute these variables.
-
-        """
-        fig = plt.figure()
-        ax = fig.add_subplot(111,projection='3d')
-        
-        # Ts = self.Ts
-        points = []
-        Ti_0 = []
-        points.append(zeros(1,3))
-        for i in range(self.dof):
-            Ti_0.append(self.T_i0(i+1).subs(num_vals))
-            points.append((self.T_i0(i+1)[:3,3]).subs(num_vals))
-            
-        X = [float(k[0]) for k in points]
-        Y = [float(k[1]) for k in points]
-        Z = [float(k[2]) for k in points]
-        ax.plot(X,Y,Z, "o-", color="#778877", lw=3)
-        ax.plot([0],[0],[0], "mo", markersize=6)
-        # ax.set_axis_off()
-        ax.view_init(30,30)
-        
-        px,py,pz = float(X[-1]),float(Y[-1]),float(Z[-1])
-        dim = max([px,py,pz])
-        
-        self._draw_uvw(eye(4),ax, dim)
-        for T in Ti_0:
-            self._draw_uvw(T, ax, dim)
-            
-        ax.set_xlim(-dim, dim)
-        ax.set_ylim(-dim, dim)
-        ax.set_zlim(-dim, dim)
-        plt.show()
-    
-    def _draw_uvw(self,H,ax,sz=1):
-        """
-        Draw the u,v,w axes of a frame defined by the homogeneous transformation matrix H.
-
-        Parameters
-        ----------
-
-        H: sympy.matrices.dense.MutableDenseMatrix
-            Homogeneous transformation matrix that defines the frame to be drawn.
-        ax: matplotlib.axes._subplots.Axes3DSubplot
-            The 3D axis where the frame will be drawn.
-        sz: float
-            The length of the axes to be drawn.
-        """
-        u = H[:3,0]
-        v = H[:3,1]
-        w = H[:3,2]
-        o = H[:3,3]
-        L = sz/5
-        ax.quiver(o[0],o[1],o[2],u[0],u[1],u[2],color="r", length=L)
-        ax.quiver(o[0],o[1],o[2],v[0],v[1],v[2],color="g", length=L)
-        ax.quiver(o[0],o[1],o[2],w[0],w[1],w[2],color="b", length=L)
     
     def __str__(self):
         robot_type = "".join( self.joint_types ).upper()
@@ -1214,109 +1139,6 @@ class Robot:
             self._cache[category][key] = compute_fn()
         
         return self._cache[category][key]
-
-            
-
-
-#### RigidBody2D
-
-class RigidBody2D(object):
-    """
-    Defines a rigid body (two-dimensional) through a series of points that 
-    make it up.
-    
-    Parameters
-    ----------
-    
-    points: list, tuple
-        A list of 2-lists (or list of 2-tuples) containing the 
-        N-points that make up the rigid body.
-
-    Examples
-    --------
-
-    >>> points = [(0,0), (1,0), (0,1)]
-    >>> rb = RigidBody2D(points)
-
-    """
-    def __init__(self,points):
-        self._points = points # Points
-        self.Hs = [eye(4),] # Transformation matrices
-        
-    def restart(self):
-        """
-        Restart to initial coordinates of the rigid body
-        """
-        self.Hs = [eye(4),]
-    
-    @property
-    def points(self):
-        _points = []
-        H = self.H #
-        for p in self._points:
-            Q = Matrix([p[0],p[1],0,1]) # Homogeneous coordinates
-            _points.append(H*Q)
-        return _points
-    
-    @property
-    def H(self):
-        _h = eye(4)
-        for _mth in self.Hs:
-            _h = _h*_mth
-        return _h
-
-    def rotate(self,angle):
-        """
-        Rotates the rigid body around z-axis.
-        """
-        R = htmrot(angle, axis="z") # Applying rotation
-        self.Hs.append(R)
-    
-    def move(self,q):
-        """
-        Moves the rigid body
-        """
-        D = htmtra(q) # Applying translation
-        self.Hs.append(D)
-        
-    def draw(self,color="r",kaxis=None):
-        """
-        Draw the rigid body
-        """
-        X,Y = [],[]
-        cx,cy = self.get_centroid()
-        for p in self.points:
-            X.append(p[0])
-            Y.append(p[1])
-        plt.fill(X,Y,color,alpha=0.8)
-        plt.plot(cx,cy,"r.")
-        plt.axis('equal')
-        plt.grid(ls="--")
-        
-        O = self.H[:3,3]
-        U = self.H[:3,0]
-        V = self.H[:3,1]
-        plt.quiver(float(O[0]), float(O[1]), float(U[0]), float(U[1]), 
-                   color="r", zorder=1000, scale=kaxis)
-        plt.quiver(float(O[0]), float(O[1]), float(V[0]), float(V[1]), 
-                   color="g", zorder=1001, scale=kaxis)
-        self.ax = plt.gca()
-
-    def _gca(self):
-        return self.ax
-
-    def get_centroid(self):
-        """
-        Return the centroid of the rigid body
-        """
-        n = len(self.points)
-        sx,sy = 0,0
-        for point in self.points:
-            sx += point[0]
-            sy += point[1]
-        cx = sx/n
-        cy = sy/n
-        return cx,cy
 
 
 

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f5f5f5;
+        }
+
+        #controls-__UNIQUE_ID__ {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        #controls-__UNIQUE_ID__ .control-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+
+        #controls-__UNIQUE_ID__ button,
+        #controls-__UNIQUE_ID__ select {
+            margin: 0;
+            padding: 5px 9px;
+            cursor: pointer;
+            border: none;
+            color: white;
+            background: #4CAF50;
+            border-radius: 3px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+
+        #controls-__UNIQUE_ID__ button:hover,
+        #controls-__UNIQUE_ID__ select:hover {
+            background: #449d48;
+        }
+
+        #status-__UNIQUE_ID__ {
+            margin-top: 5px;
+            padding: 5px;
+            font-size: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls-__UNIQUE_ID__">
+        <div class="control-row">
+            <button onclick="window.robot___UNIQUE_ID__.setView('front')">
+                Front
+            </button>
+
+            <button onclick="window.robot___UNIQUE_ID__.setView('top')">
+                Top
+            </button>
+
+            <button onclick="window.robot___UNIQUE_ID__.setView('isometric')">
+                Isometric
+            </button>
+        </div>
+
+        <div class="control-row">
+            <select
+                id="cam-type-__UNIQUE_ID__"
+                onchange="window.robot___UNIQUE_ID__.setCameraType(this.value)"
+            >
+                <option value="perspective">Perspective</option>
+                <option value="orthographic" selected>Orthographic</option>
+            </select>
+
+            <button onclick="window.robot___UNIQUE_ID__.resetView()">
+                &#x21bb; Reset View
+            </button>
+        </div>
+
+        <div id="status-__UNIQUE_ID__">Loading...</div>
+    </div>
+
+    <div id="container-__UNIQUE_ID__"></div>
+
+    <script>
+__COMMON_SCRIPT__
+    </script>
+
+    <script>
+    (function() {
+        if (
+            typeof THREE !== 'undefined' &&
+            typeof THREE.OrbitControls !== 'undefined'
+        ) {
+            initRobot___UNIQUE_ID__();
+            return;
+        }
+
+        window.MoroThreeJS.ensureThreeReady(
+            initRobot___UNIQUE_ID__,
+            function(error) {
+                var status = document.getElementById('status-__UNIQUE_ID__');
+                status.innerHTML = 'Error loading Three.js: ' + error.message;
+                status.style.color = 'red';
+            }
+        );
+
+        function initRobot___UNIQUE_ID__() {
+            var data = __ROBOT_DATA__;
+            var style = data.style;
+            var container = document.getElementById('container-__UNIQUE_ID__');
+            var status = document.getElementById('status-__UNIQUE_ID__');
+
+            var scene;
+            var camera;
+            var perspectiveCamera;
+            var orthographicCamera;
+            var renderer;
+            var controls;
+            var robotGroup;
+
+            var activeCameraType = 'orthographic';
+            var currentView = 'isometric';
+
+            var width = __WIDTH__;
+            var height = __HEIGHT__;
+            var aspect = width / height;
+            var sceneScale = Math.max(Number(data.dimension) || 0, 1);
+            var resolvedStyle = window.MoroThreeJS.resolveStyle(
+                style,
+                sceneScale
+            );
+
+            try {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xf5f5f5);
+
+                var cameraSet = window.MoroThreeJS.createCameras({
+                    aspect: aspect,
+                    sceneScale: sceneScale
+                });
+
+                perspectiveCamera = cameraSet.perspectiveCamera;
+                orthographicCamera = cameraSet.orthographicCamera;
+
+                camera = orthographicCamera;
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                container.appendChild(renderer.domElement);
+
+                controls = window.MoroThreeJS.setupOrbitControls({
+                    camera: camera,
+                    domElement: renderer.domElement,
+                    target: getDefaultTarget(),
+                    onStart: function() {
+                        currentView = 'custom';
+                        updateStatus();
+                    }
+                });
+
+                window.MoroThreeJS.createLights(scene, sceneScale);
+
+                // Grid on the XY plane for the Z-up convention.
+                if (style.show_grid) {
+                    window.MoroThreeJS.createGrid(scene, {
+                        gridSize: sceneScale * 2.5,
+                        gridDivisions: 20,
+                        primaryColor: 0x888888,
+                        secondaryColor: 0xcccccc,
+                        rotateToXY: true,
+                        position: [0, 0, 0]
+                    });
+                }
+
+                scene.add(new THREE.AxesHelper(sceneScale / 4));
+
+                robotGroup = new THREE.Group();
+                scene.add(robotGroup);
+
+                drawRobot(data);
+                setView('isometric', true);
+                animate();
+            } catch (e) {
+                status.innerHTML = 'Error: ' + e.message;
+                status.style.color = 'red';
+            }
+
+            function getDefaultTarget() {
+                return new THREE.Vector3(
+                    0,
+                    0,
+                    sceneScale / 3
+                );
+            }
+
+            function drawRobot(d) {
+                window.MoroThreeJS.clearGroup(robotGroup);
+                window.MoroThreeJS.createRobotMeshes({
+                    robotGroup: robotGroup,
+                    data: d,
+                    style: style,
+                    resolvedStyle: resolvedStyle,
+                    normalizeFrameAxes: false
+                });
+            }
+
+            function setView(viewName, resetTarget) {
+                var distance = sceneScale * 2.5;
+
+                if (resetTarget !== false) {
+                    controls.target.copy(getDefaultTarget());
+                }
+
+                if (!window.MoroThreeJS.setPresetView({
+                    camera: camera,
+                    target: controls.target.clone(),
+                    distance: distance,
+                    viewName: viewName
+                })) {
+                    return;
+                }
+
+                controls.update();
+                currentView = viewName;
+                updateStatus();
+            }
+
+            function setCameraType(type) {
+                var result = window.MoroThreeJS.switchCameraType({
+                    type: type,
+                    activeCameraType: activeCameraType,
+                    camera: camera,
+                    perspectiveCamera: perspectiveCamera,
+                    orthographicCamera: orthographicCamera,
+                    controls: controls,
+                    aspect: aspect,
+                    synchronizeProjection: true
+                });
+
+                if (!result.changed) {
+                    if (type === activeCameraType) {
+                        document.getElementById('cam-type-__UNIQUE_ID__').value = type;
+                    }
+                    return;
+                }
+
+                camera = result.camera;
+                activeCameraType = result.activeCameraType;
+
+                document.getElementById(
+                    'cam-type-__UNIQUE_ID__'
+                ).value = type;
+
+                updateStatus();
+            }
+
+            function resetView() {
+                controls.target.copy(getDefaultTarget());
+                setView('isometric', false);
+            }
+
+            function updateStatus() {
+                var cameraName = activeCameraType === 'orthographic'
+                    ? 'Orthographic'
+                    : 'Perspective';
+
+                var viewName = currentView === 'custom'
+                    ? 'Custom'
+                    : currentView.charAt(0).toUpperCase() + currentView.slice(1);
+
+                status.innerHTML =
+                    cameraName + ' | ' + viewName +
+                    ' &mdash; Middle drag to orbit | ' +
+                    'Left/Right drag to pan | Wheel to zoom';
+
+                status.style.color = 'green';
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            window.robot___UNIQUE_ID__ = {
+                resetView: resetView,
+                setView: setView,
+                setCameraType: setCameraType
+            };
+        }
+    })();
+    </script>
+</body>
+</html>

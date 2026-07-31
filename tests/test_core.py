@@ -1,8 +1,16 @@
+from importlib import import_module
+
 import pytest
 import sympy as sp
 
 from moro.abc import q1, q2
-from moro.core import RigidBody2D, Robot
+from moro.core import Robot
+
+RigidBody2D = None
+try:
+    RigidBody2D = import_module("examples.ejemplo01").RigidBody2D
+except (ImportError, ModuleNotFoundError):
+    pass
 
 
 def assert_matrix_equal(a, b):
@@ -67,11 +75,11 @@ def test_joint_limits_default_and_validation():
     Robot.joint_limits.fset(robot, [(-1, 1), (0, 10)])
     assert robot.joint_limits == [(-1, 1), (0, 10)]
 
-    # with pytest.raises(ValueError, match="number of joint limits"):
-    #     Robot.joint_limits.fset(robot, (-1, 1))
+    with pytest.raises(ValueError, match="The number of joint limits must match DOF"):
+        Robot.joint_limits.fset(robot, [(-1, 1)])
 
-    # with pytest.raises(ValueError, match="2-tuple"):
-    #     Robot.joint_limits.fset(robot, (-1, 1), (0, 10, 20))
+    with pytest.raises(ValueError, match="Each joint-limit should be a 2-tuple"):
+        Robot.joint_limits.fset(robot, [(-1, 1), (0, 10, 20)])
 
 def test_robot_center_of_mass_and_inertia_matrix_single_link():
     c, m, iz = sp.symbols("c m iz")
@@ -88,24 +96,3 @@ def test_robot_center_of_mass_and_inertia_matrix_single_link():
     assert_matrix_equal(robot.inertia_matrix(), expected_m)
 
 
-def test_rigid_body_2d_move_rotate_restart():
-    rb = RigidBody2D([(1, 0), (0, 1), (0, 0)])
-
-    rb.rotate(sp.pi / 2)
-    p0 = rb.points[0]
-    assert_matrix_equal(p0, sp.Matrix([0, 1, 0, 1]))
-
-    rb.move([2, 0, 0])
-    p0_translated = rb.points[0]
-    assert_matrix_equal(p0_translated, sp.Matrix([0, 3, 0, 1]))
-
-    rb.restart()
-    assert_matrix_equal(rb.H, sp.eye(4))
-
-
-def test_rigid_body_2d_centroid():
-    rb = RigidBody2D([(0, 0), (2, 0), (0, 2)])
-
-    cx, cy = rb.get_centroid()
-    assert sp.simplify(cx - sp.Rational(2, 3)) == 0
-    assert sp.simplify(cy - sp.Rational(2, 3)) == 0

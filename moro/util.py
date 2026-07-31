@@ -9,7 +9,6 @@ from sympy import pi
 from sympy.matrices import Matrix
 import sympy as sp
 from itertools import combinations
-# ~ from scipy.spatial import Delaunay, ConvexHull
 import numpy as np
 import sympy.core as sc
 import sympy.matrices as sm
@@ -223,7 +222,14 @@ def sympy2float(sympy_object):
     else:
         float_object = sympy_object
     return float_object
-    
+
+
+def enable_vprinting():
+    """
+    Enable SymPy vector pretty printing. 
+    """
+    from sympy.physics.mechanics import init_vprinting
+    init_vprinting()
     
 
 

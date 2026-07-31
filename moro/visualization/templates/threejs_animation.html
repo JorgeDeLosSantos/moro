@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #f5f5f5; }
+
+        #controls-__UNIQUE_ID__ {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            min-width: 220px;
+        }
+
+        #controls-__UNIQUE_ID__ .control-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+
+        #controls-__UNIQUE_ID__ button,
+        #controls-__UNIQUE_ID__ select {
+            margin: 0;
+            padding: 5px 9px;
+            cursor: pointer;
+            border: none;
+            color: white;
+            background: #4CAF50;
+            border-radius: 3px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+
+        #controls-__UNIQUE_ID__ button:hover,
+        #controls-__UNIQUE_ID__ select:hover {
+            background: #449d48;
+        }
+
+        #play-button-__UNIQUE_ID__ {
+            background: #2196F3 !important;
+        }
+
+        #play-button-__UNIQUE_ID__:hover {
+            background: #1976D2 !important;
+        }
+
+        #controls-__UNIQUE_ID__ .frame-control {
+            margin-top: 6px;
+        }
+
+        #controls-__UNIQUE_ID__ input[type=range] {
+            width: 100%;
+        }
+
+        #status-__UNIQUE_ID__ {
+            margin-top: 5px;
+            padding: 5px;
+            font-size: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls-__UNIQUE_ID__">
+        <div class="control-row">
+            <button onclick="window.robot___UNIQUE_ID__.setView('front')">
+                Front
+            </button>
+            <button onclick="window.robot___UNIQUE_ID__.setView('top')">
+                Top
+            </button>
+            <button onclick="window.robot___UNIQUE_ID__.setView('isometric')">
+                Isometric
+            </button>
+        </div>
+
+        <div class="control-row">
+            <select id="cam-type-__UNIQUE_ID__"
+                    onchange="window.robot___UNIQUE_ID__.setCameraType(this.value)">
+                <option value="perspective">Perspective</option>
+                <option value="orthographic" selected>Orthographic</option>
+            </select>
+
+            <button id="play-button-__UNIQUE_ID__"
+                    onclick="window.robot___UNIQUE_ID__.togglePlay()">
+                &#9654; Play
+            </button>
+
+            <button onclick="window.robot___UNIQUE_ID__.resetView()">
+                &#x21bb; Reset
+            </button>
+        </div>
+
+        <div class="frame-control">
+            <label>
+                Frame:
+                <span id="frameLabel-__UNIQUE_ID__">0</span> / __LAST_FRAME__
+            </label>
+            <input type="range"
+                   id="slider-__UNIQUE_ID__"
+                   min="0"
+                   max="__LAST_FRAME__"
+                   value="0"
+                   step="1"
+                   oninput="window.robot___UNIQUE_ID__.goToFrame(parseInt(this.value, 10))">
+        </div>
+
+        <div id="status-__UNIQUE_ID__">Loading...</div>
+    </div>
+
+    <div id="container-__UNIQUE_ID__"></div>
+
+    <script>
+__COMMON_SCRIPT__
+    </script>
+
+    <script>
+    (function() {
+        if (typeof THREE !== 'undefined' &&
+                typeof THREE.OrbitControls !== 'undefined') {
+            initRobot___UNIQUE_ID__();
+        } else {
+            window.MoroThreeJS.ensureThreeReady(
+                initRobot___UNIQUE_ID__,
+                function(error) {
+                    var status = document.getElementById('status-__UNIQUE_ID__');
+                    status.innerHTML = 'Error loading Three.js: ' + error.message;
+                    status.style.color = 'red';
+                }
+            );
+        }
+
+        function initRobot___UNIQUE_ID__() {
+            var animationData = __ANIMATION_DATA__;
+            var framesData = animationData.frames;
+            var style = animationData.style;
+            var trajectoryData = animationData.trajectory || [];
+            var container = document.getElementById('container-__UNIQUE_ID__');
+            var slider = document.getElementById('slider-__UNIQUE_ID__');
+            var frameLabel = document.getElementById('frameLabel-__UNIQUE_ID__');
+            var playButton = document.getElementById('play-button-__UNIQUE_ID__');
+            var cameraSelect = document.getElementById('cam-type-__UNIQUE_ID__');
+            var status = document.getElementById('status-__UNIQUE_ID__');
+
+            var scene;
+            var camera;
+            var perspectiveCamera;
+            var orthographicCamera;
+            var renderer;
+            var controls;
+            var robotGroup;
+            var linkMeshes = [];
+            var jointMeshes = [];
+            var frameHelpers = [];
+            var robotObjects = null;
+            var trajectoryLine = null;
+
+            var currentFrame = 0;
+            var isPlaying = false;
+            var playInterval = null;
+            var activeCameraType = 'orthographic';
+            var currentView = 'isometric';
+
+            // Compute one global bounding box for the complete animation.
+            // The resulting scale remains fixed while frames are played, so links,
+            // joints and coordinate axes do not change size between frames.
+            var animationBounds = computeAnimationBounds(
+                framesData,
+                trajectoryData
+            );
+            var sceneCenter = animationBounds.center;
+            var dim = animationBounds.dimension * 1.15;
+            var resolvedStyle = window.MoroThreeJS.resolveStyle(style, dim);
+            var resolvedTrajectoryStyle =
+                window.MoroThreeJS.resolveTrajectoryStyle(style);
+
+            function computeAnimationBounds(animationData, trajectoryData) {
+                var minPoint = new THREE.Vector3(
+                    Infinity,
+                    Infinity,
+                    Infinity
+                );
+                var maxPoint = new THREE.Vector3(
+                    -Infinity,
+                    -Infinity,
+                    -Infinity
+                );
+                var largestDeclaredDimension = 0;
+                var pointCount = 0;
+
+                function expandBounds(position) {
+                    if (!Array.isArray(position) || position.length < 3) {
+                        return;
+                    }
+
+                    var x = Number(position[0]);
+                    var y = Number(position[1]);
+                    var z = Number(position[2]);
+
+                    if (
+                        !Number.isFinite(x) ||
+                        !Number.isFinite(y) ||
+                        !Number.isFinite(z)
+                    ) {
+                        return;
+                    }
+
+                    var point = new THREE.Vector3(x, y, z);
+                    minPoint.min(point);
+                    maxPoint.max(point);
+                    pointCount++;
+                }
+
+                animationData.forEach(function(frameData) {
+                    var declaredDimension = Number(frameData.dimension);
+                    if (
+                        Number.isFinite(declaredDimension) &&
+                        declaredDimension > 0
+                    ) {
+                        largestDeclaredDimension = Math.max(
+                            largestDeclaredDimension,
+                            declaredDimension
+                        );
+                    }
+
+                    if (Array.isArray(frameData.joints)) {
+                        frameData.joints.forEach(expandBounds);
+                    }
+
+                    if (Array.isArray(frameData.frames)) {
+                        frameData.frames.forEach(function(frame) {
+                            expandBounds(frame.position);
+                        });
+                    }
+                });
+
+                if (Array.isArray(trajectoryData)) {
+                    trajectoryData.forEach(expandBounds);
+                }
+
+                if (pointCount === 0) {
+                    var fallbackDimension = Math.max(
+                        largestDeclaredDimension,
+                        1
+                    );
+                    return {
+                        min: new THREE.Vector3(
+                            -fallbackDimension / 2,
+                            -fallbackDimension / 2,
+                            -fallbackDimension / 2
+                        ),
+                        max: new THREE.Vector3(
+                            fallbackDimension / 2,
+                            fallbackDimension / 2,
+                            fallbackDimension / 2
+                        ),
+                        center: new THREE.Vector3(0, 0, 0),
+                        size: new THREE.Vector3(
+                            fallbackDimension,
+                            fallbackDimension,
+                            fallbackDimension
+                        ),
+                        dimension: fallbackDimension
+                    };
+                }
+
+                var size = new THREE.Vector3().subVectors(
+                    maxPoint,
+                    minPoint
+                );
+                var center = new THREE.Vector3()
+                    .addVectors(minPoint, maxPoint)
+                    .multiplyScalar(0.5);
+                var measuredDimension = Math.max(
+                    size.x,
+                    size.y,
+                    size.z
+                );
+
+                return {
+                    min: minPoint,
+                    max: maxPoint,
+                    center: center,
+                    size: size,
+                    dimension: Math.max(
+                        measuredDimension,
+                        largestDeclaredDimension,
+                        1
+                    )
+                };
+            }
+
+            try {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xf5f5f5);
+
+                var width = __WIDTH__;
+                var height = __HEIGHT__;
+                var aspect = width / height;
+                var nearPlane = Math.max(dim * 0.001, 0.01);
+                var farPlane = Math.max(dim * 50, 1000);
+
+                var cameraSet = window.MoroThreeJS.createCameras({
+                    aspect: aspect,
+                    sceneScale: dim,
+                    nearPlane: nearPlane,
+                    farPlane: farPlane,
+                    orthographicNear: -farPlane,
+                    orthographicFar: farPlane
+                });
+
+                perspectiveCamera = cameraSet.perspectiveCamera;
+                orthographicCamera = cameraSet.orthographicCamera;
+
+                camera = orthographicCamera;
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                container.appendChild(renderer.domElement);
+
+                controls = window.MoroThreeJS.setupOrbitControls({
+                    camera: camera,
+                    domElement: renderer.domElement,
+                    target: sceneCenter
+                });
+
+                setView('isometric');
+
+                window.MoroThreeJS.createLights(scene, dim);
+
+                // Grid on the global XY plane (Z = 0). Its center must remain
+                // at the world origin so that it agrees with the robot base frame.
+                // The size is made symmetric about the origin and large enough to
+                // contain the complete animation, even when its bounds are offset.
+                if (style.show_grid) {
+                    var gridHalfExtent = Math.max(
+                        Math.abs(animationBounds.min.x),
+                        Math.abs(animationBounds.max.x),
+                        Math.abs(animationBounds.min.y),
+                        Math.abs(animationBounds.max.y),
+                        dim / 2
+                    );
+                    var gridSize = Math.max(gridHalfExtent * 2.4, dim * 2.5);
+
+                    window.MoroThreeJS.createGrid(scene, {
+                        gridSize: gridSize,
+                        gridDivisions: 20,
+                        primaryColor: 0x888888,
+                        secondaryColor: 0xcccccc,
+                        rotateToXY: true,
+                        position: [0, 0, 0]
+                    });
+                }
+
+                // Global coordinate system at the world origin.
+                var worldAxes = new THREE.AxesHelper(dim / 4);
+                worldAxes.position.set(0, 0, 0);
+                scene.add(worldAxes);
+
+                robotGroup = new THREE.Group();
+                scene.add(robotGroup);
+
+                setupTrajectoryLine();
+
+                createRobotObjects(framesData[0], resolvedStyle);
+                updateRobotObjects(framesData[0]);
+                updateTrajectoryForFrame(0);
+                animate();
+
+                status.innerHTML =
+                    'Ready &mdash; ' + framesData.length +
+                    ' frames | Middle drag to orbit | Left/Right drag to pan | Wheel to zoom';
+                status.style.color = 'green';
+            } catch (error) {
+                status.innerHTML = 'Error: ' + error.message;
+                status.style.color = 'red';
+            }
+
+            function createRobotObjects(data, resolvedStyle) {
+                robotObjects = window.MoroThreeJS.createPersistentRobotObjects({
+                    robotGroup: robotGroup,
+                    data: data,
+                    style: style,
+                    resolvedStyle: resolvedStyle,
+                    normalizeFrameAxes: true
+                });
+
+                linkMeshes = robotObjects.linkMeshes;
+                jointMeshes = robotObjects.jointMeshes;
+                frameHelpers = robotObjects.frameHelpers;
+            }
+
+            function updateRobotObjects(data) {
+                window.MoroThreeJS.assertRobotTopology(framesData[0], data);
+                window.MoroThreeJS.updatePersistentRobotObjects(robotObjects, data);
+            }
+
+            function setupTrajectoryLine() {
+                if (!resolvedTrajectoryStyle.showTrajectory) {
+                    return;
+                }
+
+                trajectoryLine = window.MoroThreeJS.createTrajectoryLine(
+                    trajectoryData,
+                    resolvedTrajectoryStyle
+                );
+
+                if (trajectoryLine === null) {
+                    return;
+                }
+
+                scene.add(trajectoryLine);
+            }
+
+            function updateTrajectoryForFrame(frameIndex) {
+                if (trajectoryLine === null) {
+                    return;
+                }
+
+                var pointCount = trajectoryLine.userData.trajectoryPointCount || 0;
+
+                if (!resolvedTrajectoryStyle.showTrajectory || pointCount === 0) {
+                    trajectoryLine.visible = false;
+                    return;
+                }
+
+                trajectoryLine.visible = true;
+
+                if (resolvedTrajectoryStyle.trajectoryMode === 'trace') {
+                    var traceCount = Math.max(
+                        1,
+                        Math.min(frameIndex + 1, pointCount)
+                    );
+                    trajectoryLine.geometry.setDrawRange(0, traceCount);
+                    return;
+                }
+
+                trajectoryLine.geometry.setDrawRange(0, pointCount);
+            }
+
+            function goToFrame(index) {
+                if (!Number.isFinite(index)) {
+                    return;
+                }
+
+                index = Math.max(0, Math.min(index, framesData.length - 1));
+                currentFrame = index;
+                updateRobotObjects(framesData[index]);
+                updateTrajectoryForFrame(index);
+                slider.value = index;
+                frameLabel.textContent = index;
+            }
+
+            function updatePlayButton() {
+                playButton.innerHTML = isPlaying
+                    ? '&#10074;&#10074; Pause'
+                    : '&#9654; Play';
+                playButton.setAttribute('aria-pressed', String(isPlaying));
+            }
+
+            function startPlayback() {
+                if (playInterval !== null) {
+                    return;
+                }
+
+                isPlaying = true;
+                updatePlayButton();
+
+                playInterval = window.setInterval(function() {
+                    var nextFrame = (currentFrame + 1) % framesData.length;
+                    goToFrame(nextFrame);
+                }, 100);
+            }
+
+            function pausePlayback() {
+                isPlaying = false;
+                updatePlayButton();
+
+                if (playInterval !== null) {
+                    window.clearInterval(playInterval);
+                    playInterval = null;
+                }
+            }
+
+            function togglePlay() {
+                if (isPlaying) {
+                    pausePlayback();
+                } else {
+                    startPlayback();
+                }
+            }
+
+            function setView(viewName) {
+                if (!window.MoroThreeJS.setPresetView({
+                    camera: camera,
+                    target: controls.target.clone(),
+                    distance: dim * 2.5,
+                    viewName: viewName,
+                    topUp: [0, 0, 1]
+                })) {
+                    return;
+                }
+
+                controls.update();
+                currentView = viewName;
+            }
+
+            function setCameraType(type) {
+                var result = window.MoroThreeJS.switchCameraType({
+                    type: type,
+                    activeCameraType: activeCameraType,
+                    camera: camera,
+                    perspectiveCamera: perspectiveCamera,
+                    orthographicCamera: orthographicCamera,
+                    controls: controls,
+                    aspect: aspect,
+                    synchronizeProjection: false
+                });
+
+                if (!result.changed) {
+                    if (type === activeCameraType) {
+                        cameraSelect.value = type;
+                    }
+                        return;
+                }
+
+                camera = result.camera;
+                activeCameraType = result.activeCameraType;
+                cameraSelect.value = type;
+            }
+
+            function resetView() {
+                controls.target.copy(sceneCenter);
+
+                if (activeCameraType !== 'orthographic') {
+                    setCameraType('orthographic');
+                }
+
+                orthographicCamera.zoom = 1;
+                orthographicCamera.updateProjectionMatrix();
+                perspectiveCamera.zoom = 1;
+                perspectiveCamera.updateProjectionMatrix();
+
+                setView('isometric');
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            window.robot___UNIQUE_ID__ = {
+                togglePlay: togglePlay,
+                goToFrame: goToFrame,
+                setView: setView,
+                setCameraType: setCameraType,
+                resetView: resetView
+            };
+        }
+    })();
+    </script>
+</body>
+</html>
