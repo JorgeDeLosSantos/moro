@@ -498,7 +498,7 @@ def _solve_ccd(
                     lower_bounds[joint_idx],
                     upper_bounds[joint_idx],
                 )
-            else:
+            elif joint_type == "p":
                 # Recompute current error right before prismatic update to avoid
                 # using stale values from previous joint updates in the same sweep.
                 p_eff = _safe_eval_vector(fk_func, q, 3)
@@ -517,6 +517,12 @@ def _solve_ccd(
                     q[joint_idx] + delta,
                     lower_bounds[joint_idx],
                     upper_bounds[joint_idx],
+                )
+
+            else:
+                raise ValueError(
+                    f"Unsupported joint type '{joint_type}' for joint {i}. "
+                    "Expected 'r' (revolute) or 'p' (prismatic)."
                 )
 
             if not np.isfinite(q[joint_idx]):
@@ -667,11 +673,11 @@ def solve_position_ik(
     >>> 
     >>> # Newton-Raphson
     >>> sol = solve_position_ik(rr, [1.5, 0.5, 0.0], q0=[0.1, 0.1],
-    ...                         method="newton")
+    ...                         method="newton", parameters={l1: 1.0, l2: 1.0})
     >>> 
     >>> # CCD
     >>> sol = solve_position_ik(rr, [1.5, 0.5, 0.0], q0=[0.1, 0.1],
-    ...                         method="ccd")
+    ...                         method="ccd", parameters={l1: 1.0, l2: 1.0})
     """
     tol, max_iter, damping, damping_scale = _validate_solver_options(
         method, tol, max_iter, damping, damping_scale
