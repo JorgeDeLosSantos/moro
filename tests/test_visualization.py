@@ -518,7 +518,7 @@ def test_robot_visualizer_animate_empty_list_raises(simple_robot):
 
     with pytest.raises(
         ValueError,
-        match="scene_data_list must contain at least one scene",
+        match="num_vals_list must contain at least one configuration",
     ):
         viz.animate([])
 
