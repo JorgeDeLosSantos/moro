@@ -13,6 +13,7 @@ from moro.util import is_position_vector
 
 __all__ = ["solve_position_ik", "IKSolution"]
 
+# --- Outcome Messages ---
 MSG_CONVERGED = "Converged successfully."
 MSG_MAX_ITER = "Maximum number of iterations reached."
 MSG_STAGNATED_STEP = "Solver stagnated because the joint update became too small."
@@ -23,6 +24,7 @@ MSG_NUMERICAL_UPDATE = "Numerical failure while computing the joint update."
 MSG_NUMERICAL_CCD = "Numerical failure during CCD evaluation."
 
 
+# --- Public Result Type ---
 @dataclass
 class IKSolution:
     """
@@ -93,6 +95,7 @@ class IKSolution:
         )
 
 
+# --- Validation and Conversion Helpers ---
 def _prepare_rng(random_state):
     """Prepare a local NumPy Generator for reproducible random initialization."""
     if random_state is None:
@@ -173,9 +176,16 @@ def _make_solution(
     """Create a consistent IKSolution with normalized fields and residual."""
     q_safe = np.asarray(q, dtype=float).reshape(-1)
     if not _is_finite_array(q_safe):
-        q_safe = np.zeros_like(q_safe)
+        raise ValueError("Cannot build IKSolution with non-finite joint values.")
 
-    residual_vec = _compute_residual(target, position) if residual is None else np.asarray(residual, dtype=float).reshape(-1)
+    if residual is None:
+        residual_vec = _compute_residual(target, position)
+    else:
+        try:
+            residual_vec = np.asarray(residual, dtype=float).reshape(-1)
+        except (TypeError, ValueError):
+            residual_vec = None
+
     if residual_vec is None or residual_vec.size != 3 or not _is_finite_array(residual_vec):
         residual_out = None
         error = np.inf
@@ -429,6 +439,7 @@ def _failure_solution(q, iterations, method, message, target=None, position=None
     )
 
 
+# --- Solver Routines ---
 def _solve_newton_or_lm(
     fk_func,
     j_func,
@@ -534,17 +545,6 @@ def _solve_newton_or_lm(
                 position=p_current,
             )
 
-        step_norm = np.linalg.norm(q_trial - q)
-        if not np.isfinite(step_norm):
-            return _failure_solution(
-                q,
-                completed_steps,
-                method,
-                MSG_NUMERICAL_UPDATE,
-                target=target,
-                position=p_current,
-            )
-
         p_trial = _safe_eval_vector(fk_func, q_trial, 3)
         if p_trial is None:
             return _failure_solution(
@@ -607,6 +607,17 @@ def _solve_newton_or_lm(
             p_next = p_trial
             error_vec_next = trial_error_vec
             error_norm_next = trial_error_norm
+
+        step_norm = np.linalg.norm(q_next - q)
+        if not np.isfinite(step_norm):
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_UPDATE,
+                target=target,
+                position=p_current,
+            )
 
         completed_steps += 1
 
@@ -1024,6 +1035,7 @@ def _solve_ccd(
     )
 
 
+# --- Public API ---
 def solve_position_ik(
     robot,
     target_position,
