@@ -6,7 +6,29 @@ import sympy as sp
 import numpy as np
 from moro.core import Robot
 from moro.inverse_kinematics import solve_position_ik, IKSolution
-from moro.abc import l1, l2, q1, q2, d1
+from moro.abc import q1, q2
+
+
+def end_effector_position(robot, q_values, parameters=None):
+    """Evaluate the end-effector position for a numerical joint configuration."""
+    substitutions = dict(zip(robot.qs, q_values))
+    if parameters is not None:
+        substitutions.update(parameters)
+
+    position = robot.T[:3, 3].subs(substitutions)
+    return np.asarray(position, dtype=float).reshape(3)
+
+
+def assert_reaches_target(robot, solution, target, *, parameters=None, atol=1e-6):
+    """Assert that the FK position associated with an IK solution reaches target."""
+    position = end_effector_position(robot, solution.q, parameters=parameters)
+    np.testing.assert_allclose(position, target, atol=atol)
+
+
+def assert_within_joint_limits(q_values, limits):
+    """Assert that every joint value lies within its corresponding bounds."""
+    for q_value, (lower, upper) in zip(q_values, limits):
+        assert lower <= q_value <= upper
 
 
 class TestIKSolution:
@@ -81,7 +103,7 @@ class TestSolvePositionIK:
 
         assert sol.converged is True
         assert sol.method == "ccd"
-        np.testing.assert_allclose(sol.q, q_known, atol=1e-6)
+        assert_reaches_target(rr, sol, target)
 
     def test_ccd_rr_planar_reaches_target(self):
         """CCD: Verify that fkine(sol) ≈ target."""
@@ -118,32 +140,28 @@ class TestSolvePositionIK:
                                 method="ccd", joint_limits=limits,
                                 tol=1e-8, max_iter=1000)
 
-        if sol.converged:
-            assert limits[0][0] <= sol.q[0] <= limits[0][1]
-            assert limits[1][0] <= sol.q[1] <= limits[1][1]
+        assert_within_joint_limits(sol.q, limits)
 
-    def test_ccd_random_initial_guess(self):
+    def test_ccd_random_initial_guess(self, monkeypatch):
         """CCD: Without providing q0, should still find a solution."""
         rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
         target = [1.5, 0.0, 0.0]
 
-        any_converged = False
-        for _ in range(5):
-            sol = solve_position_ik(rr, target,
-                                    method="ccd", tol=1e-6, max_iter=1000)
-            if sol.converged:
-                any_converged = True
-                T_sol = rr.T.subs({q1: sol.q[0], q2: sol.q[1]})
-                pos_sol = [float(T_sol[0, 3]), float(T_sol[1, 3]), float(T_sol[2, 3])]
-                np.testing.assert_allclose(pos_sol, target, atol=1e-5)
-                break
-
-        assert any_converged, (
-            "CCD should find a solution with random initial guesses."
+        monkeypatch.setattr(
+            np.random,
+            "uniform",
+            lambda lower, upper: np.array([0.4, -0.8], dtype=float),
         )
 
+        sol = solve_position_ik(
+            rr, target, method="ccd", tol=1e-6, max_iter=1000
+        )
+
+        assert sol.converged is True
+        assert_reaches_target(rr, sol, target, atol=1e-5)
+
     def test_ccd_near_singularity(self):
-        """CCD should handle configurations near singularities."""
+        """CCD should converge to a target near a singular configuration."""
         rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
         target = [1.99, 0.0, 0.0]
 
@@ -170,16 +188,21 @@ class TestSolvePositionIK:
         np.testing.assert_allclose(pos_sol, target, atol=1e-6)
 
     def test_ccd_default_max_iter(self):
-        """CCD default max_iter should be 500."""
-        rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
-        target = [1.5, 0.5, 0.0]
+        """CCD should perform 500 sweeps by default when it cannot converge."""
+        robot = Robot((0, 0, q1, 0, "p"))
 
-        sol = solve_position_ik(rr, target, q0=[0.1, 0.1],
-                                method="ccd", tol=1e-8)
+        sol = solve_position_ik(
+            robot,
+            [0.0, 0.0, 10.0],
+            q0=[0.0],
+            method="ccd",
+            joint_limits=[(0.0, 0.1)],
+            tol=1e-12,
+        )
 
-        assert sol.iterations <= 500
-        if sol.converged:
-            assert sol.method == "ccd"
+        assert sol.converged is False
+        assert sol.method == "ccd"
+        assert sol.iterations == 500
 
     # --- Levenberg-Marquardt tests ---
 
@@ -195,7 +218,7 @@ class TestSolvePositionIK:
 
         assert sol.converged is True
         assert sol.method == "lm"
-        np.testing.assert_allclose(sol.q, q_known, atol=1e-6)
+        assert_reaches_target(rr, sol, target)
 
     def test_lm_rr_planar_reaches_target(self):
         """LM: Verify that fkine(sol) ≈ target."""
@@ -230,28 +253,23 @@ class TestSolvePositionIK:
         sol = solve_position_ik(rr, target, q0=[0.3, 0.1],
                                 joint_limits=limits, tol=1e-8)
 
-        if sol.converged:
-            assert limits[0][0] <= sol.q[0] <= limits[0][1]
-            assert limits[1][0] <= sol.q[1] <= limits[1][1]
+        assert_within_joint_limits(sol.q, limits)
 
-    def test_lm_random_initial_guess(self):
+    def test_lm_random_initial_guess(self, monkeypatch):
         """LM: Without providing q0, should still find a solution."""
         rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
         target = [1.5, 0.0, 0.0]
 
-        any_converged = False
-        for _ in range(5):
-            sol = solve_position_ik(rr, target, tol=1e-6, max_iter=100)
-            if sol.converged:
-                any_converged = True
-                T_sol = rr.T.subs({q1: sol.q[0], q2: sol.q[1]})
-                pos_sol = [float(T_sol[0, 3]), float(T_sol[1, 3]), float(T_sol[2, 3])]
-                np.testing.assert_allclose(pos_sol, target, atol=1e-5)
-                break
-
-        assert any_converged, (
-            "Solver should find a solution with random initial guesses."
+        monkeypatch.setattr(
+            np.random,
+            "uniform",
+            lambda lower, upper: np.array([0.4, -0.8], dtype=float),
         )
+
+        sol = solve_position_ik(rr, target, tol=1e-6, max_iter=100)
+
+        assert sol.converged is True
+        assert_reaches_target(rr, sol, target, atol=1e-5)
 
     def test_lm_custom_damping(self):
         """LM: Custom damping parameter should not break the solver."""
@@ -264,7 +282,7 @@ class TestSolvePositionIK:
         assert sol.converged is True
 
     def test_lm_near_singularity(self):
-        """LM should handle configurations near singularities."""
+        """LM should converge to a target near a singular configuration."""
         rr = Robot((1, 0, 0, q1, "r"), (1, 0, 0, q2, "r"))
         target = [1.99, 0.0, 0.0]
 
@@ -288,7 +306,7 @@ class TestSolvePositionIK:
 
         assert sol.converged is True
         assert sol.method == "newton"
-        np.testing.assert_allclose(sol.q, q_known, atol=1e-6)
+        assert_reaches_target(rr, sol, target)
 
     def test_newton_rr_planar_reaches_target(self):
         """Newton: Verify that fkine(sol) ≈ target."""
@@ -327,7 +345,18 @@ class TestSolvePositionIK:
         with pytest.raises(ValueError, match="target_position"):
             solve_position_ik(rr, [np.inf, 0.0, 0.0], q0=[0.1, 0.1])
 
-    def test_symbolic_parameters_are_supported(self):
+    def test_target_position_with_non_numeric_value_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="target_position"):
+            solve_position_ik(rr, ["x", 0.0, 0.0], q0=[0.1, 0.1])
+
+    def test_q0_with_non_numeric_value_raises_error(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="q0"):
+            solve_position_ik(rr, [1.5, 0.2, 0.0], q0=[0.1, "x"])
+
+    @pytest.mark.parametrize("method", ["newton", "lm", "ccd"])
+    def test_symbolic_parameters_are_supported(self, method):
         ls1, ls2 = sp.symbols("ls1 ls2")
         robot = Robot((ls1, 0, 0, q1, "r"), (ls2, 0, 0, q2, "r"))
         T_original = robot.T
@@ -341,16 +370,17 @@ class TestSolvePositionIK:
             robot,
             target,
             q0=[0.2, 0.2],
-            method="lm",
+            method=method,
             parameters={ls1: 1.0, ls2: 1.0},
             tol=1e-8,
+            max_iter=1000 if method == "ccd" else 200,
         )
 
         assert sol.converged is True
 
-        T_sol = robot.T.subs({ls1: 1.0, ls2: 1.0, q1: sol.q[0], q2: sol.q[1]})
-        pos_sol = [float(T_sol[0, 3]), float(T_sol[1, 3]), float(T_sol[2, 3])]
-        np.testing.assert_allclose(pos_sol, target, atol=1e-6)
+        assert_reaches_target(
+            robot, sol, target, parameters={ls1: 1.0, ls2: 1.0}
+        )
 
         # Ensure symbolic expressions on the robot object remain unchanged.
         assert robot.T == T_original
@@ -423,6 +453,16 @@ class TestSolvePositionIK:
                 [1.5, 0.2, 0.0],
                 q0=[0.1, 0.1],
                 joint_limits=[(-1, 1), (-2, 2, 3)],
+            )
+
+    def test_joint_limit_pair_must_be_a_sequence(self):
+        rr = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+        with pytest.raises(ValueError, match="sequence of two elements"):
+            solve_position_ik(
+                rr,
+                [1.5, 0.2, 0.0],
+                q0=[0.1, 0.1],
+                joint_limits=[(-1, 1), 2],
             )
 
     def test_joint_limit_with_non_numeric_value(self):
@@ -592,6 +632,34 @@ class TestSolvePositionIK:
 
         assert sol.converged is False
         assert sol.iterations == 7
+
+    @pytest.mark.parametrize("method", ["newton", "lm"])
+    def test_jacobian_methods_default_max_iter(self, method):
+        robot = Robot((0, 0, q1, 0, "p"))
+        sol = solve_position_ik(
+            robot,
+            [0.0, 0.0, 10.0],
+            q0=[0.0],
+            method=method,
+            joint_limits=[(0.0, 0.1)],
+            tol=1e-12,
+        )
+
+        assert sol.converged is False
+        assert sol.iterations == 100
+
+    def test_ccd_rejects_unsupported_joint_type(self):
+        robot = Robot((0, 0, q1, 0, "p"))
+        robot.joint_types[0] = "x"
+
+        with pytest.raises(ValueError, match="Unsupported joint type"):
+            solve_position_ik(
+                robot,
+                [0.0, 0.0, 0.5],
+                q0=[0.0],
+                method="ccd",
+                max_iter=5,
+            )
 
     def test_ccd_prismatic_recomputes_error_within_sweep(self):
         robot = Robot(
