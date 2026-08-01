@@ -45,10 +45,14 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inverse_kinematics.html">The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">The <code class="code docutils literal notranslate"><span class="pre">visualization</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="abc.html">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</a></li>
 </ul>
 
         </div>
@@ -83,9 +87,13 @@
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#forward-kinematics-for-rr-manipulator">Forward kinematics for RR manipulator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#calculating-geometric-jacobian-for-rr-manipulator">Calculating geometric jacobian for RR manipulator</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="core.html#moro.core.RigidBody2D"><code class="docutils literal notranslate"><span class="pre">RigidBody2D</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="core.html#moro.core.Robot"><code class="docutils literal notranslate"><span class="pre">Robot</span></code></a></li>
 </ul>
 </li>
@@ -104,6 +112,23 @@
 <li class="toctree-l2"><a class="reference internal" href="transformations.html#moro.transformations.skew"><code class="docutils literal notranslate"><span class="pre">skew()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="inverse_kinematics.html">The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="inverse_kinematics.html#moro.inverse_kinematics.IKSolution"><code class="docutils literal notranslate"><span class="pre">IKSolution</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="inverse_kinematics.html#moro.inverse_kinematics.IKTrajectorySolution"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="inverse_kinematics.html#moro.inverse_kinematics.solve_position_ik"><code class="docutils literal notranslate"><span class="pre">solve_position_ik()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="inverse_kinematics.html#moro.inverse_kinematics.solve_position_trajectory"><code class="docutils literal notranslate"><span class="pre">solve_position_trajectory()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">The <code class="code docutils literal notranslate"><span class="pre">visualization</span></code> module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#moro.visualization.FrameData"><code class="docutils literal notranslate"><span class="pre">FrameData</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#moro.visualization.MatplotlibBackend"><code class="docutils literal notranslate"><span class="pre">MatplotlibBackend</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#moro.visualization.RobotVisualizer"><code class="docutils literal notranslate"><span class="pre">RobotVisualizer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#moro.visualization.SceneData"><code class="docutils literal notranslate"><span class="pre">SceneData</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#moro.visualization.ThreeJSBackend"><code class="docutils literal notranslate"><span class="pre">ThreeJSBackend</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#moro.visualization.VisualizationStyle"><code class="docutils literal notranslate"><span class="pre">VisualizationStyle</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#moro.visualization.evaluate_robot"><code class="docutils literal notranslate"><span class="pre">evaluate_robot()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.deg2rad"><code class="docutils literal notranslate"><span class="pre">deg2rad()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.is_SE3"><code class="docutils literal notranslate"><span class="pre">is_SE3()</span></code></a></li>
@@ -120,6 +145,7 @@
 <li class="toctree-l2"><a class="reference internal" href="util.html#moro.util.vector_in_hcoords"><code class="docutils literal notranslate"><span class="pre">vector_in_hcoords()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="abc.html">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</a></li>
 </ul>
 </div>
 </section>

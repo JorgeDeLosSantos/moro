@@ -11,12 +11,18 @@ Alternatively, you can install the development version from GitHub repository:
 
 .. code-block::
 
-	pip install https://github.com/jorgedelossantos/moro.git
+	pip install git+https://github.com/JorgeDeLosSantos/moro.git
 
 Or clone the repository and install:
 
 .. code-block::
 	
-	git clone https://github.com/jorgedelossantos/moro.git
+	git clone https://github.com/JorgeDeLosSantos/moro.git
 	cd moro
-	pip install setup.py
+	pip install .
+
+For development, you can install the package in editable mode:
+
+.. code-block::
+
+	pip install -e .

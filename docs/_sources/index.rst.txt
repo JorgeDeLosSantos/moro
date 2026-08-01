@@ -16,10 +16,14 @@ Moro is a Python library for kinematic and dynamic modeling of serial robots. Th
    :caption: Contents:
 
    installation.rst
+   getting_started.rst
    examples.rst
    core.rst
    transformations.rst
+   inverse_kinematics.rst
+   visualization.rst
    util.rst
+   abc.rst
 
 Indices and tables
 ==================

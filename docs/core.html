@@ -46,18 +46,9 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#moro.core.RigidBody2D"><code class="docutils literal notranslate"><span class="pre">RigidBody2D</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.H"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.H</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.draw"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.draw()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.get_centroid"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.get_centroid()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.move"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.move()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.points"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.points</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.restart"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.restart()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.RigidBody2D.rotate"><code class="docutils literal notranslate"><span class="pre">RigidBody2D.rotate()</span></code></a></li>
-</ul>
-</li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.core.Robot"><code class="docutils literal notranslate"><span class="pre">Robot</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.I_cm"><code class="docutils literal notranslate"><span class="pre">Robot.I_cm()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.I_cm0"><code class="docutils literal notranslate"><span class="pre">Robot.I_cm0()</span></code></a></li>
@@ -91,7 +82,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.link_potential_energy"><code class="docutils literal notranslate"><span class="pre">Robot.link_potential_energy()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.m"><code class="docutils literal notranslate"><span class="pre">Robot.m()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.masses"><code class="docutils literal notranslate"><span class="pre">Robot.masses</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.plot_diagram"><code class="docutils literal notranslate"><span class="pre">Robot.plot_diagram()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.potential_energy"><code class="docutils literal notranslate"><span class="pre">Robot.potential_energy()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.q"><code class="docutils literal notranslate"><span class="pre">Robot.q()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.q_dot"><code class="docutils literal notranslate"><span class="pre">Robot.q_dot()</span></code></a></li>
@@ -99,7 +89,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.qs"><code class="docutils literal notranslate"><span class="pre">Robot.qs</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.r_cm"><code class="docutils literal notranslate"><span class="pre">Robot.r_cm()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.r_o"><code class="docutils literal notranslate"><span class="pre">Robot.r_o()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.solve_inverse_kinematics"><code class="docutils literal notranslate"><span class="pre">Robot.solve_inverse_kinematics()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.v_cm"><code class="docutils literal notranslate"><span class="pre">Robot.v_cm()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.w"><code class="docutils literal notranslate"><span class="pre">Robot.w()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.w_rel0"><code class="docutils literal notranslate"><span class="pre">Robot.w_rel0()</span></code></a></li>
@@ -109,7 +98,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inverse_kinematics.html">The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">The <code class="code docutils literal notranslate"><span class="pre">visualization</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="abc.html">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</a></li>
 </ul>
 
         </div>
@@ -142,96 +134,6 @@
 Moro is a Python library for kinematic and dynamic modeling of serial robots. 
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="moro.core.RigidBody2D">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">moro.core.</span></span><span class="sig-name descname"><span class="pre">RigidBody2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Defines a rigid body (two-dimensional) through a series of points that 
-make it up.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>points: list, tuple</strong></dt><dd><p>A list of 2-lists (or list of 2-tuples) containing the 
-N-points that make up the rigid body.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-<p class="rubric">Examples</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">points</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">rb</span> <span class="o">=</span> <span class="n">RigidBody2D</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
-</pre></div>
-</div>
-<dl class="field-list simple">
-<dt class="field-odd">Attributes<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>H</strong></dt><dd></dd>
-<dt><strong>points</strong></dt><dd></dd>
-</dl>
-</dd>
-</dl>
-<p class="rubric">Methods</p>
-<table class="autosummary longtable docutils align-default">
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.RigidBody2D.draw" title="moro.core.RigidBody2D.draw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw</span></code></a>([color, kaxis])</p></td>
-<td><p>Draw the rigid body</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.RigidBody2D.get_centroid" title="moro.core.RigidBody2D.get_centroid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_centroid</span></code></a>()</p></td>
-<td><p>Return the centroid of the rigid body</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.RigidBody2D.move" title="moro.core.RigidBody2D.move"><code class="xref py py-obj docutils literal notranslate"><span class="pre">move</span></code></a>(q)</p></td>
-<td><p>Moves the rigid body</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.RigidBody2D.restart" title="moro.core.RigidBody2D.restart"><code class="xref py py-obj docutils literal notranslate"><span class="pre">restart</span></code></a>()</p></td>
-<td><p>Restart to initial coordinates of the rigid body</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.RigidBody2D.rotate" title="moro.core.RigidBody2D.rotate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rotate</span></code></a>(angle)</p></td>
-<td><p>Rotates the rigid body around z-axis.</p></td>
-</tr>
-</tbody>
-</table>
-<dl class="py property">
-<dt class="sig sig-object py" id="moro.core.RigidBody2D.H">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">H</span></span><a class="headerlink" href="#moro.core.RigidBody2D.H" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="moro.core.RigidBody2D.draw">
-<span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kaxis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.draw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.draw" title="Link to this definition"></a></dt>
-<dd><p>Draw the rigid body</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="moro.core.RigidBody2D.get_centroid">
-<span class="sig-name descname"><span class="pre">get_centroid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.get_centroid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.get_centroid" title="Link to this definition"></a></dt>
-<dd><p>Return the centroid of the rigid body</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="moro.core.RigidBody2D.move">
-<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.move"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.move" title="Link to this definition"></a></dt>
-<dd><p>Moves the rigid body</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="moro.core.RigidBody2D.points">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">points</span></span><a class="headerlink" href="#moro.core.RigidBody2D.points" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="moro.core.RigidBody2D.restart">
-<span class="sig-name descname"><span class="pre">restart</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.restart"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.restart" title="Link to this definition"></a></dt>
-<dd><p>Restart to initial coordinates of the rigid body</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="moro.core.RigidBody2D.rotate">
-<span class="sig-name descname"><span class="pre">rotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#RigidBody2D.rotate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.RigidBody2D.rotate" title="Link to this definition"></a></dt>
-<dd><p>Rotates the rigid body around z-axis.</p>
-</dd></dl>
-
-</dd></dl>
-
 <dl class="py class">
 <dt class="sig sig-object py" id="moro.core.Robot">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">moro.core.</span></span><span class="sig-name descname"><span class="pre">Robot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot" title="Link to this definition"></a></dt>
@@ -346,26 +248,20 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.m" title="moro.core.Robot.m"><code class="xref py py-obj docutils literal notranslate"><span class="pre">m</span></code></a>(i)</p></td>
 <td><p>Return the mass of the i-th link.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.plot_diagram" title="moro.core.Robot.plot_diagram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_diagram</span></code></a>(num_vals)</p></td>
-<td><p>Draw a simple wire-diagram or kinematic-diagram of the manipulator.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.potential_energy" title="moro.core.Robot.potential_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">potential_energy</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.potential_energy" title="moro.core.Robot.potential_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">potential_energy</span></code></a>()</p></td>
 <td><p>Returns the total potential energy of the robot:</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.q" title="moro.core.Robot.q"><code class="xref py py-obj docutils literal notranslate"><span class="pre">q</span></code></a>(i)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.q" title="moro.core.Robot.q"><code class="xref py py-obj docutils literal notranslate"><span class="pre">q</span></code></a>(i)</p></td>
 <td><p>Return the i-th joint variable.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.q_dot" title="moro.core.Robot.q_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">q_dot</span></code></a>(i)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.q_dot" title="moro.core.Robot.q_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">q_dot</span></code></a>(i)</p></td>
 <td><p>Return the time derivative of the i-th joint variable.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.r_cm" title="moro.core.Robot.r_cm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">r_cm</span></code></a>(i)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.r_cm" title="moro.core.Robot.r_cm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">r_cm</span></code></a>(i)</p></td>
 <td><p>Return the position of the center of mass of the  i-th link w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.r_o" title="moro.core.Robot.r_o"><code class="xref py py-obj docutils literal notranslate"><span class="pre">r_o</span></code></a>(i)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.r_o" title="moro.core.Robot.r_o"><code class="xref py py-obj docutils literal notranslate"><span class="pre">r_o</span></code></a>(i)</p></td>
 <td><p>Get the position (of the origin of coordinates) of the {i}-Frame w.r.t.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.solve_inverse_kinematics" title="moro.core.Robot.solve_inverse_kinematics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solve_inverse_kinematics</span></code></a>(pose[, q0])</p></td>
-<td><p>Solve the inverse kinematics problem for a given end-effector pose.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.v_cm" title="moro.core.Robot.v_cm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">v_cm</span></code></a>(i)</p></td>
 <td><p>Return the velocity of the center of mass of the  i-th link w.r.t.</p></td>
@@ -577,7 +473,9 @@ w.r.t. {0}-Frame.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.Robot.cm_positions">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cm_positions</span></span><a class="headerlink" href="#moro.core.Robot.cm_positions" title="Link to this definition"></a></dt>
-<dd><p>Get the positions of the center of mass for each link. The position of the center of mass of the i-th link is defined as a list or tuple of three elements that correspond to the x, y, z coordinates of the center of mass w.r.t. {i}-Frame.</p>
+<dd><p>Get the positions of the center of mass for each link. The position of the 
+center of mass of the i-th link is defined as a list or tuple of three elements 
+that correspond to the x, y, z coordinates of the center of mass w.r.t. {i}-Frame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -667,7 +565,8 @@ one for each joint, of the form:</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.gravity_vector">
 <span class="sig-name descname"><span class="pre">gravity_vector</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.gravity_vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.gravity_vector" title="Link to this definition"></a></dt>
-<dd><p>Compute the gravity torque vector G(q). The gravity torque vector is computed as the gradient of the potential energy of the system:</p>
+<dd><p>Compute the gravity torque vector G(q). The gravity torque vector is computed 
+as the gradient of the potential energy of the system:</p>
 <div class="math notranslate nohighlight">
 \[G(q) = \nabla U(q) = \left[ \frac{{\partial U}}{{\partial q_1}}, \frac{{\partial U}}{{\partial q_2}}, ..., \frac{{\partial U}}{{\partial q_n}} \right]^T\]</div>
 <dl class="field-list simple">
@@ -815,23 +714,6 @@ m1, m2, …, mn, are numeric or symbolic values.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="moro.core.Robot.plot_diagram">
-<span class="sig-name descname"><span class="pre">plot_diagram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_vals</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.plot_diagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.plot_diagram" title="Link to this definition"></a></dt>
-<dd><p>Draw a simple wire-diagram or kinematic-diagram of the manipulator.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>num_vals</strong><span class="classifier">dict</span></dt><dd><p>Dictionary like: {svar1: nvalue1, svar2: nvalue2, …}, 
-where svar1, svar2, … are symbolic variables that are 
-currently used in model, and nvalue1, nvalue2, … 
-are the numerical values that will substitute these variables.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="moro.core.Robot.potential_energy">
 <span class="sig-name descname"><span class="pre">potential_energy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.potential_energy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.potential_energy" title="Link to this definition"></a></dt>
 <dd><p>Returns the total potential energy of the robot:</p>
@@ -916,12 +798,6 @@ i-th link w.r.t. the base frame.</p>
 </dl>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="moro.core.Robot.solve_inverse_kinematics">
-<span class="sig-name descname"><span class="pre">solve_inverse_kinematics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pose</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.solve_inverse_kinematics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.solve_inverse_kinematics" title="Link to this definition"></a></dt>
-<dd><p>Solve the inverse kinematics problem for a given end-effector pose. This method is not implemented yet and will be added in future versions of the library.</p>
 </dd></dl>
 
 <dl class="py method">
