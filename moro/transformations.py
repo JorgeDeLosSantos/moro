@@ -533,6 +533,22 @@ def rot2axa(R, deg=False):
     """
     if not(is_SO3(R)):
         raise ValueError("R must be a rotation matrix.")
+
+    def _result(axis, angle):
+        axis = sp.simplify(axis / axis.norm())
+        angle = sp.simplify(angle)
+        if deg:
+            angle = sp.simplify(rad2deg(angle, evalf=False))
+        return axis, angle
+
+    def _largest_diagonal_index(diagonal):
+        known_nonzero = [i for i, value in enumerate(diagonal) if sp.simplify(value) != 0]
+        if not known_nonzero:
+            return 0
+        numeric_values = [sp.N(diagonal[i]) for i in known_nonzero]
+        if all(value.is_number for value in numeric_values):
+            return max(known_nonzero, key=lambda i: sp.N(diagonal[i]))
+        return known_nonzero[0]
     
     # trace
     trace = sp.trace(R)
@@ -543,18 +559,24 @@ def rot2axa(R, deg=False):
     # Case 1: angle = 0
     # In this case, the rotation is the identity, so we can return any axis (we choose the x-axis) and an angle of 0.
     if sp.simplify(angle) == 0:
-        return Matrix([1, 0, 0]), sp.S(0)
+        return _result(Matrix([1, 0, 0]), sp.S(0))
 
     # Case 2: angle = pi
-    # In this case, the axis can be computed from the diagonal elements of R, but we need to be careful with the signs.
+    # In this case, R = 2*k*k.T - I, so A = (R + I)/2 = k*k.T.
+    # Select the largest available diagonal term to recover the most stable component,
+    # then use off-diagonal terms to preserve the relative signs of the axis components.
     if sp.simplify(angle - sp.pi) == 0:
-        axis = Matrix([
-            sp.sqrt((R[0,0] + 1)/2),
-            sp.sqrt((R[1,1] + 1)/2),
-            sp.sqrt((R[2,2] + 1)/2)
-        ])
-        axis = axis / axis.norm()
-        return axis, angle
+        A = sp.simplify((R + sp.eye(3)) / 2)
+        diagonal = [sp.simplify(A[i, i]) for i in range(3)]
+        i = _largest_diagonal_index(diagonal)
+        axis = Matrix([0, 0, 0])
+        axis[i] = sp.sqrt(diagonal[i])
+
+        for j in range(3):
+            if j != i:
+                axis[j] = sp.simplify(A[j, i] / axis[i])
+
+        return _result(axis, angle)
 
     # Case 3: general case
     axis = Matrix([
@@ -563,9 +585,7 @@ def rot2axa(R, deg=False):
         R[1,0] - R[0,1]
     ]) / (2 * sp.sin(angle))
 
-    axis = sp.simplify(axis / axis.norm())
-
-    return axis, sp.simplify(angle)
+    return _result(axis, angle)
     
 def axa2rot(k,theta):
     """
