@@ -8,7 +8,7 @@ using SymPy as base library.
 # from mpl_toolkits.mplot3d import Axes3D
 import sympy as sp
 from sympy import sin,cos,atan2,acos,sqrt,pi
-from sympy.matrices import Matrix,zeros
+from sympy.matrices import Matrix,zeros,MatrixBase
 from moro.abc import *
 from moro.util import *
 
@@ -30,6 +30,17 @@ __all__ = [
 # ~ ==========================================
 # ~ Transformation operations
 # ~ ==========================================
+def _normalize_axis(axis):
+    if not isinstance(axis, str):
+        raise ValueError("axis must be 'x', 'y' or 'z'.")
+
+    axis = axis.lower()
+    if axis not in ("x", "y", "z"):
+        raise ValueError("axis must be 'x', 'y' or 'z'.")
+
+    return axis
+
+
 def rot(theta, axis="z", deg=False):
     """
     Return a rotation matrix that represents a rotation of "theta" about "axis".
@@ -43,15 +54,12 @@ def rot(theta, axis="z", deg=False):
     deg : bool
         ¿Is theta given in degrees?, False is default value.    
     """
-    axis = axis.lower()
+    axis = _normalize_axis(axis)
     if axis=="x":
-        return rotx(theta, deg)
+        return rotx(theta, deg=deg)
     elif axis=="y":
-        return roty(theta, deg)
-    elif axis=="z":
-        return rotz(theta, deg)
-    else:
-        raise ValueError(f"{axis} is not a valid axis of rotation.")
+        return roty(theta, deg=deg)
+    return rotz(theta, deg=deg)
 
 def rotz(theta, deg=False):
     """
@@ -284,6 +292,21 @@ def _has_float(value):
     return bool(sp.sympify(value).atoms(sp.Float))
 
 
+def _is_SO3_numeric_tol(R, tol):
+    R = Matrix(R)
+    if R.shape != (3, 3):
+        return False
+    if not all(_is_numeric_real(value) for value in R):
+        return False
+
+    orthogonality_error = R.T * R - sp.eye(3)
+    if any(abs(float(sp.N(value))) > tol for value in orthogonality_error):
+        return False
+
+    determinant_error = sp.det(R) - 1
+    return abs(float(sp.N(determinant_error))) <= tol
+
+
 def _classify_r33(r33, tol):
     r33_simplified = sp.simplify(r33)
 
@@ -403,46 +426,34 @@ def eul2rot(phi,theta,psi,seq="zxz",deg=False):
     R = rot(phi,axis1) * rot(theta,axis2) * rot(psi,axis3)
     return R
 
-def htmtra(*args,**kwargs):
+def htmtra(x=0, y=0, z=0):
     """
-    Calculate the homogeneous transformation matrix of a translation
+    Calculate the homogeneous transformation matrix of a translation.
     
     Parameters
     ----------
-    *args : list, tuple, int, float
-        Translation vector or components
-
-    **kwargs : float, int
-        dx, dy and dz keyword arguments
+    x : int, float or symbolic, optional
+        Translation along the x-axis. Default is 0.
+    y : int, float or symbolic, optional
+        Translation along the y-axis. Default is 0.
+    z : int, float or symbolic, optional
+        Translation along the z-axis. Default is 0.
     
     Returns
     -------
     H : :class:`sympy.matrices.dense.MutableDenseMatrix`
         Homogeneous transformation matrix
-        
-        
+
     Examples
     --------
-    >>> htmtra([50,-100,30])
-    ⎡1  0  0   50 ⎤
-    ⎢             ⎥
-    ⎢0  1  0  -100⎥
-    ⎢             ⎥
-    ⎢0  0  1   30 ⎥
-    ⎢             ⎥
-    ⎣0  0  0   1  ⎦
-    
-    >>> a,b,c = symbols("a,b,c")
-    >>> htmtra([a,b,c])
-    ⎡1  0  0  a⎤
+    >>> htmtra()
+    ⎡1  0  0  0⎤
     ⎢          ⎥
-    ⎢0  1  0  b⎥
+    ⎢0  1  0  0⎥
     ⎢          ⎥
-    ⎢0  0  1  c⎥
+    ⎢0  0  1  0⎥
     ⎢          ⎥
     ⎣0  0  0  1⎦
-
-    Using float/integer arguments:
 
     >>> htmtra(10,-40,50)
     ⎡1  0  0  10 ⎤
@@ -453,38 +464,32 @@ def htmtra(*args,**kwargs):
     ⎢            ⎥
     ⎣0  0  0   1 ⎦
 
-    Using keyword arguments:
+    >>> htmtra(z=100)
+    ⎡1  0  0   0 ⎤
+    ⎢            ⎥
+    ⎢0  1  0   0 ⎥
+    ⎢            ⎥
+    ⎢0  0  1  100⎥
+    ⎢            ⎥
+    ⎣0  0  0   1 ⎦
 
-    >>> htmtra(dz=100,dx=300,dy=-200)
-    ⎡1  0  0  300 ⎤
-    ⎢             ⎥
-    ⎢0  1  0  -200⎥
-    ⎢             ⎥
-    ⎢0  0  1  100 ⎥
-    ⎢             ⎥
-    ⎣0  0  0   1  ⎦
+    >>> a,b,c = symbols("a,b,c")
+    >>> htmtra(x=a, y=b, z=c)
+    ⎡1  0  0  a⎤
+    ⎢          ⎥
+    ⎢0  1  0  b⎥
+    ⎢          ⎥
+    ⎢0  0  1  c⎥
+    ⎢          ⎥
+    ⎣0  0  0  1⎦
 
     """
-    if args and not kwargs:
-        if isinstance(args[0], (list,tuple)):
-            d = args[0]
-        elif len(args)==3:
-            d = args
-    elif kwargs and not args:
-        d = [0,0,0]
-        if "dx" in kwargs: 
-            d[0] = kwargs.get("dx")
-        if "dy" in kwargs:
-            d[1] = kwargs.get("dy")
-        if "dz" in kwargs:
-            d[2] = kwargs.get("dz")
-    else:
-        raise ValueError("Only pass *args or **kwargs, not both")
+    if isinstance(x, (list, tuple, MatrixBase)) or isinstance(y, (list, tuple, MatrixBase)) or isinstance(z, (list, tuple, MatrixBase)):
+        raise TypeError("x, y and z must be scalar values.")
 
-    dx,dy,dz = d[0],d[1],d[2]
-    M = Matrix([[1,0,0,dx],
-                [0,1,0,dy],
-                [0,0,1,dz],
+    M = Matrix([[1,0,0,x],
+                [0,1,0,y],
+                [0,0,1,z],
                 [0,0,0,1]])
     return M
     
@@ -548,19 +553,7 @@ def htmrot(theta, axis="z", deg=False):
     ⎣0    0        0     1⎦
     
     """
-    if deg: # Is theta given in degrees? -> then convert to radians
-        theta = deg2rad(theta)
-        
-    if axis in ("z","Z",3,"3"):
-        R = rotz(theta)
-    elif axis in ("y","Y",2,"2"):
-        R = roty(theta)
-    elif axis in ("x","X",1,"1"):
-        R = rotx(theta)
-    else:
-        raise ValueError("The axis is invalid, axis must be 'x', 'y' or 'z'")
-    H = _rot2htm(R)
-    return H
+    return _rot2htm(rot(theta, axis=axis, deg=deg))
 
 
 def _rot2htm(R):
@@ -573,7 +566,7 @@ def _rot2htm(R):
     return H
     
 
-def rot2axa(R, deg=False):
+def rot2axa(R, deg=False, tol=1e-9):
     """
     Given a SO(3) matrix return the axis-angle representation.
 
@@ -593,7 +586,10 @@ def rot2axa(R, deg=False):
     theta : float, int or symbolic
         Rotation angle (given in radians by default, or symbolic).
     """
-    if not(is_SO3(R)):
+    if tol <= 0:
+        raise ValueError("tol must be greater than 0.")
+
+    if not(is_SO3(R)) and not _is_SO3_numeric_tol(R, tol):
         raise ValueError("R must be a rotation matrix.")
 
     def _result(axis, angle):
@@ -604,6 +600,9 @@ def rot2axa(R, deg=False):
         return axis, angle
 
     def _largest_diagonal_index(diagonal):
+        if all(_has_float(value) and _is_numeric_real(value) for value in diagonal):
+            return max(range(3), key=lambda i: float(sp.N(diagonal[i])))
+
         known_nonzero = [i for i, value in enumerate(diagonal) if sp.simplify(value) != 0]
         if not known_nonzero:
             return 0
@@ -611,28 +610,54 @@ def rot2axa(R, deg=False):
         if all(value.is_number for value in numeric_values):
             return max(known_nonzero, key=lambda i: sp.N(diagonal[i]))
         return known_nonzero[0]
-    
-    # trace
-    trace = sp.trace(R)
 
-    # angle 
-    angle = sp.acos((trace - 1) / 2)
+    def _angle_from_cos(cos_angle):
+        cos_angle = sp.simplify(cos_angle)
+        if _has_float(cos_angle) and _is_numeric_real(cos_angle):
+            value = float(sp.N(cos_angle))
+            if value > 1.0 + tol or value < -1.0 - tol:
+                raise ValueError("The rotation angle cosine is outside the valid range [-1, 1] beyond tolerance.")
+            value = max(-1.0, min(1.0, value))
+            return sp.acos(sp.Float(value)), value
+        return sp.acos(cos_angle), None
+
+    def _angle_case(angle, numeric_cos_angle):
+        if numeric_cos_angle is not None:
+            angle_value = float(sp.N(angle))
+            if abs(angle_value) <= tol:
+                return "identity"
+            if abs(angle_value - float(sp.pi)) <= tol:
+                return "pi"
+            return "general"
+
+        angle_simplified = sp.simplify(angle)
+        is_zero = angle_simplified.is_zero
+        is_pi = sp.simplify(angle_simplified - sp.pi).is_zero
+        if is_zero is True:
+            return "identity"
+        if is_pi is True:
+            return "pi"
+        return "general"
+    
+    cos_angle = (sp.trace(R) - 1) / 2
+    angle, numeric_cos_angle = _angle_from_cos(cos_angle)
+    angle_case = _angle_case(angle, numeric_cos_angle)
 
     # Case 1: angle = 0
     # In this case, the rotation is the identity, so we can return any axis (we choose the x-axis) and an angle of 0.
-    if sp.simplify(angle) == 0:
+    if angle_case == "identity":
         return _result(Matrix([1, 0, 0]), sp.S(0))
 
     # Case 2: angle = pi
     # In this case, R = 2*k*k.T - I, so A = (R + I)/2 = k*k.T.
     # Select the largest available diagonal term to recover the most stable component,
     # then use off-diagonal terms to preserve the relative signs of the axis components.
-    if sp.simplify(angle - sp.pi) == 0:
+    if angle_case == "pi":
         A = sp.simplify((R + sp.eye(3)) / 2)
         diagonal = [sp.simplify(A[i, i]) for i in range(3)]
         i = _largest_diagonal_index(diagonal)
         axis = Matrix([0, 0, 0])
-        axis[i] = sp.sqrt(diagonal[i])
+        axis[i] = sp.sqrt(max(0.0, float(sp.N(diagonal[i])))) if _has_float(diagonal[i]) and _is_numeric_real(diagonal[i]) else sp.sqrt(diagonal[i])
 
         for j in range(3):
             if j != i:

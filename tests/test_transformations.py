@@ -1,7 +1,7 @@
 import sympy as sp
 import pytest
 
-from moro.transformations import axa2rot, eul2rot, rot2eul, rot2axa
+from moro.transformations import _rot2htm, axa2rot, eul2rot, htmrot, htmtra, rot, rot2eul, rot2axa
 
 
 def assert_matrix_equal(a, b):
@@ -17,6 +17,13 @@ def assert_matrix_close(a, b, tol=1e-9):
 def assert_axis_angle_reconstructs(R, axis, angle):
     R_reconstructed = axa2rot(axis, angle)
     assert_matrix_equal(sp.simplify(R_reconstructed), R)
+
+
+def assert_axis_angle_reconstructs_close(R, axis, angle, deg=False, tol=1e-8):
+    if deg:
+        angle = angle * sp.pi / 180
+    R_reconstructed = axa2rot(axis, angle)
+    assert_matrix_close(R_reconstructed, R, tol=tol)
 
 
 def test_rot2axa_identity_radians_and_degrees():
@@ -95,6 +102,128 @@ def test_rot2axa_pi_rotation_regression_preserves_relative_signs():
     wrong_axis = sp.Matrix([1, 1, 0])
     wrong_reconstruction = axa2rot(wrong_axis, sp.pi)
     assert any(sp.simplify(v) != 0 for v in wrong_reconstruction - R)
+
+
+@pytest.mark.parametrize("axis", [
+    sp.Matrix([1, 0, 0]),
+    sp.Matrix([1, -1, 0]),
+    sp.Matrix([-1, 2, -3]),
+])
+def test_rot2axa_exact_symbolic_pi_cases_reconstruct(axis):
+    R = axa2rot(axis, sp.pi)
+
+    recovered_axis, angle = rot2axa(R)
+
+    assert sp.simplify(angle - sp.pi) == 0
+    assert sp.simplify(recovered_axis.norm() - 1) == 0
+    assert_axis_angle_reconstructs(R, recovered_axis, angle)
+
+
+@pytest.mark.parametrize("angle", [float(sp.pi), float(sp.pi) - 1e-10])
+def test_rot2axa_numeric_near_pi_uses_stable_branch(angle):
+    original_axis = sp.Matrix([1, -1, 0])
+    R = axa2rot(original_axis, angle)
+
+    axis, recovered_angle = rot2axa(R)
+
+    assert abs(float(sp.N(recovered_angle)) - float(sp.pi)) <= 1e-9
+    assert float(sp.N(axis[0] * axis[1])) < 0
+    assert_axis_angle_reconstructs_close(R, axis, recovered_angle, tol=1e-8)
+
+
+def test_rot2axa_numeric_near_zero_uses_identity_branch():
+    R = axa2rot(sp.Matrix([1, 2, 3]), 1e-10)
+
+    axis, angle = rot2axa(R)
+
+    assert_matrix_equal(axis, sp.Matrix([1, 0, 0]))
+    assert angle == 0
+    assert_axis_angle_reconstructs_close(R, axis, angle, tol=1e-8)
+
+
+def test_rot2axa_numeric_general_float_reconstructs():
+    R = axa2rot(sp.Matrix([1, 2, 3]), 0.7)
+
+    axis, angle = rot2axa(R)
+
+    assert_axis_angle_reconstructs_close(R, axis, angle, tol=1e-9)
+
+
+def test_rot2axa_numeric_degrees_reconstructs():
+    R = axa2rot(sp.Matrix([1, 2, 3]), 0.7)
+
+    axis, angle_deg = rot2axa(R, deg=True)
+
+    assert abs(float(sp.N(angle_deg)) - float(0.7 * 180 / sp.pi)) <= 1e-9
+    assert_axis_angle_reconstructs_close(R, axis, angle_deg, deg=True, tol=1e-9)
+
+
+@pytest.mark.parametrize("tol", [0, -1e-9])
+def test_rot2axa_invalid_tolerance(tol):
+    with pytest.raises(ValueError, match="tol must be greater than 0"):
+        rot2axa(sp.eye(3), tol=tol)
+
+
+def test_rot2axa_numeric_pi_regression_does_not_use_unstable_general_branch():
+    R = axa2rot(sp.Matrix([1, -1, 0]), float(sp.pi))
+
+    axis, angle = rot2axa(R)
+
+    assert abs(float(sp.N(angle)) - float(sp.pi)) <= 1e-9
+    assert float(sp.N(axis[0] * axis[1])) < 0
+    assert_axis_angle_reconstructs_close(R, axis, angle, tol=1e-8)
+
+
+@pytest.mark.parametrize("args,expected", [
+    ((), sp.Matrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])),
+    ((1,), sp.Matrix([[1, 0, 0, 1], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])),
+    ((1, 2), sp.Matrix([[1, 0, 0, 1], [0, 1, 0, 2], [0, 0, 1, 0], [0, 0, 0, 1]])),
+    ((1, 2, 3), sp.Matrix([[1, 0, 0, 1], [0, 1, 0, 2], [0, 0, 1, 3], [0, 0, 0, 1]])),
+])
+def test_htmtra_positional_api(args, expected):
+    assert_matrix_equal(htmtra(*args), expected)
+
+
+def test_htmtra_keyword_api():
+    assert_matrix_equal(htmtra(x=1, y=2, z=3), sp.Matrix([[1, 0, 0, 1], [0, 1, 0, 2], [0, 0, 1, 3], [0, 0, 0, 1]]))
+    assert_matrix_equal(htmtra(z=5), sp.Matrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 5], [0, 0, 0, 1]]))
+
+
+def test_htmtra_symbolic_values():
+    a, b, c = sp.symbols("a b c")
+    assert_matrix_equal(htmtra(x=a, y=b, z=c), sp.Matrix([[1, 0, 0, a], [0, 1, 0, b], [0, 0, 1, c], [0, 0, 0, 1]]))
+
+
+@pytest.mark.parametrize("call", [
+    lambda: htmtra(1, 2, 3, 4),
+    lambda: htmtra(dx=1),
+    lambda: htmtra(foo=1),
+    lambda: htmtra([1, 2, 3]),
+])
+def test_htmtra_rejects_old_or_invalid_api(call):
+    with pytest.raises(TypeError):
+        call()
+
+
+@pytest.mark.parametrize("lower,upper", [("x", "X"), ("y", "Y"), ("z", "Z")])
+def test_rot_and_htmrot_accept_case_insensitive_text_axes(lower, upper):
+    theta = sp.pi / 4
+    assert_matrix_equal(rot(theta, lower), rot(theta, upper))
+    assert_matrix_equal(htmrot(theta, lower), htmrot(theta, upper))
+
+
+@pytest.mark.parametrize("bad_axis", [1, "1", "xy", "", None])
+def test_rot_and_htmrot_reject_invalid_axes_with_value_error(bad_axis):
+    with pytest.raises(ValueError, match="axis must be 'x', 'y' or 'z'"):
+        rot(sp.pi / 4, bad_axis)
+    with pytest.raises(ValueError, match="axis must be 'x', 'y' or 'z'"):
+        htmrot(sp.pi / 4, bad_axis)
+
+
+@pytest.mark.parametrize("axis", ["x", "y", "z"])
+@pytest.mark.parametrize("theta,deg", [(sp.pi / 6, False), (30, True)])
+def test_htmrot_reuses_rot_equivalence(axis, theta, deg):
+    assert_matrix_equal(htmrot(theta, axis=axis, deg=deg), _rot2htm(rot(theta, axis=axis, deg=deg)))
 
 
 @pytest.mark.parametrize("seq", ["zxz", "zyz"])
