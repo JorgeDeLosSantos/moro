@@ -112,11 +112,15 @@ class IKTrajectorySolution:
     solutions : list of IKSolution
         Per-target IK results in processing order. The list includes the
         failing solution when convergence stops at an intermediate target.
+        It always contains at least one result.
     converged : bool
-        True only when all targets converged.
+        True only when all processed targets converged; a converged trajectory
+        requires all individual solutions to be converged.
     failed_index : int, optional
-        Index of the first non-converged target. It is None when all targets
-        converged.
+        Index of the first non-converged target. It is required for a failed
+        trajectory and is None when all targets converged. The referenced
+        solution is non-converged, is the final processed solution, and all
+        previous solutions are converged.
     message : str
         Short global outcome message.
     """
@@ -127,7 +131,14 @@ class IKTrajectorySolution:
     message: str = ""
 
     def __post_init__(self):
-        self.solutions = list(self.solutions)
+        try:
+            self.solutions = list(self.solutions)
+        except TypeError as exc:
+            raise TypeError("solutions must be an iterable of IKSolution instances.") from exc
+
+        if len(self.solutions) == 0:
+            raise ValueError("IKTrajectorySolution requires at least one solution.")
+
         for idx, solution in enumerate(self.solutions):
             if not isinstance(solution, IKSolution):
                 raise TypeError(
@@ -142,9 +153,25 @@ class IKTrajectorySolution:
             if int(self.failed_index) < 0:
                 raise ValueError("failed_index must be None or a non-negative integer.")
             self.failed_index = int(self.failed_index)
+            if self.failed_index >= len(self.solutions):
+                raise ValueError("failed_index must refer to an element in solutions.")
 
-        if self.converged and self.failed_index is not None:
-            raise ValueError("failed_index must be None when converged is True.")
+        if self.converged:
+            if self.failed_index is not None:
+                raise ValueError("failed_index must be None when converged is True.")
+            if not all(solution.converged for solution in self.solutions):
+                raise ValueError(
+                    "A converged IKTrajectorySolution requires all individual solutions to be converged."
+                )
+        else:
+            if self.failed_index is None:
+                raise ValueError("failed_index is required when converged is False.")
+            if self.solutions[self.failed_index].converged:
+                raise ValueError("solutions[failed_index] must be a non-converged IKSolution.")
+            if self.failed_index != len(self.solutions) - 1:
+                raise ValueError("failed_index must refer to the final processed solution.")
+            if not all(solution.converged for solution in self.solutions[:self.failed_index]):
+                raise ValueError("All solutions before failed_index must be converged.")
 
         self.message = str(self.message)
 
