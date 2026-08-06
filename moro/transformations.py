@@ -256,33 +256,93 @@ def dh(a,alpha,d,theta):
 
     
 
-def rot2eul(R, seq="zxz", deg=False):
+def rot2eul(R, seq="zxz", deg=False, tol=1e-9):
+    _validate_euler_tol(tol)
+    R = Matrix(R)
+    if R.shape != (3, 3):
+        raise ValueError("R must be a 3x3 matrix.")
+
     if seq in ("ZXZ","zxz"):
-        return _rot2zxz(R, deg)
+        return _rot2zxz(R, deg, tol)
     elif seq in ("ZYZ","zyz"):
-        return _rot2zyz(R, deg)
+        return _rot2zyz(R, deg, tol)
     else:
         raise ValueError("Currently only ZXZ and ZYZ sequence are supported")
 
-def _rot2zxz(R, deg=False):
+def _validate_euler_tol(tol):
+    if tol <= 0:
+        raise ValueError("tol must be greater than 0.")
+
+
+def _is_numeric_real(value):
+    value = sp.simplify(value)
+    numeric_value = sp.N(value)
+    return not value.free_symbols and numeric_value.is_real is True
+
+
+def _has_float(value):
+    return bool(sp.sympify(value).atoms(sp.Float))
+
+
+def _classify_r33(r33, tol):
+    r33_simplified = sp.simplify(r33)
+
+    if _has_float(r33_simplified) and _is_numeric_real(r33_simplified):
+        value = float(sp.N(r33_simplified))
+        if value > 1.0 + tol or value < -1.0 - tol:
+            raise ValueError("R[2, 2] is outside the valid range [-1, 1] beyond tolerance.")
+        value = max(-1.0, min(1.0, value))
+
+        if abs(value - 1.0) <= tol:
+            return "positive_singularity", sp.S(1)
+        if abs(value + 1.0) <= tol:
+            return "negative_singularity", sp.S(-1)
+        return "general", sp.Float(value)
+
+    is_positive_singularity = sp.simplify(r33_simplified - 1).is_zero
+    is_negative_singularity = sp.simplify(r33_simplified + 1).is_zero
+
+    if is_positive_singularity is True:
+        return "positive_singularity", sp.S(1)
+    if is_negative_singularity is True:
+        return "negative_singularity", sp.S(-1)
+    if is_positive_singularity is False and is_negative_singularity is False:
+        return "general", r33_simplified
+
+    # Completely symbolic matrices without enough assumptions are processed
+    # through the general branch to avoid undecidable boolean comparisons.
+    return "symbolic", r33_simplified
+
+
+def _euler_r33_sqrt_term(r33, case):
+    if _has_float(r33) and _is_numeric_real(r33):
+        value = float(sp.N(r33))
+        radicand = max(0.0, 1.0 - value**2)
+        return sqrt(sp.Float(radicand))
+    return sqrt(sp.simplify(1 - r33**2))
+
+
+def _rot2zxz(R, deg=False, tol=1e-9):
     """
     Calculates ZXZ Euler Angles from a rotation matrix
     """
     r33,r13,r23,r31,r32,r11,r12,r21 = R[2,2],R[0,2],R[1,2],R[2,0],R[2,1],R[0,0],R[0,1],R[1,0]
-    if abs(r33) != 1:
-        theta1 = atan2(sqrt(1-r33**2), r33)
+    r33_case, r33 = _classify_r33(r33, tol)
+    if r33_case in ("general", "symbolic"):
+        sqrt_term = _euler_r33_sqrt_term(r33, r33_case)
+        theta1 = atan2(sqrt_term, r33)
         phi1 = atan2(r13, -r23)
         psi1 = atan2(r31, r32)
-        theta2 = atan2(-sqrt(1-r33**2), r33)
+        theta2 = atan2(-sqrt_term, r33)
         phi2 = atan2(-r13, r23)
         psi2 = atan2(-r31, -r32)
         solution = [(phi1,theta1,psi1), (phi2,theta2,psi2)]
-    elif r33==1:
+    elif r33_case == "positive_singularity":
         theta = 0
         psi = 0
         phi = atan2(r21, r11)
         solution = [(phi,theta,psi)]
-    elif r33==-1:
+    elif r33_case == "negative_singularity":
         theta = pi
         psi = 0
         phi = atan2(r21, r11)
@@ -296,25 +356,27 @@ def _rot2zxz(R, deg=False):
     return solution
 
 
-def _rot2zyz(R, deg=False):
+def _rot2zyz(R, deg=False, tol=1e-9):
     """
     Calculates ZXZ Euler Angles from a rotation matrix
     """
     r33,r13,r23,r31,r32,r11,r12,r21 = R[2,2],R[0,2],R[1,2],R[2,0],R[2,1],R[0,0],R[0,1],R[1,0]
-    if abs(r33) != 1:
-        theta1 = atan2(sqrt(1-r33**2), r33)
+    r33_case, r33 = _classify_r33(r33, tol)
+    if r33_case in ("general", "symbolic"):
+        sqrt_term = _euler_r33_sqrt_term(r33, r33_case)
+        theta1 = atan2(sqrt_term, r33)
         phi1 = atan2(r23, r13)
         psi1 = atan2(r32, -r31)
-        theta2 = atan2(-sqrt(1-r33**2), r33)
+        theta2 = atan2(-sqrt_term, r33)
         phi2 = atan2(-r23, -r13)
         psi2 = atan2(-r32, r31)
         solution = [(phi1,theta1,psi1), (phi2,theta2,psi2)]
-    elif r33==1:
+    elif r33_case == "positive_singularity":
         theta = 0
         psi = 0
         phi = atan2(r21, r11)
         solution = [(phi,theta,psi)]
-    elif r33==-1:
+    elif r33_case == "negative_singularity":
         theta = pi
         psi = 0
         phi = atan2(-r21, -r11)
