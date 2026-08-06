@@ -585,6 +585,27 @@ class TestSolvePositionIK:
         assert sol.iterations == 500
         assert sol.message == "Maximum number of iterations reached."
 
+    def test_ccd_step_stagnation_requires_consecutive_sweeps(self):
+        """CCD should honor stagnation_iterations for small-step stagnation."""
+        robot = Robot((0, 0, q1, 0, "p"))
+
+        sol = solve_position_ik(
+            robot,
+            [0.0, 0.0, 10.0],
+            q0=[0.1],
+            method="ccd",
+            joint_limits=[(0.0, 0.1)],
+            tol=1e-12,
+            step_tol=1e-12,
+            error_change_tol=0.0,
+            stagnation_iterations=3,
+        )
+
+        assert sol.converged is False
+        assert sol.method == "ccd"
+        assert sol.iterations == 3
+        assert sol.message == ik_module.MSG_STAGNATED_STEP
+
     # --- Levenberg-Marquardt tests ---
 
     def test_lm_rr_planar_known_solution(self):

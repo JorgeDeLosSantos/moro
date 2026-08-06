@@ -864,6 +864,7 @@ def _solve_ccd(
     n = q.size
     completed_steps = 0
     method = "ccd"
+    stalled_by_step = 0
     stalled_by_error = 0
 
     p_current = _safe_eval_vector(fk_func, q, 3)
@@ -1146,7 +1147,12 @@ def _solve_ccd(
                 residual=error_after,
             )
 
-        if step_tol > 0 and step_norm <= step_tol and error_after_norm >= tol:
+        if step_tol > 0 and step_norm <= step_tol:
+            stalled_by_step += 1
+        else:
+            stalled_by_step = 0
+
+        if stalled_by_step >= stagnation_iterations and error_after_norm >= tol:
             return _make_solution(
                 q,
                 converged=False,
