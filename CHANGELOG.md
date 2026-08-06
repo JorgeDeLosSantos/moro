@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 * Support for orthographic and perspective camera projections.
 * Shared JavaScript infrastructure for Three.js templates.
 * Comprehensive automated test suite for the visualization module.
+* `Robot.model_summary()` to inspect the modeling state and distinguish explicitly-set parameters from auto-generated defaults.
 
 ### Changed
 
@@ -22,6 +23,8 @@ All notable changes to this project will be documented in this file.
 * Improved Three.js animation performance by updating existing scene objects instead of recreating them every frame.
 * Simplified the visualization API by removing notebook-specific rendering methods in favor of a unified interface.
 * HTML templates are now packaged as library resources and loaded through `importlib.resources`.
+* Documented the default-values policy: intrinsic link parameters (`masses`, `inertia_tensors`) may auto-provide symbolic placeholders, while problem/environment configuration (`cm_positions`, `gravity`) always requires explicit values.
+* `inertia_tensors = None` now auto-generates diagonal symbolic tensors instead of raising an obscure TypeError; the helper was renamed to the internal `_generate_diagonal_inertia_tensors()` (stores the tensors directly, with no return value).
 
 ### Fixed
 
@@ -29,6 +32,8 @@ All notable changes to this project will be documented in this file.
 * Fixed animation scaling to remain consistent across all frames.
 * Fixed packaging of visualization templates for installation from GitHub and PyPI.
 * Improved synchronization between robot data and rendered scene during animations.
+* Fixed a stale cache for `r_cm` (and the `J_cm`/`Jv_cm`/`Jw_cm` family) when `cm_positions` changes: the kinematics cache is now invalidated too.
+* `joint_type` is now validated and case-insensitively normalized to `"r"/"p"`; invalid values raise a clear `ValueError` instead of silently treating the joint as prismatic.
 
 ---
 

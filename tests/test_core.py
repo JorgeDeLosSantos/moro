@@ -96,3 +96,79 @@ def test_robot_center_of_mass_and_inertia_matrix_single_link():
     assert_matrix_equal(robot.inertia_matrix(), expected_m)
 
 
+
+
+
+def test_r_cm_cache_reflects_cm_positions_changes():
+    c, cc = sp.symbols("c cc")
+    robot = Robot((0, 0, 0, q1),)
+    robot.masses = [1]
+    robot.cm_positions = [(c, 0, 0)]
+    v1 = robot.r_cm(1)
+    # Change the center of mass location
+    robot.cm_positions = [(cc, 0, 0)]
+    v2 = robot.r_cm(1)
+    # The cached r_cm must reflect the new CoM location
+    assert v2[0].has(cc)
+    assert not v2[0].has(c)
+    # J_cm family must also reflect the change
+    assert robot.J_cm_i(1)[0, 0].has(cc)
+    assert not robot.J_cm_i(1)[0, 0].has(c)
+
+
+def test_inertia_tensors_none_auto_generates_diagonal():
+    robot = Robot((0, 0, 0, q1),)
+    robot.masses = [sp.symbols("m")]
+    robot.cm_positions = [(sp.symbols("c"), 0, 0)]
+    # Passing None must auto-generate diagonal tensors instead of crashing
+    robot.inertia_tensors = None
+    assert robot.inertia_tensors is not None
+    assert len(robot.inertia_tensors) == robot.dof
+    assert robot.inertia_tensors[0].shape == (3, 3)
+    # The private generator persists the state (internal helper, no return)
+    robot._inertia_tensors = None
+    assert robot._generate_diagonal_inertia_tensors() is None
+    assert robot._inertia_tensors is not None
+    assert len(robot._inertia_tensors) == robot.dof
+    assert robot.inertia_matrix().shape == (1, 1)
+
+
+def test_joint_type_validation_and_case_insensitivity():
+    # Uppercase joint types are accepted and normalized to lowercase
+    robot = Robot((1, 0, 0, q1, "R"), (1, 0, 0, q2, "P"))
+    assert robot.joint_type(1) == "r"
+    assert robot.joint_type(2) == "p"
+    assert robot.joint_limits[0] == (-sp.pi, sp.pi)
+    assert robot.joint_limits[1] == (0, 1000)
+    # Invalid joint types must raise a clear error
+    with pytest.raises(ValueError, match="Invalid joint type"):
+        Robot((1, 0, 0, q1, "giratorio"))
+    with pytest.raises(ValueError, match="Invalid joint type"):
+        Robot((1, 0, 0, q1, "x"))
+
+
+def test_model_summary_reports_explicit_vs_assumed():
+    robot = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+    s = robot.model_summary()
+    # Nothing dynamic is defined yet
+    assert "masses" in s and "NOT SET" in s
+    assert "inertia_tensors" in s and "NOT SET" in s
+    assert "cm_positions" in s and "NOT SET" in s
+    assert "gravity" in s and "NOT SET" in s
+    assert "joint_limits     : default" in s
+    # Explicit masses + auto (assumed) diagonal inertia
+    robot.masses = [1, 2]
+    robot.inertia_tensors = None
+    s = robot.model_summary()
+    assert "masses           : explicit" in s
+    assert "inertia_tensors  : assumed (diagonal symbolic)" in s
+    # Custom limits are reported
+    robot.joint_limits = [(-1, 1), (0, 5)]
+    s = robot.model_summary()
+    assert "joint_limits     : custom" in s
+    # Explicit CoM and gravity
+    robot.cm_positions = [(0, 0, 0), (0, 0, 0)]
+    robot.gravity = (0, -9.81, 0)
+    s = robot.model_summary()
+    assert "cm_positions     : explicit" in s
+    assert "gravity          : explicit" in s

@@ -64,7 +64,12 @@ class Robot:
             self.Ts.append(dh(k[0],k[1],k[2],k[3])) # Compute Ti->i-1
             self._dh_parameters.append(k[:4]) # Store the DH parameters as they were passed in the constructor
             if len(k)>4:
-                self.joint_types.append(k[4])
+                joint_type = str(k[4]).strip().lower()
+                if joint_type not in ("r", "p"):
+                    raise ValueError(
+                        f"Invalid joint type '{k[4]}'. Use 'r' for revolute or 'p' for prismatic."
+                    )
+                self.joint_types.append(joint_type)
             else: # By default, the joint type is assumed to be revolute
                 self.joint_types.append('r')
 
@@ -79,6 +84,13 @@ class Robot:
         self._inertia_tensors = None
         self._cm_positions = None
         self._gravity = None
+        # Flags reporting whether dynamic quantities were explicitly defined (True)
+        # or auto-generated with a documented default assumption (False).
+        self._masses_explicit = False
+        self._inertia_tensors_explicit = False
+        self._cm_positions_explicit = False
+        self._gravity_explicit = False
+        self._joint_limits_explicit = False
         self._set_default_joint_limits() # set default joint-limits on create
 
         # Cache for kinematics and dynamics computations
@@ -279,6 +291,9 @@ class Robot:
         """
         if masses is None:
             masses = [ symbols(f"m_{i+1}") for i in range(self.dof) ]
+            self._masses_explicit = False
+        else:
+            self._masses_explicit = True
 
         if len(masses) != self.dof:
             raise ValueError(f"Number of masses must be equal to the number of links ({self.dof}).")
@@ -324,27 +339,37 @@ class Robot:
         tensors: sympy.matrices.dense.MutableDenseMatrix
             A list containinig `sympy.matrices.dense.MutableDenseMatrix` that 
             corresponds to each inertia tensor w.r.t. {i}'-Frame.
-        """
-        if tensors is not None and len(tensors) != self.dof:
-            raise ValueError(f"Number of inertia tensors must be equal to the number of links ({self.dof}).")
 
-        dof = self.dof
-        self._inertia_tensors = []
-        for k in range(dof):
-            self._inertia_tensors.append( tensors[k] )
-        
+        Notes
+        -----
+        If ``tensors`` is None, diagonal inertia tensors are auto-generated as
+        symbolic variables (assuming zero products of inertia, i.e. symmetric
+        links). This is a modeling assumption; override it by providing explicit
+        tensors when your links are not symmetric.
+        """
+        if tensors is None:
+            self._generate_diagonal_inertia_tensors()
+            self._inertia_tensors_explicit = False
+        elif len(tensors) != self.dof:
+            raise ValueError(f"Number of inertia tensors must be equal to the number of links ({self.dof}).")
+        else:
+            self._inertia_tensors = [tensors[k] for k in range(self.dof)]
+            self._inertia_tensors_explicit = True
+
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since inertia tensors affect the inertia matrix and Coriolis matrix
 
-    def generate_diagonal_inertia_tensors(self):
+    def _generate_diagonal_inertia_tensors(self):
         """
-        Generate diagonal inertia tensors for each link.
+        Generate diagonal inertia tensors for each link and store them in
+        ``self._inertia_tensors``. Internal helper: diagonal tensors are a
+        modeling assumption (zero products of inertia) for symmetric links.
         """
         inertia_tensors = []
         for k in range(self.dof):
-            Istr = f"I_{{x_{k+1}x_{k+1}}}, I_{{y_{k+1}y_{k+1}}} I_{{z_{k+1}z_{k+1}}}"
+            Istr = f"I_{{x_{k+1}x_{k+1}}}, I_{{y_{k+1}y_{k+1}}}, I_{{z_{k+1}z_{k+1}}}"
             Ix, Iy, Iz = symbols(Istr)
             inertia_tensors.append(diag(Ix, Iy, Iz))
-        return inertia_tensors
+        self._inertia_tensors = inertia_tensors
 
     @property
     def cm_positions(self):
@@ -396,6 +421,8 @@ class Robot:
                 positions[idx] = Matrix(cm)
 
         self._cm_positions = positions
+        self._cm_positions_explicit = True
+        self._invalidate_kinematics_cache() # CoM affects kinematics-cached quantities (r_cm, J_cm)
         # Invalidate dynamics cache since CoM locations affect the inertia matrix and potential energy
         self._invalidate_dynamics_cache() 
 
@@ -437,6 +464,7 @@ class Robot:
             g = Matrix(g)
 
         self._gravity = g
+        self._gravity_explicit = True
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since gravity vector affects potential energy and gravity torque vector
 
     def _r_cm_i(self,i):
@@ -1065,6 +1093,7 @@ class Robot:
             if len(limit) != 2:
                 raise ValueError("Each joint-limit should be a 2-tuple.")
         self._joint_limits = limits
+        self._joint_limits_explicit = True
     
     @property
     def _numerical_joint_limits(self):
@@ -1079,6 +1108,37 @@ class Robot:
     def __repr__(self):
         robot_type = "".join( self.joint_types ).upper()
         return f"Robot {robot_type}"
+
+    def model_summary(self):
+        """
+        Return a readable summary of the robot's modeling state.
+
+        For each dynamic quantity it reports whether it is explicitly
+        defined, assumed by default (auto-generated symbolic placeholder),
+        or not set. Assumed values correspond to documented modeling
+        assumptions (e.g. diagonal inertia tensors implying zero products
+        of inertia) that should be overridden when they do not hold.
+
+        Returns
+        -------
+        str
+            A multi-line summary.
+        """
+        def _label(explicit, defined, assumed_text):
+            if not defined:
+                return "NOT SET"
+            return "explicit" if explicit else f"assumed ({assumed_text})"
+
+        robot_type = "".join(self.joint_types).upper()
+        lines = [
+            f"Model summary | Robot {robot_type} | DOF = {self.dof}",
+            "  joint_limits     : " + ("custom" if self._joint_limits_explicit else "default"),
+            "  masses           : " + _label(self._masses_explicit, self._masses is not None, "symbolic m_i"),
+            "  inertia_tensors  : " + _label(self._inertia_tensors_explicit, self._inertia_tensors is not None, "diagonal symbolic"),
+            "  cm_positions     : " + _label(self._cm_positions_explicit, self._cm_positions is not None, "-"),
+            "  gravity          : " + _label(self._gravity_explicit, self._gravity is not None, "-"),
+        ]
+        return "\n".join(lines)
 
     # def _repr_latex_(self):
     #     return sp.latex(self.dh_table)
