@@ -172,3 +172,29 @@ def test_model_summary_reports_explicit_vs_assumed():
     s = robot.model_summary()
     assert "cm_positions     : explicit" in s
     assert "gravity          : explicit" in s
+
+
+def test_qis_range_requires_setting():
+    robot = Robot((1, 0, 0, q1),)
+    # Reading before setting must raise a clear error instead of AttributeError
+    with pytest.raises(ValueError, match="qis_range has not been set"):
+        robot.qis_range
+    robot.qis_range = ((-1, 1),)
+    assert robot.qis_range == ((-1, 1),)
+
+
+def test_cm_positions_accepts_tuples():
+    c = sp.symbols("c")
+    robot = Robot((0, 0, 0, q1),)
+    # Immutable tuples must be accepted (previously raised item-assignment TypeError)
+    robot.cm_positions = ((c, 0, 0),)
+    assert robot.cm_positions[0] == sp.Matrix([c, 0, 0])
+    assert robot.r_cm(1)[0].has(c)
+
+
+def test_T_ij_analytic_inverse_composes_to_identity():
+    robot = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+    T_2_0 = robot.T_ij(2, 0)  # forward composition
+    T_0_2 = robot.T_ij(0, 2)  # analytic (fast) inverse
+    # The analytic inverse must be a true inverse: T_0_2 * T_2_0 = I
+    assert_matrix_equal(T_0_2 * T_2_0, sp.eye(4))

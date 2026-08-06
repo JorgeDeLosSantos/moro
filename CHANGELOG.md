@@ -34,6 +34,9 @@ All notable changes to this project will be documented in this file.
 * Improved synchronization between robot data and rendered scene during animations.
 * Fixed a stale cache for `r_cm` (and the `J_cm`/`Jv_cm`/`Jw_cm` family) when `cm_positions` changes: the kinematics cache is now invalidated too.
 * `joint_type` is now validated and case-insensitively normalized to `"r"/"p"`; invalid values raise a clear `ValueError` instead of silently treating the joint as prismatic.
+* `qis_range` now initializes cleanly and raises a clear `ValueError` when read before being set; the setter stores the assigned value (previously it stored a nested args tuple and reading it raised `AttributeError`).
+* `cm_positions` now accepts tuples without an item-assignment `TypeError` (the caller's container is no longer mutated in place).
+* `T_ij(i, j)` for `i < j` now uses the analytic inverse of a homogeneous transform instead of the costly symbolic matrix inverse (much faster, with cleaner expressions).
 
 ---
 

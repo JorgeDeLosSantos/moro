@@ -58,6 +58,7 @@ class Robot:
         self.Ts = [] # Transformation matrices i to i-1
         self.joint_types = [] # Joint type -> "r" revolute, "p" prismatic
         self._qs = [] # Joint variables
+        self._qis_range = None # qis_range (set via its setter when required)
         self._dh_parameters = [] # Store the DH parameters 
 
         for k in args:
@@ -213,7 +214,10 @@ class Robot:
         if i == j: 
             return eye(4)
         if i < j:
-            return simplify(prod(self.Ts[i:j]).inv())
+            T = prod(self.Ts[i:j])
+            R = T[:3, :3]
+            p = T[:3, 3]
+            return R.T.row_join(-R.T * p).col_join(Matrix([[0, 0, 0, 1]]))
         
         return simplify(prod(self.Ts[j:i]))
 
@@ -256,11 +260,15 @@ class Robot:
     
     @property
     def qis_range(self):
+        if self._qis_range is None:
+            raise ValueError(
+                "qis_range has not been set. Assign a value via the qis_range setter first."
+            )
         return self._qis_range
         
     @qis_range.setter
-    def qis_range(self, *args):
-        self._qis_range = args
+    def qis_range(self, value):
+        self._qis_range = value
 
     @property
     def masses(self):
@@ -415,12 +423,11 @@ class Robot:
             if not is_position_vector(cm):
                 raise ValueError(f"Center of mass location for link {idx+1} must be a list or tuple of three elements (x, y, z).")
         
-        # Convert each center of mass location to a sympy Matrix if it's a list or tuple
-        for idx, cm in enumerate(positions):
-            if not isinstance(cm, Matrix):
-                positions[idx] = Matrix(cm)
-
-        self._cm_positions = positions
+        # Convert each center of mass location to a sympy Matrix without mutating the
+        # caller's container (which may be a tuple and thus not item-assignable).
+        self._cm_positions = [
+            cm if isinstance(cm, Matrix) else Matrix(cm) for cm in positions
+        ]
         self._cm_positions_explicit = True
         self._invalidate_kinematics_cache() # CoM affects kinematics-cached quantities (r_cm, J_cm)
         # Invalidate dynamics cache since CoM locations affect the inertia matrix and potential energy
