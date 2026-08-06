@@ -27,7 +27,10 @@ from moro.visualization import (
     _style_to_payload,
     evaluate_robot,
 )
-from moro.visualization.threejs_backend import _load_template_resource
+from moro.visualization.threejs_backend import (
+    _load_template_resource,
+    _PLACEHOLDER_PATTERN,
+)
 
 
 @pytest.fixture
@@ -686,8 +689,11 @@ def test_threejs_backend_outputs_have_no_unresolved_placeholders(scene_data):
     render_html = ThreeJSBackend.render(scene_data).data
     animate_html = ThreeJSBackend.animate([scene_data, scene_data]).data
 
-    assert "__" not in render_html
-    assert "__" not in animate_html
+    # Only reject unresolved template placeholders (e.g. __UNIQUE_ID__ /
+    # __COMMON_SCRIPT__), not legitimate double-underscore JS identifiers such
+    # as window.__moroThreeReadyPromise that intentionally remain in the page.
+    assert not _PLACEHOLDER_PATTERN.search(render_html)
+    assert not _PLACEHOLDER_PATTERN.search(animate_html)
 
 
 def test_style_to_payload_preserves_custom_values():

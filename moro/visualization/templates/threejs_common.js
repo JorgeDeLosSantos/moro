@@ -476,6 +476,69 @@ window.MoroThreeJS = (function() {
         return cylinder;
     }
 
+    // Split a link into its two DH portions when both the offset (d, along the
+    // previous frame's Z axis) and the length (a, along the next frame's X axis)
+    // are non-negligible. This avoids drawing a single confusing diagonal
+    // cylinder and instead produces a clear "knee": one cylinder along d and
+    // another along a, meeting at the DH corner point.
+    //
+    // start -> P_i, end -> P_{i+1}, zDir -> frames[i].z (unit), xDir ->
+    // frames[i+1].x (unit). Solving  d*zDir + a*xDir = end - start  with
+    // Cramer's rule yields d and a. When either is negligible (or the axes are
+    // parallel) we return null so the caller keeps the single-cylinder path.
+    function computeLinkCorner(start, end, zDir, xDir) {
+        var len = function(v) {
+            return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+        };
+
+        var zz = len(zDir);
+        var xx = len(xDir);
+
+        if (zz < 1e-12 || xx < 1e-12) {
+            return null;
+        }
+
+        var ux = zDir.x / zz;
+        var uy = zDir.y / zz;
+        var uz = zDir.z / zz;
+        var vx = xDir.x / xx;
+        var vy = xDir.y / xx;
+        var vz = xDir.z / xx;
+
+        var dx = end.x - start.x;
+        var dy = end.y - start.y;
+        var dz = end.z - start.z;
+
+        var uDotV = ux * vx + uy * vy + uz * vz;
+        var det = 1 - uDotV * uDotV;
+
+        // Parallel (or near-parallel) axes -> no well-defined split.
+        if (det < 1e-12) {
+            return null;
+        }
+
+        var uDotW = ux * dx + uy * dy + uz * dz;
+        var vDotW = vx * dx + vy * dy + vz * dz;
+
+        // Signed DH offset (d) and length (a) recovered from the geometry.
+        var d = (uDotW - uDotV * vDotW) / det;
+        var a = (vDotW - uDotV * uDotW) / det;
+
+        // Split only when both portions are significant (absolute threshold),
+        // consistent with the 1e-6 convention used elsewhere in this file.
+        if (Math.abs(d) < 1e-6 || Math.abs(a) < 1e-6) {
+            return null;
+        }
+
+        var corner = new THREE.Vector3(
+            start.x + ux * d,
+            start.y + uy * d,
+            start.z + uz * d
+        );
+
+        return corner;
+    }
+
     function createRobotMeshes(options) {
         var robotGroup = options.robotGroup;
         var data = options.data;
@@ -496,16 +559,51 @@ window.MoroThreeJS = (function() {
             for (var i = 0; i < joints.length - 1; i++) {
                 var start = new THREE.Vector3().fromArray(joints[i]);
                 var end = new THREE.Vector3().fromArray(joints[i + 1]);
-                var link = createCylinderBetweenPoints(
-                    start,
-                    end,
-                    resolvedStyle.linkRadius,
-                    8,
-                    linkMat
-                );
 
-                if (link !== null) {
-                    robotGroup.add(link);
+                var corner = null;
+                if (frames[i] && frames[i + 1]) {
+                    corner = computeLinkCorner(
+                        start,
+                        end,
+                        new THREE.Vector3().fromArray(frames[i].z),
+                        new THREE.Vector3().fromArray(frames[i + 1].x)
+                    );
+                }
+
+                if (corner !== null) {
+                    var offsetCylinder = createCylinderBetweenPoints(
+                        start,
+                        corner,
+                        resolvedStyle.linkRadius,
+                        8,
+                        linkMat
+                    );
+                    var lengthCylinder = createCylinderBetweenPoints(
+                        corner,
+                        end,
+                        resolvedStyle.linkRadius,
+                        8,
+                        linkMat
+                    );
+
+                    if (offsetCylinder !== null) {
+                        robotGroup.add(offsetCylinder);
+                    }
+                    if (lengthCylinder !== null) {
+                        robotGroup.add(lengthCylinder);
+                    }
+                } else {
+                    var link = createCylinderBetweenPoints(
+                        start,
+                        end,
+                        resolvedStyle.linkRadius,
+                        8,
+                        linkMat
+                    );
+
+                    if (link !== null) {
+                        robotGroup.add(link);
+                    }
                 }
             }
         }
@@ -620,9 +718,14 @@ window.MoroThreeJS = (function() {
             );
 
             for (var i = 0; i < joints.length - 1; i++) {
-                var linkMesh = new THREE.Mesh(linkGeometry, linkMaterial);
-                robotGroup.add(linkMesh);
-                linkMeshes.push(linkMesh);
+                // Two segments per link geometry: one for the DH offset (d)
+                // and one for the DH length (a). A degenerated segment simply
+                // stays hidden while it is not part of the current link.
+                var linkMeshOffset = new THREE.Mesh(linkGeometry, linkMaterial);
+                var linkMeshLength = new THREE.Mesh(linkGeometry, linkMaterial);
+                robotGroup.add(linkMeshOffset);
+                robotGroup.add(linkMeshLength);
+                linkMeshes.push(linkMeshOffset, linkMeshLength);
             }
         }
 
@@ -687,10 +790,8 @@ window.MoroThreeJS = (function() {
         };
     }
 
-    function updateLinkMesh(mesh, start, end, tmp) {
-        tmp.start.fromArray(start);
-        tmp.end.fromArray(end);
-        tmp.direction.subVectors(tmp.end, tmp.start);
+    function paintCylinder(mesh, startVec, endVec, tmp) {
+        tmp.direction.subVectors(endVec, startVec);
 
         var length = tmp.direction.length();
 
@@ -700,7 +801,7 @@ window.MoroThreeJS = (function() {
         }
 
         mesh.visible = true;
-        mesh.position.copy(tmp.start).addScaledVector(tmp.direction, 0.5);
+        mesh.position.copy(startVec).addScaledVector(tmp.direction, 0.5);
 
         tmp.direction.multiplyScalar(1 / length);
         mesh.quaternion.setFromUnitVectors(tmp.yUnit, tmp.direction);
@@ -717,13 +818,33 @@ window.MoroThreeJS = (function() {
         var i;
 
         if (style.show_links) {
-            for (i = 0; i < robotObjects.linkMeshes.length; i++) {
-                updateLinkMesh(
-                    robotObjects.linkMeshes[i],
-                    joints[i],
-                    joints[i + 1],
-                    tmp
-                );
+            for (i = 0; i < joints.length - 1; i++) {
+                var linkIndex = i * 2;
+                var offsetMesh = robotObjects.linkMeshes[linkIndex];
+                var lengthMesh = robotObjects.linkMeshes[linkIndex + 1];
+
+                tmp.start.fromArray(joints[i]);
+                tmp.end.fromArray(joints[i + 1]);
+
+                var corner = null;
+                if (frames[i] && frames[i + 1]) {
+                    tmp.zAxis.fromArray(frames[i].z);
+                    tmp.xAxis.fromArray(frames[i + 1].x);
+                    corner = computeLinkCorner(
+                        tmp.start,
+                        tmp.end,
+                        tmp.zAxis,
+                        tmp.xAxis
+                    );
+                }
+
+                if (corner !== null) {
+                    paintCylinder(offsetMesh, tmp.start, corner, tmp);
+                    paintCylinder(lengthMesh, corner, tmp.end, tmp);
+                } else {
+                    paintCylinder(offsetMesh, tmp.start, tmp.end, tmp);
+                    lengthMesh.visible = false;
+                }
             }
         }
 
