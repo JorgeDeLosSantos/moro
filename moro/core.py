@@ -4,6 +4,8 @@ Moro is a Python library for kinematic and dynamic modeling of serial robots.
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
 """
+import warnings
+
 import sympy as sp
 from sympy import (
     prod,
@@ -20,6 +22,7 @@ from sympy import (
     MatMul,
 )
 # Moro core dependencies
+from sympy.core.function import AppliedUndef
 from moro.transformations import dh
 from moro.util import (
     vector_in_hcoords,
@@ -546,6 +549,7 @@ class Robot:
             A column vector 
         """
         self._check_index(i)
+        self._warn_static_joint_variables("v_cm")
         rcm_i = self.r_cm(i)
         vcm_i = rcm_i.diff(t)
         return simplify( vcm_i )
@@ -744,6 +748,7 @@ class Robot:
             Angular velocity of the [i]-link w.r.t. {0}-Frame.
         """
         self._check_index(i)
+        self._warn_static_joint_variables("w")
         return self._get_cached(
             "kinematics",
             f"w_{i}",
@@ -899,6 +904,7 @@ class Robot:
             C_{{i,j}} = \\sum_{{k=1}}^n c_{{i,j,k}} \\dot{{q}}_k
             
         """
+        self._warn_static_joint_variables("coriolis_matrix")
         n = self.dof
         M = self.inertia_matrix()
         C = zeros(n)
@@ -1150,6 +1156,22 @@ class Robot:
     # def _repr_latex_(self):
     #     return sp.latex(self.dh_table)
     
+    def _has_static_joint_variables(self):
+        'Return True if any joint variable is a static symbol (not a function of time).'
+        return any(not isinstance(q, AppliedUndef) for q in self._qs)
+
+    def _warn_static_joint_variables(self, operation):
+        'Warn when a velocity-dependent operation is used with static joint variables.'
+        if self._has_static_joint_variables():
+            warnings.warn(
+                f"{operation}() requires time-dependent joint variables, but at "
+                "least one joint variable is a static (non-time) symbol; "
+                "velocity-dependent results may be incorrect. Use dynamicsymbols "
+                "(e.g. moro.abc.q1..q6) for dynamic analyses.",
+                UserWarning,
+                stacklevel=3,
+            )
+
     def _check_index(self, i, name="Link"):
         """
         Check if the index i is a valid link index. If not, raise an appropriate error.

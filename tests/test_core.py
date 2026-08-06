@@ -2,6 +2,7 @@ from importlib import import_module
 
 import pytest
 import sympy as sp
+import warnings
 
 from moro.abc import q1, q2
 from moro.core import Robot
@@ -198,3 +199,28 @@ def test_T_ij_analytic_inverse_composes_to_identity():
     T_0_2 = robot.T_ij(0, 2)  # analytic (fast) inverse
     # The analytic inverse must be a true inverse: T_0_2 * T_2_0 = I
     assert_matrix_equal(T_0_2 * T_2_0, sp.eye(4))
+
+
+def test_warns_on_static_joint_variables_for_velocity_methods():
+    q1s, q2s = sp.symbols("q1 q2")
+    robot = Robot((1, 0, 0, q1s), (1, 0, 0, q2s))
+    robot.masses = [1, 1]
+    robot.inertia_tensors = None
+    robot.cm_positions = [(0, 0, 0), (0, 0, 0)]
+    with pytest.warns(UserWarning, match="time-dependent"):
+        robot.w(1)
+    with pytest.warns(UserWarning, match="time-dependent"):
+        robot.v_cm(1)
+    with pytest.warns(UserWarning, match="time-dependent"):
+        robot.coriolis_matrix()
+
+
+def test_no_warning_with_dynamicsymbols():
+    robot = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+    robot.masses = [1, 1]
+    robot.inertia_tensors = None
+    robot.cm_positions = [(0, 0, 0), (0, 0, 0)]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        robot.w(1)
+        robot.v_cm(1)
