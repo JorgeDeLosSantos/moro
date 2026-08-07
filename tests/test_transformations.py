@@ -1,7 +1,21 @@
 import sympy as sp
 import pytest
 
-from moro.transformations import _rot2htm, axa2rot, eul2rot, htmrot, htmtra, rot, rot2eul, rot2axa
+from moro.transformations import (
+    axa2rot,
+    eul2rot,
+    htm2rot,
+    htm2tra,
+    htmrot,
+    htmtra,
+    invhtm,
+    rot,
+    rot2eul,
+    rot2axa,
+    rot2htm,
+    rt2htm,
+    skew,
+)
 
 
 PROPER_EULER_SEQUENCES = ["xyx", "xzx", "yxy", "yzy", "zxz", "zyz"]
@@ -185,6 +199,95 @@ def test_rot2axa_numeric_pi_regression_does_not_use_unstable_general_branch():
     assert_axis_angle_reconstructs_close(R, axis, angle, tol=1e-8)
 
 
+@pytest.mark.parametrize("axis", [
+    [0, 0, 1],
+    (0, 0, 1),
+    sp.Matrix([0, 0, 1]),
+    sp.Matrix([[0, 0, 1]]),
+])
+def test_axa2rot_accepts_supported_vector_formats(axis):
+    assert_matrix_equal(axa2rot(axis, sp.pi / 3), rot(sp.pi / 3, "z"))
+
+
+def test_axa2rot_accepts_non_normalized_axis():
+    assert_matrix_equal(axa2rot([0, 0, 5], sp.pi / 3), rot(sp.pi / 3, "z"))
+
+
+def test_axa2rot_symbolic_axis_does_not_reject_undecidable_zero_norm():
+    kx, ky, kz, theta = sp.symbols("kx ky kz theta")
+    R = axa2rot(sp.Matrix([kx, ky, kz]), theta)
+
+    assert R.shape == (3, 3)
+    assert R.has(kx, ky, kz, theta)
+
+
+def test_axa2rot_rejects_zero_axis():
+    with pytest.raises(ValueError, match="The rotation axis cannot be the zero vector"):
+        axa2rot([0, 0, 0], sp.pi / 3)
+
+
+@pytest.mark.parametrize("axis", [
+    [],
+    [1, 2],
+    [1, 2, 3, 4],
+    sp.Matrix([[1, 2], [3, 4]]),
+    sp.Matrix([[1], [2]]),
+    sp.Matrix([[1], [2], [3], [4]]),
+])
+def test_axa2rot_rejects_invalid_axis_dimensions(axis):
+    with pytest.raises(ValueError, match="3D vector"):
+        axa2rot(axis, sp.pi / 3)
+
+
+@pytest.mark.parametrize("axis,theta", [
+    ([1, 0, 0], sp.pi / 3),
+    ([1, 2, 3], sp.pi),
+    ([1, -2, 3], 0.7),
+])
+def test_axa2rot_rot2axa_reconstruction(axis, theta):
+    R = axa2rot(axis, theta)
+    recovered_axis, angle = rot2axa(R)
+    R2 = axa2rot(recovered_axis, angle)
+
+    if any(value.has(sp.Float) for value in sp.Matrix(R)):
+        assert_matrix_close(R2, R, tol=1e-9)
+    else:
+        assert_matrix_equal(R2, R)
+
+
+@pytest.mark.parametrize("u", [
+    [sp.Symbol("ux"), sp.Symbol("uy"), sp.Symbol("uz")],
+    (sp.Symbol("ux"), sp.Symbol("uy"), sp.Symbol("uz")),
+    sp.Matrix([sp.Symbol("ux"), sp.Symbol("uy"), sp.Symbol("uz")]),
+    sp.Matrix([[sp.Symbol("ux"), sp.Symbol("uy"), sp.Symbol("uz")]]),
+])
+def test_skew_accepts_supported_vector_formats(u):
+    ux, uy, uz = sp.symbols("ux uy uz")
+    expected = sp.Matrix([
+        [0, -uz, uy],
+        [uz, 0, -ux],
+        [-uy, ux, 0],
+    ])
+
+    S = skew(u)
+
+    assert_matrix_equal(S, expected)
+    assert_matrix_equal(S.T, -S)
+
+
+@pytest.mark.parametrize("u", [
+    [],
+    [1, 2],
+    [1, 2, 3, 4],
+    sp.Matrix([[1, 2], [3, 4]]),
+    sp.Matrix([[1], [2]]),
+    sp.Matrix([[1], [2], [3], [4]]),
+])
+def test_skew_rejects_invalid_vector_dimensions(u):
+    with pytest.raises(ValueError, match="3D vector"):
+        skew(u)
+
+
 @pytest.mark.parametrize("args,expected", [
     ((), sp.Matrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])),
     ((1,), sp.Matrix([[1, 0, 0, 1], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])),
@@ -234,7 +337,95 @@ def test_rot_and_htmrot_reject_invalid_axes_with_value_error(bad_axis):
 @pytest.mark.parametrize("axis", ["x", "y", "z"])
 @pytest.mark.parametrize("theta,deg", [(sp.pi / 6, False), (30, True)])
 def test_htmrot_reuses_rot_equivalence(axis, theta, deg):
-    assert_matrix_equal(htmrot(theta, axis=axis, deg=deg), _rot2htm(rot(theta, axis=axis, deg=deg)))
+    assert_matrix_equal(htmrot(theta, axis=axis, deg=deg), rot2htm(rot(theta, axis=axis, deg=deg)))
+
+
+def test_rot2htm_builds_expected_homogeneous_matrix():
+    R = rot(sp.pi / 3, "z")
+    T = rot2htm(R)
+
+    assert T.shape == (4, 4)
+    assert_matrix_equal(T[:3, :3], R)
+    assert_matrix_equal(T[:3, 3], sp.zeros(3, 1))
+    assert_matrix_equal(T[3, :], sp.Matrix([[0, 0, 0, 1]]))
+
+
+@pytest.mark.parametrize("R", [sp.eye(2), sp.zeros(3, 4), [[1, 0], [0, 1]]])
+def test_rot2htm_rejects_invalid_shape(R):
+    with pytest.raises(ValueError, match="3x3"):
+        rot2htm(R)
+
+
+@pytest.mark.parametrize("p", [
+    [1, 2, 3],
+    (1, 2, 3),
+    sp.Matrix([1, 2, 3]),
+    sp.Matrix([[1, 2, 3]]),
+])
+def test_rt2htm_numeric_vector_formats_round_trip(p):
+    R = rot(sp.pi / 3, "z")
+    p_column = sp.Matrix([1, 2, 3])
+    T = rt2htm(R, p)
+
+    assert T.shape == (4, 4)
+    assert_matrix_equal(htm2rot(T), R)
+    assert_matrix_equal(htm2tra(T), p_column)
+
+
+def test_rt2htm_symbolic_round_trip():
+    theta, px, py, pz = sp.symbols("theta px py pz")
+    R = rot(theta, "x")
+    p = sp.Matrix([px, py, pz])
+    T = rt2htm(R, p)
+
+    assert_matrix_equal(htm2rot(T), R)
+    assert_matrix_equal(htm2tra(T), p)
+
+
+def test_rt2htm_rejects_invalid_shapes():
+    with pytest.raises(ValueError, match="3x3"):
+        rt2htm(sp.eye(2), [1, 2, 3])
+    with pytest.raises(ValueError, match="3D vector"):
+        rt2htm(sp.eye(3), [1, 2])
+
+
+def test_htm2rot_and_htm2tra_extract_blocks():
+    R = rot(sp.pi / 4, "y")
+    p = sp.Matrix([4, 5, 6])
+    T = rt2htm(R, p)
+
+    assert_matrix_equal(htm2rot(T), R)
+    assert htm2tra(T).shape == (3, 1)
+    assert_matrix_equal(htm2tra(T), p)
+
+
+@pytest.mark.parametrize("T", [sp.eye(3), sp.zeros(4, 3), [[1, 0], [0, 1]]])
+def test_htm2rot_and_htm2tra_reject_invalid_shape(T):
+    with pytest.raises(ValueError, match="4x4"):
+        htm2rot(T)
+    with pytest.raises(ValueError, match="4x4"):
+        htm2tra(T)
+
+
+@pytest.mark.parametrize("R,p", [
+    (rot(0.7, "z") * rot(0.3, "x"), sp.Matrix([1.2, -3.4, 5.6])),
+    (rot(sp.Symbol("theta"), "z"), sp.Matrix(sp.symbols("px py pz"))),
+])
+def test_invhtm_structured_inverse_matches_identity_and_matrix_inverse(R, p):
+    T = rt2htm(R, p)
+    T_inv = invhtm(T)
+
+    assert_matrix_close(sp.simplify(T * T_inv), sp.eye(4), tol=1e-9)
+    assert_matrix_close(sp.simplify(T_inv * T), sp.eye(4), tol=1e-9)
+    if any(value.has(sp.Float) for value in sp.Matrix(T)):
+        assert_matrix_close(T_inv, T.inv(), tol=1e-9)
+    else:
+        assert_matrix_equal(sp.simplify(T_inv), sp.simplify(T.inv()))
+
+
+def test_invhtm_rejects_invalid_shape():
+    with pytest.raises(ValueError, match="4x4"):
+        invhtm(sp.eye(3))
 
 
 @pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)

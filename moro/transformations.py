@@ -4,13 +4,10 @@ Moro is a Python library for kinematic and dynamic modeling of serial robots.
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
 """
-# import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D
 import sympy as sp
-from sympy import sin,cos,atan2,acos,sqrt,pi
-from sympy.matrices import Matrix,zeros,MatrixBase
-from moro.abc import *
-from moro.util import *
+from sympy import sin, cos, atan2, sqrt, pi
+from sympy.matrices import Matrix, MatrixBase
+from moro.util import deg2rad, is_SO3, rad2deg
 
 __all__ = [
     "axa2rot",
@@ -18,12 +15,17 @@ __all__ = [
     "eul2rot",
     "htmrot",
     "htmtra",
+    "htm2rot",
+    "htm2tra",
+    "invhtm",
     "rot2eul",
     "rot2axa",
+    "rot2htm",
     "rot",
     "rotx",
     "roty",
     "rotz",
+    "rt2htm",
     "skew"
 ]
     
@@ -41,18 +43,46 @@ def _normalize_axis(axis):
     return axis
 
 
+def _as_3d_vector(v, name="vector"):
+    """
+    Convert supported 3D vector inputs to a SymPy column matrix.
+    """
+    try:
+        vector = Matrix(v)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            f"{name} must be a 3D vector given as a list, tuple, column matrix (3, 1) "
+            "or row matrix (1, 3)."
+        ) from exc
+
+    if vector.shape == (3, 1):
+        return vector
+    if vector.shape == (1, 3):
+        return vector.T
+
+    raise ValueError(
+        f"{name} must be a 3D vector with shape (3, 1) or (1, 3); got shape {vector.shape}."
+    )
+
+
 def rot(theta, axis="z", deg=False):
     """
-    Return a rotation matrix that represents a rotation of "theta" about "axis".
+    Return a rotation matrix that represents a rotation of ``theta`` about ``axis``.
 
     Parameters
     ----------
-    theta : float, int or `symbolic`
-        Rotation angle (given in radians by default)
+    theta : float, int or symbolic
+        Rotation angle. By default, the value is interpreted in radians.
     axis : str
-        Rotation axis, "x", "y" or "z" (default is "z")
-    deg : bool
-        ¿Is theta given in degrees?, False is default value.    
+        Rotation axis, ``"x"``, ``"y"`` or ``"z"``. Matching is
+        case-insensitive. Default is ``"z"``.
+    deg : bool, optional
+        If True, ``theta`` is interpreted as degrees. Default is False.
+
+    Returns
+    -------
+    sympy.matrices.dense.MutableDenseMatrix
+        Rotation matrix of shape (3, 3).
     """
     axis = _normalize_axis(axis)
     if axis=="x":
@@ -127,7 +157,7 @@ def roty(theta, deg=False):
         Rotation angle (given in radians by default)
 
     deg : bool 
-        ¿Is theta given in degrees?, False is default value.
+        If True, `theta` is interpreted as degrees. Default is False.   
 
     Returns
     -------
@@ -175,8 +205,8 @@ def rotx(theta, deg=False):
     theta : float, int or `symbolic`
         Rotation angle (given in radians by default)
 
-    deg : bool  
-        ¿Is theta given in degrees?, False is default value.
+    deg : bool
+        If True, `theta` is interpreted as degrees. Default is False.
 
     Returns
     -------
@@ -681,24 +711,24 @@ def htmtra(x=0, y=0, z=0):
 
 def htmrot(theta, axis="z", deg=False):
     """
-    Return a homogeneous transformation matrix that represents a 
-    rotation "theta" about "axis". 
+    Return a homogeneous transformation matrix for a pure rotation.
     
     Parameters
     ----------
-    theta : float, int or `symbolic`
-        Rotation angle (given in radians by default)
+    theta : float, int or symbolic
+        Rotation angle. By default, the value is interpreted in radians.
         
     axis : str
-        Rotation axis
+        Rotation axis, ``"x"``, ``"y"`` or ``"z"``. Matching is
+        case-insensitive. Default is ``"z"``.
 
-    deg : bool
-        ¿Is theta given in degrees?
+    deg : bool, optional
+        If True, ``theta`` is interpreted as degrees. Default is False.
         
     Returns
     -------
     H : :class:`sympy.matrices.dense.MutableDenseMatrix`
-        Homogeneous transformation matrix
+        Homogeneous transformation matrix of shape (4, 4).
         
     
     Examples
@@ -738,38 +768,151 @@ def htmrot(theta, axis="z", deg=False):
     ⎣0    0        0     1⎦
     
     """
-    return _rot2htm(rot(theta, axis=axis, deg=deg))
+    return rot2htm(rot(theta, axis=axis, deg=deg))
 
 
-def _rot2htm(R):
+def rot2htm(R):
     """
-    Given a SO(3) matrix return a SE(3) homogeneous 
-    transformation matrix.
+    Build a homogeneous transformation matrix from a rotation matrix.
+
+    Parameters
+    ----------
+    R : array-like or sympy Matrix
+        Rotation block. It is converted with ``Matrix(R)`` and must have shape
+        (3, 3). No full SO(3) membership validation is performed.
+
+    Returns
+    -------
+    sympy.matrices.dense.MutableDenseMatrix
+        Homogeneous transformation matrix with zero translation and shape (4, 4).
     """
-    _H = R.row_join(zeros(3,1))
-    H = _H.col_join(Matrix([0,0,0,1]).T)
-    return H
-    
+    R = Matrix(R)
+    if R.shape != (3, 3):
+        raise ValueError(f"R must be a 3x3 matrix; got shape {R.shape}.")
+    return R.row_join(Matrix([0, 0, 0])).col_join(Matrix([[0, 0, 0, 1]]))
+
+
+def rt2htm(R, p):
+    """
+    Build a homogeneous transformation matrix from rotation and translation.
+
+    Parameters
+    ----------
+    R : array-like or sympy Matrix
+        Rotation block. It is converted with ``Matrix(R)`` and must have shape
+        (3, 3). No full SO(3) membership validation is performed.
+    p : list, tuple or sympy Matrix
+        Translation vector. Accepted formats are a 3-element list, a 3-element
+        tuple, a column matrix of shape (3, 1), or a row matrix of shape (1, 3).
+        The vector is normalized internally to a column matrix.
+
+    Returns
+    -------
+    sympy.matrices.dense.MutableDenseMatrix
+        Homogeneous transformation matrix of shape (4, 4).
+    """
+    R = Matrix(R)
+    if R.shape != (3, 3):
+        raise ValueError(f"R must be a 3x3 matrix; got shape {R.shape}.")
+    p = _as_3d_vector(p, name="p")
+    return R.row_join(p).col_join(Matrix([[0, 0, 0, 1]]))
+
+
+def htm2rot(T):
+    """
+    Extract the rotation block from a homogeneous transformation matrix.
+
+    Parameters
+    ----------
+    T : array-like or sympy Matrix
+        Homogeneous transformation matrix. It is converted with ``Matrix(T)``
+        and must have shape (4, 4). No full SE(3) membership validation is
+        performed.
+
+    Returns
+    -------
+    sympy.matrices.dense.MutableDenseMatrix
+        Upper-left rotation block of shape (3, 3).
+    """
+    T = Matrix(T)
+    if T.shape != (4, 4):
+        raise ValueError(f"T must be a 4x4 matrix; got shape {T.shape}.")
+    return T[:3, :3]
+
+
+def htm2tra(T):
+    """
+    Extract the translation vector from a homogeneous transformation matrix.
+
+    Parameters
+    ----------
+    T : array-like or sympy Matrix
+        Homogeneous transformation matrix. It is converted with ``Matrix(T)``
+        and must have shape (4, 4). No full SE(3) membership validation is
+        performed.
+
+    Returns
+    -------
+    sympy.matrices.dense.MutableDenseMatrix
+        Translation column vector of shape (3, 1).
+    """
+    T = Matrix(T)
+    if T.shape != (4, 4):
+        raise ValueError(f"T must be a 4x4 matrix; got shape {T.shape}.")
+    return T[:3, 3]
+
+
+def invhtm(T):
+    """
+    Compute the structured inverse of a homogeneous transformation matrix.
+
+    Parameters
+    ----------
+    T : array-like or sympy Matrix
+        Homogeneous transformation matrix. It is converted with ``Matrix(T)``
+        and must have shape (4, 4). No full SE(3) membership validation is
+        performed.
+
+    Returns
+    -------
+    sympy.matrices.dense.MutableDenseMatrix
+        Inverse homogeneous transformation matrix computed from the rigid-body
+        structure, using ``R.T`` and ``-R.T*p`` instead of a general matrix
+        inverse.
+    """
+    T = Matrix(T)
+    if T.shape != (4, 4):
+        raise ValueError(f"T must be a 4x4 matrix; got shape {T.shape}.")
+    R = htm2rot(T)
+    p = htm2tra(T)
+    R_inv = R.T
+    p_inv = -R_inv * p
+    return rt2htm(R_inv, p_inv)
 
 def rot2axa(R, deg=False, tol=1e-9):
     """
-    Given a SO(3) matrix return the axis-angle representation.
+    Return the axis-angle representation of a rotation matrix.
 
     Parameters
     ---------- 
 
-    R : `sympy.matrices.dense.MutableDenseMatrix`
+    R : sympy Matrix
         Rotation matrix in SO(3).
 
-    deg : bool
-        If True, the angle is returned in degrees. By default, it is False (angle in radians or symbolic).
+    deg : bool, optional
+        If True, the angle is returned in degrees. Default is False.
+
+    tol : float, optional
+        Positive tolerance used to validate numeric rotation matrices, classify
+        angles close to 0, classify angles close to pi, and tolerate small
+        floating-point errors in trigonometric quantities. Default is 1e-9.
 
     Returns
     -------
-    k : `sympy.matrices.dense.MutableDenseMatrix`
+    k : sympy.matrices.dense.MutableDenseMatrix
         Axis of rotation, a 3D vector.
     theta : float, int or symbolic
-        Rotation angle (given in radians by default, or symbolic).
+        Rotation angle in radians by default, or in degrees when ``deg=True``.
     """
     if tol <= 0:
         raise ValueError("tol must be greater than 0.")
@@ -861,62 +1004,52 @@ def rot2axa(R, deg=False, tol=1e-9):
     
 def axa2rot(k,theta):
     """
-    Given a R^3 vector (k) and an angle (theta), return 
-    the SO(3) matrix associated.
+    Build a rotation matrix from an axis-angle representation.
 
     Parameters
     ----------   
-    k : `sympy.matrices.dense.MutableDenseMatrix` or list or tuple
-        Axis of rotation, must be a 3D vector. If k is given as a list or tuple, it will be converted to a sympy Matrix.
+    k : list, tuple or sympy Matrix
+        Rotation axis. Accepted formats are a 3-element list, a 3-element tuple,
+        a column matrix of shape (3, 1), or a row matrix of shape (1, 3). The
+        vector is normalized internally to a column matrix. The zero vector is
+        rejected because it does not define a rotation axis.
     theta : float, int or symbolic
-        Rotation angle (given in radians by default).
+        Rotation angle in radians.
 
     Returns
     -------
-    R : `sympy.matrices.dense.MutableDenseMatrix`
-        Rotation matrix in SO(3) corresponding to a rotation of "theta" about the axis defined by "k".
+    R : sympy.matrices.dense.MutableDenseMatrix
+        Rotation matrix of shape (3, 3) computed with Rodrigues' formula.
     """
-    if isinstance(k,(list,tuple)):
-        k = Matrix(k)
-    ct = cos(theta)
-    st = sin(theta)
-    vt = 1 - cos(theta)
-    kx,ky,kz = k.normalized()
-    r11 = kx**2*vt + ct
-    r21 = kx*ky*vt + kz*st
-    r31 = kx*kz*vt - ky*st
-    r12 = kx*ky*vt - kz*st
-    r22 = ky**2*vt + ct
-    r32 = ky*kz*vt + kx*st
-    r13 = kx*kz*vt + ky*st 
-    r23 = ky*kz*vt - kx*st 
-    r33 = kz**2*vt + ct 
-    R = Matrix([[r11,r12,r13],[r21,r22,r23],[r31,r32,r33]])
-    return R
+    k = _as_3d_vector(k, name="k")
+    norm_sq = sp.simplify(k.dot(k))
+    if norm_sq.is_zero is True:
+        raise ValueError("The rotation axis cannot be the zero vector.")
+
+    k = k / k.norm()
+    K = skew(k)
+    return sp.eye(3) + sp.sin(theta) * K + (1 - sp.cos(theta)) * K**2
     
 
 def skew(u):
     """
-    Return skew-symmetric matrix associated to u vector.
+    Return the skew-symmetric matrix associated with a 3D vector.
 
     Parameters
     ----------
-    u : `sympy.matrices.dense.MutableDenseMatrix` or list or tuple
-        A 3D vector. If u is given as a list or tuple, it will be converted to a sympy Matrix.
+    u : list, tuple or sympy Matrix
+        Vector. Accepted formats are a 3-element list, a 3-element tuple, a
+        column matrix of shape (3, 1), or a row matrix of shape (1, 3). The
+        vector is normalized internally to a column matrix.
 
     Returns
     -------
-    S : `sympy.matrices.dense.MutableDenseMatrix`
-        Skew-symmetric matrix associated to u.  
+    S : sympy.matrices.dense.MutableDenseMatrix
+        Skew-symmetric matrix of shape (3, 3).
     """
-    if len(u) != 3:
-        raise ValueError("The vector u must have three components.")
+    u = _as_3d_vector(u, name="u")
     ux,uy,uz = u
     S = Matrix([[0, -uz, uy],
                 [uz, 0, -ux], 
                 [-uy, ux, 0]])
     return S
-    
-
-if __name__=="__main__":
-    pass

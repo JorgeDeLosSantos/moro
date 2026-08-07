@@ -11,7 +11,10 @@ from .transformations import (
     rotx, roty, rotz,
     rot2eul, eul2rot,
     axa2rot, rot2axa,
-    htmtra, htmrot, 
+    htmtra, htmrot,
+    rot2htm, rt2htm,
+    htm2rot, htm2tra,
+    invhtm,
     dh
 )
 
@@ -27,5 +30,10 @@ __all__ = [
     "rot2axa",
     "htmtra",
     "htmrot",
+    "rot2htm",
+    "rt2htm",
+    "htm2rot",
+    "htm2tra",
+    "invhtm",
     "dh"
 ]
