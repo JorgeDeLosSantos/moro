@@ -69,7 +69,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.dof"><code class="docutils literal notranslate"><span class="pre">Robot.dof</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.dynamic_model"><code class="docutils literal notranslate"><span class="pre">Robot.dynamic_model()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.dynamic_model_matrix_form"><code class="docutils literal notranslate"><span class="pre">Robot.dynamic_model_matrix_form()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.generate_diagonal_inertia_tensors"><code class="docutils literal notranslate"><span class="pre">Robot.generate_diagonal_inertia_tensors()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.gravity"><code class="docutils literal notranslate"><span class="pre">Robot.gravity</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.gravity_vector"><code class="docutils literal notranslate"><span class="pre">Robot.gravity_vector()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.inertia_matrix"><code class="docutils literal notranslate"><span class="pre">Robot.inertia_matrix()</span></code></a></li>
@@ -82,6 +81,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.link_potential_energy"><code class="docutils literal notranslate"><span class="pre">Robot.link_potential_energy()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.m"><code class="docutils literal notranslate"><span class="pre">Robot.m()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.masses"><code class="docutils literal notranslate"><span class="pre">Robot.masses</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.model_summary"><code class="docutils literal notranslate"><span class="pre">Robot.model_summary()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.potential_energy"><code class="docutils literal notranslate"><span class="pre">Robot.potential_energy()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.q"><code class="docutils literal notranslate"><span class="pre">Robot.q()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moro.core.Robot.q_dot"><code class="docutils literal notranslate"><span class="pre">Robot.q_dot()</span></code></a></li>
@@ -221,32 +221,32 @@ and the joint type, as tuples (or lists). Each tuple must have the form:</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.dynamic_model_matrix_form" title="moro.core.Robot.dynamic_model_matrix_form"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dynamic_model_matrix_form</span></code></a>()</p></td>
 <td><p>Return the dynamic model of the robot in matrix form:</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.generate_diagonal_inertia_tensors" title="moro.core.Robot.generate_diagonal_inertia_tensors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generate_diagonal_inertia_tensors</span></code></a>()</p></td>
-<td><p>Generate diagonal inertia tensors for each link.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.gravity_vector" title="moro.core.Robot.gravity_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gravity_vector</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.gravity_vector" title="moro.core.Robot.gravity_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gravity_vector</span></code></a>()</p></td>
 <td><p>Compute the gravity torque vector G(q).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.inertia_matrix" title="moro.core.Robot.inertia_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inertia_matrix</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.inertia_matrix" title="moro.core.Robot.inertia_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inertia_matrix</span></code></a>()</p></td>
 <td><p>Return the inertia matrix M(q) of the robot.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.joint_type" title="moro.core.Robot.joint_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">joint_type</span></code></a>(i)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.joint_type" title="moro.core.Robot.joint_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">joint_type</span></code></a>(i)</p></td>
 <td><p>Return the type of the i-th joint.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.kinetic_energy" title="moro.core.Robot.kinetic_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kinetic_energy</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.kinetic_energy" title="moro.core.Robot.kinetic_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kinetic_energy</span></code></a>()</p></td>
 <td><p>Returns the total kinetic energy of the robot</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.lagrangian" title="moro.core.Robot.lagrangian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lagrangian</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.lagrangian" title="moro.core.Robot.lagrangian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lagrangian</span></code></a>()</p></td>
 <td><p>Returns the Lagrangian of the system, defined as <span class="math notranslate nohighlight">\(\mathcal{L} = \mathcal{K} - \mathcal{P}\)</span>, where <span class="math notranslate nohighlight">\(\mathcal{K}\)</span> is the kinetic energy and <span class="math notranslate nohighlight">\(\mathcal{P}\)</span> is the potential energy.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.link_kinetic_energy" title="moro.core.Robot.link_kinetic_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">link_kinetic_energy</span></code></a>(i)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.link_kinetic_energy" title="moro.core.Robot.link_kinetic_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">link_kinetic_energy</span></code></a>(i)</p></td>
 <td><p>Returns the kinetic energy of i-th link.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.link_potential_energy" title="moro.core.Robot.link_potential_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">link_potential_energy</span></code></a>(i)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.link_potential_energy" title="moro.core.Robot.link_potential_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">link_potential_energy</span></code></a>(i)</p></td>
 <td><p>Returns the potential energy of the [i-th] link.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.m" title="moro.core.Robot.m"><code class="xref py py-obj docutils literal notranslate"><span class="pre">m</span></code></a>(i)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.m" title="moro.core.Robot.m"><code class="xref py py-obj docutils literal notranslate"><span class="pre">m</span></code></a>(i)</p></td>
 <td><p>Return the mass of the i-th link.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#moro.core.Robot.model_summary" title="moro.core.Robot.model_summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_summary</span></code></a>()</p></td>
+<td><p>Return a readable summary of the robot's modeling state.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#moro.core.Robot.potential_energy" title="moro.core.Robot.potential_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">potential_energy</span></code></a>()</p></td>
 <td><p>Returns the total potential energy of the robot:</p></td>
@@ -542,12 +542,6 @@ one for each joint, of the form:</p>
 <span class="math notranslate nohighlight">\(G(q)\)</span> is the gravity torque vector, and <span class="math notranslate nohighlight">\(\tau\)</span> is the vector of joint torques.</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="moro.core.Robot.generate_diagonal_inertia_tensors">
-<span class="sig-name descname"><span class="pre">generate_diagonal_inertia_tensors</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.generate_diagonal_inertia_tensors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.generate_diagonal_inertia_tensors" title="Link to this definition"></a></dt>
-<dd><p>Generate diagonal inertia tensors for each link.</p>
-</dd></dl>
-
 <dl class="py property">
 <dt class="sig sig-object py" id="moro.core.Robot.gravity">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">gravity</span></span><a class="headerlink" href="#moro.core.Robot.gravity" title="Link to this definition"></a></dt>
@@ -707,6 +701,25 @@ m1, m2, …, mn, are numeric or symbolic values.</p>
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>list</dt><dd><p>A list of numerical or symbolic values that correspond to link masses.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moro.core.Robot.model_summary">
+<span class="sig-name descname"><span class="pre">model_summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/core.html#Robot.model_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.core.Robot.model_summary" title="Link to this definition"></a></dt>
+<dd><p>Return a readable summary of the robot’s modeling state.</p>
+<p>For each dynamic quantity it reports whether it is explicitly
+defined, assumed by default (auto-generated symbolic placeholder),
+or not set. Assumed values correspond to documented modeling
+assumptions (e.g. diagonal inertia tensors implying zero products
+of inertia) that should be overridden when they do not hold.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>str</dt><dd><p>A multi-line summary.</p>
 </dd>
 </dl>
 </dd>

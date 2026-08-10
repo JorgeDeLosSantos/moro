@@ -187,12 +187,16 @@ failures where no finite residual can be computed.</p>
 <dt class="field-odd">Attributes<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>solutions</strong><span class="classifier">list of IKSolution</span></dt><dd><p>Per-target IK results in processing order. The list includes the
-failing solution when convergence stops at an intermediate target.</p>
+failing solution when convergence stops at an intermediate target.
+It always contains at least one result.</p>
 </dd>
-<dt><strong>converged</strong><span class="classifier">bool</span></dt><dd><p>True only when all targets converged.</p>
+<dt><strong>converged</strong><span class="classifier">bool</span></dt><dd><p>True only when all processed targets converged; a converged trajectory
+requires all individual solutions to be converged.</p>
 </dd>
-<dt><strong>failed_index</strong><span class="classifier">int, optional</span></dt><dd><p>Index of the first non-converged target. It is None when all targets
-converged.</p>
+<dt><strong>failed_index</strong><span class="classifier">int, optional</span></dt><dd><p>Index of the first non-converged target. It is required for a failed
+trajectory and is None when all targets converged. The referenced
+solution is non-converged, is the final processed solution, and all
+previous solutions are converged.</p>
 </dd>
 <dt><strong>message</strong><span class="classifier">str</span></dt><dd><p>Short global outcome message.</p>
 </dd>
