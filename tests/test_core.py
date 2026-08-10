@@ -79,7 +79,7 @@ def test_joint_limits_default_and_validation():
     with pytest.raises(ValueError, match="The number of joint limits must match DOF"):
         Robot.joint_limits.fset(robot, [(-1, 1)])
 
-    with pytest.raises(ValueError, match="Each joint-limit should be a 2-tuple"):
+    with pytest.raises(ValueError, match="Joint limit for joint 2 must be a 2-tuple"):
         Robot.joint_limits.fset(robot, [(-1, 1), (0, 10, 20)])
 
 def test_robot_center_of_mass_and_inertia_matrix_single_link():
@@ -224,3 +224,170 @@ def test_no_warning_with_dynamicsymbols():
         warnings.simplefilter("error", UserWarning)
         robot.w(1)
         robot.v_cm(1)
+
+
+def test_coriolis_and_dynamic_model_static_joint_variables_use_explicit_time_derivatives():
+    q = sp.symbols("q")
+    m, c, iz, g = sp.symbols("m c iz g")
+    robot = Robot((0, 0, 0, q),)
+    robot.masses = [m]
+    robot.inertia_tensors = [sp.diag(0, 0, iz)]
+    robot.cm_positions = [(c, 0, 0)]
+    robot.gravity = (0, -g, 0)
+
+    with pytest.warns(UserWarning, match="time-dependent"):
+        C = robot.coriolis_matrix()
+    assert C == sp.Matrix([[0]])
+
+    with pytest.warns(UserWarning, match="dynamic_model"):
+        equations = robot.dynamic_model()
+    assert len(equations) == 1
+    assert equations[0].rhs == sp.symbols("tau_1")
+
+
+def test_m_validates_index():
+    robot = Robot((0, 0, 0, q1), (0, 0, 0, q2))
+    robot.masses = [1, 2]
+
+    assert robot.m(1) == 1
+    assert robot.m(robot.dof) == 2
+    with pytest.raises(IndexError, match="link index 0 out of range"):
+        robot.m(0)
+    with pytest.raises(IndexError, match="link index 3 out of range"):
+        robot.m(robot.dof + 1)
+    with pytest.raises(TypeError, match="link index must be an integer"):
+        robot.m(1.0)
+
+
+def test_mutation_defensive_copies_for_masses_cm_positions_and_inertia_tensors():
+    m1, m2, c, cc, iz = sp.symbols("m1 m2 c cc iz")
+    robot = Robot((0, 0, 0, q1),)
+
+    masses = [m1]
+    robot.masses = masses
+    masses[0] = m2
+    assert robot.masses == [m1]
+    exposed_masses = robot.masses
+    exposed_masses[0] = m2
+    assert robot.masses == [m1]
+
+    positions = [sp.Matrix([[c, 0, 0]])]
+    robot.cm_positions = positions
+    positions[0][0, 0] = cc
+    assert robot.cm_positions[0] == sp.Matrix([c, 0, 0])
+    exposed_positions = robot.cm_positions
+    exposed_positions[0][0, 0] = cc
+    assert robot.cm_positions[0] == sp.Matrix([c, 0, 0])
+
+    tensors = [sp.diag(0, 0, iz)]
+    robot.inertia_tensors = tensors
+    tensors[0][2, 2] = 99
+    assert robot.inertia_tensors[0][2, 2] == iz
+    exposed_tensors = robot.inertia_tensors
+    exposed_tensors[0][2, 2] = 99
+    assert robot.inertia_tensors[0][2, 2] == iz
+
+
+def test_other_mutable_getters_do_not_expose_internal_containers():
+    robot = Robot((1, 0, 0, q1),)
+
+    dh_parameters = robot.dh_parameters
+    dh_parameters[0] = (9, 9, 9, 9)
+    assert robot.dh_parameters[0] == (1, 0, 0, q1)
+
+    qs = robot.qs
+    qs[0] = sp.symbols("other_q")
+    assert robot.q(1) == q1
+
+    limits = robot.joint_limits
+    limits[0] = (-1, 1)
+    assert robot.joint_limits[0] == (-sp.pi, sp.pi)
+
+
+def test_joint_limits_valid_and_invalid_invariants():
+    robot = Robot((1, 0, 0, q1), (1, 0, q2, 0, "p"))
+
+    robot.joint_limits = [(-sp.pi / 2, sp.pi / 2), (0, 2.5)]
+    assert robot.joint_limits == [(-sp.pi / 2, sp.pi / 2), (0, 2.5)]
+    assert robot._numerical_joint_limits == [(-float(sp.pi / 2), float(sp.pi / 2)), (0.0, 2.5)]
+
+    invalid_limits = [
+        ([(-1, 1)], "number of joint limits"),
+        ([(-1, 1), (0, 1, 2)], "joint 2"),
+        ([(-1, 1), (sp.nan, 1)], "joint 2.*NaN"),
+        ([(-1, 1), (-sp.oo, 1)], "joint 2.*infinite"),
+        ([(-1, 1), (2, 1)], "joint 2.*lower <= upper"),
+        ([(-1, 1), (sp.symbols("a"), 1)], "joint 2.*numeric"),
+    ]
+    for limits, message in invalid_limits:
+        with pytest.raises(ValueError, match=message):
+            robot.joint_limits = limits
+
+
+def test_inertia_tensors_accept_convertible_3x3_and_reject_invalid_shapes():
+    robot = Robot((0, 0, 0, q1),)
+
+    matrix_tensor = sp.eye(3)
+    robot.inertia_tensors = [matrix_tensor]
+    assert robot.inertia_tensors[0] == sp.eye(3)
+
+    nested_tensor = [[1, 0, 0], [0, 2, 0], [0, 0, 3]]
+    robot.inertia_tensors = [nested_tensor]
+    assert robot.inertia_tensors[0] == sp.diag(1, 2, 3)
+
+    for bad_tensor in (sp.Matrix([1, 2, 3]), [[1, 0], [0, 1]]):
+        with pytest.raises(ValueError, match="link 1.*3x3"):
+            robot.inertia_tensors = [bad_tensor]
+
+
+def test_gravity_and_cm_positions_normalize_valid_vectors_and_reject_invalid_shapes():
+    g, c = sp.symbols("g c")
+    robot = Robot((0, 0, 0, q1),)
+
+    for value in ((0, -g, 0), [0, -g, 0], sp.Matrix([0, -g, 0]), sp.Matrix([[0, -g, 0]])):
+        robot.gravity = value
+        assert robot.gravity == sp.Matrix([0, -g, 0])
+        assert robot.gravity.shape == (3, 1)
+
+    for value in ((c, 0, 0), [c, 0, 0], sp.Matrix([c, 0, 0]), sp.Matrix([[c, 0, 0]])):
+        robot.cm_positions = [value]
+        assert robot.cm_positions[0] == sp.Matrix([c, 0, 0])
+        assert robot.cm_positions[0].shape == (3, 1)
+
+    for bad_gravity in ((0, -g), sp.zeros(2, 2)):
+        with pytest.raises(ValueError, match="Gravity acceleration.*three"):
+            robot.gravity = bad_gravity
+    for bad_cm in ((c, 0), sp.zeros(2, 2)):
+        with pytest.raises(ValueError, match="Center of mass location for link 1.*three"):
+            robot.cm_positions = [bad_cm]
+
+
+def test_J_point_validates_and_normalizes_point_argument():
+    robot = Robot((1, 0, 0, q1),)
+    assert robot.J_point(sp.Matrix([[0, 0, 0]]), 1).shape == (6, 1)
+    assert robot.J_point((0, 0, 0), 1).shape == (6, 1)
+
+    for bad_point in ((0, 0), sp.zeros(2, 2)):
+        with pytest.raises(ValueError, match="Point.*three"):
+            robot.J_point(bad_point, 1)
+
+
+def test_dh_row_structure_validation():
+    robot4 = Robot((1, 0, 0, q1))
+    assert robot4.dof == 1
+    assert robot4.joint_type(1) == "r"
+
+    robot5 = Robot((1, 0, q1, 0, "p"))
+    assert robot5.dof == 1
+    assert robot5.joint_type(1) == "p"
+
+    with pytest.raises(ValueError, match="Invalid joint type"):
+        Robot((1, 0, 0, q1, "x"))
+    with pytest.raises(ValueError, match="row 1.*exactly 4 or 5"):
+        Robot((1, 0, 0))
+    with pytest.raises(ValueError, match="row 1.*exactly 4 or 5"):
+        Robot((1, 0, 0, q1, "r", "extra"))
+    with pytest.raises(ValueError, match="row 1 must be a list or tuple"):
+        Robot("not-a-dh-row")
+    with pytest.raises(ValueError, match="at least one DH"):
+        Robot()
