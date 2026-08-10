@@ -112,6 +112,24 @@ class TestIKSolution:
 class TestIKTrajectorySolution:
     """Tests for the IKTrajectorySolution data class."""
 
+    def _success(self, q=None):
+        return IKSolution(
+            q if q is not None else [0.1, 0.2],
+            True,
+            3,
+            0.0,
+            residual=[0.0, 0.0, 0.0],
+        )
+
+    def _failure(self, q=None):
+        return IKSolution(
+            q if q is not None else [0.2, 0.3],
+            False,
+            5,
+            1e-2,
+            residual=[1e-2, 0.0, 0.0],
+        )
+
     def test_creation_and_attributes(self):
         sol1 = IKSolution([0.1, 0.2], True, 3, 1e-9, residual=[0.0, 0.0, 0.0])
         sol2 = IKSolution([0.2, 0.3], True, 4, 2e-9, residual=[0.0, 0.0, 0.0])
@@ -129,10 +147,43 @@ class TestIKTrajectorySolution:
         assert traj.failed_index is None
         assert traj.message == "123"
 
+    def test_failed_trajectory_creation_and_attributes(self):
+        success = self._success([0.1, 0.2])
+        failure = self._failure([0.2, 0.4])
+
+        traj = IKTrajectorySolution(
+            solutions=[success, failure],
+            converged=False,
+            failed_index=1,
+            message="failed",
+        )
+
+        assert traj.solutions == [success, failure]
+        assert traj.converged is False
+        assert traj.failed_index == 1
+        assert traj.message == "failed"
+
+    def test_accepts_numpy_integer_failed_index(self):
+        success = self._success([0.1, 0.2])
+        failure = self._failure([0.2, 0.4])
+
+        traj = IKTrajectorySolution(
+            solutions=[success, failure],
+            converged=False,
+            failed_index=np.int64(1),
+        )
+
+        assert traj.failed_index == 1
+        assert type(traj.failed_index) is int
+
+    def test_rejects_empty_solutions(self):
+        with pytest.raises(ValueError, match="at least one solution"):
+            IKTrajectorySolution(solutions=[], converged=True)
+
     def test_rejects_non_iksolution_elements(self):
         sol = IKSolution([0.1], True, 1, 0.0, residual=[0.0, 0.0, 0.0])
         with pytest.raises(TypeError, match="solutions\\[1\\]"):
-            IKTrajectorySolution(solutions=[sol, "bad"], converged=False)
+            IKTrajectorySolution(solutions=[sol, object()], converged=False, failed_index=1)
 
     def test_failed_index_validation(self):
         sol = IKSolution([0.1], False, 1, 0.1, residual=[0.1, 0.0, 0.0])
@@ -143,10 +194,85 @@ class TestIKTrajectorySolution:
         with pytest.raises(ValueError, match="failed_index"):
             IKTrajectorySolution(solutions=[sol], converged=False, failed_index=1.2)
 
+    def test_rejects_boolean_failed_index(self):
+        success = self._success()
+        with pytest.raises(ValueError, match="failed_index"):
+            IKTrajectorySolution(solutions=[success], converged=True, failed_index=True)
+
+    @pytest.mark.parametrize("failed_index", [1.5, "1"])
+    def test_rejects_non_integer_failed_index(self, failed_index):
+        failure = self._failure()
+        with pytest.raises(ValueError, match="failed_index"):
+            IKTrajectorySolution(
+                solutions=[failure],
+                converged=False,
+                failed_index=failed_index,
+            )
+
+    def test_rejects_out_of_range_failed_index(self):
+        success = self._success()
+        failure = self._failure()
+        with pytest.raises(ValueError, match="failed_index must refer to an element"):
+            IKTrajectorySolution(
+                solutions=[success, failure],
+                converged=False,
+                failed_index=2,
+            )
+
     def test_converged_requires_none_failed_index(self):
         sol = IKSolution([0.1], True, 1, 0.0, residual=[0.0, 0.0, 0.0])
         with pytest.raises(ValueError, match="failed_index"):
             IKTrajectorySolution(solutions=[sol], converged=True, failed_index=0)
+
+    def test_converged_requires_all_solutions_converged(self):
+        success = self._success()
+        failure = self._failure()
+        with pytest.raises(ValueError, match="all individual solutions"):
+            IKTrajectorySolution(
+                solutions=[success, failure],
+                converged=True,
+                failed_index=None,
+            )
+
+    def test_non_converged_requires_failed_index(self):
+        failure = self._failure()
+        with pytest.raises(ValueError, match="failed_index is required"):
+            IKTrajectorySolution(
+                solutions=[failure],
+                converged=False,
+                failed_index=None,
+            )
+
+    def test_failed_index_must_point_to_non_converged_solution(self):
+        success = self._success()
+        failure = self._failure()
+        with pytest.raises(ValueError, match="non-converged IKSolution"):
+            IKTrajectorySolution(
+                solutions=[success, failure],
+                converged=False,
+                failed_index=0,
+            )
+
+    def test_failed_index_must_be_final_processed_solution(self):
+        success1 = self._success([0.1, 0.2])
+        failure = self._failure([0.2, 0.4])
+        success2 = self._success([0.3, 0.6])
+        with pytest.raises(ValueError, match="final processed solution"):
+            IKTrajectorySolution(
+                solutions=[success1, failure, success2],
+                converged=False,
+                failed_index=1,
+            )
+
+    def test_solutions_before_failed_index_must_be_converged(self):
+        failure1 = self._failure([0.1, 0.2])
+        failure2 = self._failure([0.2, 0.4])
+        with pytest.raises(ValueError, match="before failed_index"):
+            IKTrajectorySolution(
+                solutions=[failure1, failure2],
+                converged=False,
+                failed_index=1,
+            )
 
     def test_properties_qs_errors_and_iterations(self):
         sol1 = IKSolution([0.1, 0.2], True, 3, 1e-4, residual=[1e-4, 0.0, 0.0])
@@ -366,6 +492,9 @@ class TestSolvePositionTrajectory:
         assert trajectory.converged is False
         assert trajectory.failed_index == 1
         assert len(trajectory.solutions) == 2
+        assert trajectory.failed_index == len(trajectory.solutions) - 1
+        assert trajectory.solutions[-1].converged is False
+        assert all(solution.converged for solution in trajectory.solutions[:trajectory.failed_index])
         assert "target index 1" in trajectory.message
         assert "Maximum number of iterations reached." in trajectory.message
 
@@ -584,6 +713,27 @@ class TestSolvePositionIK:
         assert sol.method == "ccd"
         assert sol.iterations == 500
         assert sol.message == "Maximum number of iterations reached."
+
+    def test_ccd_step_stagnation_requires_consecutive_sweeps(self):
+        """CCD should honor stagnation_iterations for small-step stagnation."""
+        robot = Robot((0, 0, q1, 0, "p"))
+
+        sol = solve_position_ik(
+            robot,
+            [0.0, 0.0, 10.0],
+            q0=[0.1],
+            method="ccd",
+            joint_limits=[(0.0, 0.1)],
+            tol=1e-12,
+            step_tol=1e-12,
+            error_change_tol=0.0,
+            stagnation_iterations=3,
+        )
+
+        assert sol.converged is False
+        assert sol.method == "ccd"
+        assert sol.iterations == 3
+        assert sol.message == ik_module.MSG_STAGNATED_STEP
 
     # --- Levenberg-Marquardt tests ---
 

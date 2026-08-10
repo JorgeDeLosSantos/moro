@@ -42,10 +42,14 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../inverse_kinematics.html">The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../visualization.html">The <code class="code docutils literal notranslate"><span class="pre">visualization</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../abc.html">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</a></li>
 </ul>
 
         </div>
@@ -79,10 +83,11 @@
 <span class="sd">This library has been designed, mainly, for academic and research purposes, </span>
 <span class="sd">using SymPy as base library. </span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
 <span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sp</span>
 <span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">pi</span><span class="p">,</span>
     <span class="n">prod</span><span class="p">,</span>
     <span class="n">symbols</span><span class="p">,</span>
     <span class="n">Matrix</span><span class="p">,</span>
@@ -97,7 +102,8 @@
     <span class="n">MatMul</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="c1"># Moro core dependencies</span>
-<span class="kn">from</span> <span class="nn">moro.transformations</span> <span class="kn">import</span> <span class="n">dh</span><span class="p">,</span> <span class="n">htmrot</span><span class="p">,</span> <span class="n">htmtra</span>
+<span class="kn">from</span> <span class="nn">sympy.core.function</span> <span class="kn">import</span> <span class="n">AppliedUndef</span>
+<span class="kn">from</span> <span class="nn">moro.transformations</span> <span class="kn">import</span> <span class="n">dh</span>
 <span class="kn">from</span> <span class="nn">moro.util</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">vector_in_hcoords</span><span class="p">,</span>
     <span class="n">is_position_vector</span><span class="p">,</span>
@@ -105,7 +111,7 @@
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">moro.abc</span> <span class="kn">import</span> <span class="n">t</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Robot&quot;</span><span class="p">,</span> <span class="s2">&quot;RigidBody2D&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Robot&quot;</span><span class="p">]</span>
 
 <div class="viewcode-block" id="Robot">
 <a class="viewcode-back" href="../../core.html#moro.core.Robot">[docs]</a>
@@ -134,16 +140,32 @@
     <span class="n">_CACHE_CATEGORIES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;kinematics&quot;</span><span class="p">,</span> <span class="s2">&quot;dynamics&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Robot must be initialized with at least one DH parameter row.&quot;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">Ts</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># Transformation matrices i to i-1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># Joint type -&gt; &quot;r&quot; revolute, &quot;p&quot; prismatic</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_qs</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># Joint variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_qis_range</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># qis_range (set via its setter when required)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_dh_parameters</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># Store the DH parameters </span>
 
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">row_idx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DH parameter row </span><span class="si">{</span><span class="n">row_idx</span><span class="si">}</span><span class="s2"> must be a list or tuple.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;DH parameter row </span><span class="si">{</span><span class="n">row_idx</span><span class="si">}</span><span class="s2"> must have exactly 4 or 5 elements &quot;</span>
+                    <span class="s2">&quot;(a, alpha, d, theta[, joint_type]).&quot;</span>
+                <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">Ts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dh</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">k</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="n">k</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span> <span class="c1"># Compute Ti-&gt;i-1</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_dh_parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">[:</span><span class="mi">4</span><span class="p">])</span> <span class="c1"># Store the DH parameters as they were passed in the constructor</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dh_parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">k</span><span class="p">[:</span><span class="mi">4</span><span class="p">]))</span> <span class="c1"># Store the DH parameters as they were passed in the constructor</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">4</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+                <span class="n">joint_type</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">joint_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Invalid joint type &#39;</span><span class="si">{</span><span class="n">k</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;. Use &#39;r&#39; for revolute or &#39;p&#39; for prismatic.&quot;</span>
+                    <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">joint_type</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span> <span class="c1"># By default, the joint type is assumed to be revolute</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
 
@@ -158,6 +180,13 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_gravity</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Flags reporting whether dynamic quantities were explicitly defined (True)</span>
+        <span class="c1"># or auto-generated with a documented default assumption (False).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_masses_explicit</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors_explicit</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions_explicit</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gravity_explicit</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_joint_limits_explicit</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_default_joint_limits</span><span class="p">()</span> <span class="c1"># set default joint-limits on create</span>
 
         <span class="c1"># Cache for kinematics and dynamics computations</span>
@@ -165,7 +194,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">dh_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dh_parameters</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dh_parameters</span><span class="p">)</span>
     
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">dh_table</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -218,7 +247,11 @@
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            The position of {i}-Frame as a 3-component vector.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached</span><span class="p">(</span>
+            <span class="s2">&quot;kinematics&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;r_o_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+        <span class="p">)</span></div>
 
     
     <span class="nd">@property</span>
@@ -232,7 +265,11 @@
 <span class="sd">            Get the geometric jacobian matrix of the end-effector.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Jacobian of the end-effector (point located at the origin of {n}-Frame)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">J_point</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span> 
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached</span><span class="p">(</span>
+            <span class="s2">&quot;kinematics&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;J&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">J_point</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span>
+        <span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">dof</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -257,7 +294,11 @@
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            :math:`T_n^0`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Ts</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached</span><span class="p">(</span>
+            <span class="s2">&quot;kinematics&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;T&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span>
+        <span class="p">)</span>
         
 <div class="viewcode-block" id="Robot.T_ij">
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.T_ij">[docs]</a>
@@ -276,7 +317,10 @@
         <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span><span class="p">:</span> 
             <span class="k">return</span> <span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">j</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Ts</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">j</span><span class="p">])</span><span class="o">.</span><span class="n">inv</span><span class="p">())</span>
+            <span class="n">T</span> <span class="o">=</span> <span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Ts</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">j</span><span class="p">])</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="n">T</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">T</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">R</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">row_join</span><span class="p">(</span><span class="o">-</span><span class="n">R</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">col_join</span><span class="p">(</span><span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]))</span>
         
         <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Ts</span><span class="p">[</span><span class="n">j</span><span class="p">:</span><span class="n">i</span><span class="p">]))</span></div>
 
@@ -322,15 +366,19 @@
     
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">qs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_qs</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_qs</span><span class="p">)</span>
     
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">qis_range</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_qis_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;qis_range has not been set. Assign a value via the qis_range setter first.&quot;</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_qis_range</span>
         
     <span class="nd">@qis_range</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span> <span class="nf">qis_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_qis_range</span> <span class="o">=</span> <span class="n">args</span>
+    <span class="k">def</span> <span class="nf">qis_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_qis_range</span> <span class="o">=</span> <span class="n">value</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">masses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -345,8 +393,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masses</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Link masses are not defined. Please set them using &quot;</span>
-                             <span class="s2">&quot;the set_masses() method.&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masses</span>
+                             <span class="s2">&quot;the masses setter.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_masses</span><span class="p">)</span>
 
     <span class="nd">@masses</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">masses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">masses</span><span class="p">):</span>
@@ -361,13 +409,39 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">masses</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">masses</span> <span class="o">=</span> <span class="p">[</span> <span class="n">symbols</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;m_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span> <span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_masses_explicit</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_masses_explicit</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">masses</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of masses must be equal to the number of links (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_masses</span> <span class="o">=</span> <span class="n">masses</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_masses</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">masses</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_invalidate_dynamics_cache</span><span class="p">()</span> <span class="c1"># Invalidate dynamics cache since link masses affect the inertia matrix and potential energy</span>
+
+    <span class="k">def</span> <span class="nf">_as_column_vector3</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert a 3-component vector-like object to a defensive SymPy Matrix(3, 1).</span>
+<span class="sd">        Row matrices with exactly three components are normalized to columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">matrix</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must represent a three-dimensional vector.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
+
+        <span class="k">if</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">matrix</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">3</span><span class="p">,):</span>
+            <span class="k">return</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="p">(</span><span class="n">matrix</span><span class="o">.</span><span class="n">rows</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">or</span> <span class="n">matrix</span><span class="o">.</span><span class="n">cols</span> <span class="o">==</span> <span class="mi">3</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Matrix</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">matrix</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must have exactly three components.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_copy_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matrix</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">inertia_tensors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -386,7 +460,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inertia tensors are not defined. Please set them using the inertia_tensors setter.&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_copy_matrix</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span> <span class="k">for</span> <span class="n">tensor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span><span class="p">]</span>
     
     <span class="nd">@inertia_tensors</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">inertia_tensors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">tensors</span><span class="p">):</span>
@@ -406,35 +480,56 @@
 <span class="sd">        tensors: sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            A list containinig `sympy.matrices.dense.MutableDenseMatrix` that </span>
 <span class="sd">            corresponds to each inertia tensor w.r.t. {i}&#39;-Frame.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">tensors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">tensors</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of inertia tensors must be equal to the number of links (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
 
-        <span class="n">dof</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dof</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">tensors</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="p">)</span>
-        
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        If ``tensors`` is None, diagonal inertia tensors are auto-generated as</span>
+<span class="sd">        symbolic variables (assuming zero products of inertia, i.e. symmetric</span>
+<span class="sd">        links). This is a modeling assumption; override it by providing explicit</span>
+<span class="sd">        tensors when your links are not symmetric.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">tensors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_generate_diagonal_inertia_tensors</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors_explicit</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">tensors</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of inertia tensors must be equal to the number of links (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">normalized_tensors</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">tensor</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tensors</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">tensor_matrix</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Inertia tensor for link </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> must be convertible to a 3x3 Matrix.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
+                <span class="k">if</span> <span class="n">tensor_matrix</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Inertia tensor for link </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> must be a 3x3 matrix; &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;got shape </span><span class="si">{</span><span class="n">tensor_matrix</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">normalized_tensors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Matrix</span><span class="p">(</span><span class="n">tensor_matrix</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span> <span class="o">=</span> <span class="n">normalized_tensors</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors_explicit</span> <span class="o">=</span> <span class="kc">True</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_invalidate_dynamics_cache</span><span class="p">()</span> <span class="c1"># Invalidate dynamics cache since inertia tensors affect the inertia matrix and Coriolis matrix</span>
 
-<div class="viewcode-block" id="Robot.generate_diagonal_inertia_tensors">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.generate_diagonal_inertia_tensors">[docs]</a>
-    <span class="k">def</span> <span class="nf">generate_diagonal_inertia_tensors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_generate_diagonal_inertia_tensors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Generate diagonal inertia tensors for each link.</span>
+<span class="sd">        Generate diagonal inertia tensors for each link and store them in</span>
+<span class="sd">        ``self._inertia_tensors``. Internal helper: diagonal tensors are a</span>
+<span class="sd">        modeling assumption (zero products of inertia) for symmetric links.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">inertia_tensors</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">):</span>
-            <span class="n">Istr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;I_</span><span class="se">{{</span><span class="s2">x_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">x_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="se">}}</span><span class="s2">, I_</span><span class="se">{{</span><span class="s2">y_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">y_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="se">}}</span><span class="s2"> I_</span><span class="se">{{</span><span class="s2">z_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">z_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="se">}}</span><span class="s2">&quot;</span>
+            <span class="n">Istr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;I_</span><span class="se">{{</span><span class="s2">x_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">x_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="se">}}</span><span class="s2">, I_</span><span class="se">{{</span><span class="s2">y_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">y_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="se">}}</span><span class="s2">, I_</span><span class="se">{{</span><span class="s2">z_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">z_</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="se">}}</span><span class="s2">&quot;</span>
             <span class="n">Ix</span><span class="p">,</span> <span class="n">Iy</span><span class="p">,</span> <span class="n">Iz</span> <span class="o">=</span> <span class="n">symbols</span><span class="p">(</span><span class="n">Istr</span><span class="p">)</span>
             <span class="n">inertia_tensors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">diag</span><span class="p">(</span><span class="n">Ix</span><span class="p">,</span> <span class="n">Iy</span><span class="p">,</span> <span class="n">Iz</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">inertia_tensors</span></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span> <span class="o">=</span> <span class="n">inertia_tensors</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">cm_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get the positions of the center of mass for each link. The position of the center of mass of the i-th link is defined as a list or tuple of three elements that correspond to the x, y, z coordinates of the center of mass w.r.t. {i}-Frame.</span>
+<span class="sd">        Get the positions of the center of mass for each link. The position of the </span>
+<span class="sd">        center of mass of the i-th link is defined as a list or tuple of three elements </span>
+<span class="sd">        that correspond to the x, y, z coordinates of the center of mass w.r.t. {i}-Frame.</span>
 <span class="sd">        </span>
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -444,7 +539,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Center of mass locations are not defined. Please set them using the cm_positions setter.&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_copy_matrix</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="k">for</span> <span class="n">position</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions</span><span class="p">]</span>
     
     <span class="nd">@cm_positions</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">cm_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">positions</span><span class="p">):</span>
@@ -468,17 +563,12 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of center of mass locations must be equal to the number of links (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
         
-        <span class="c1"># Validate that each center of mass location is a 3-element list or tuple</span>
-        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">cm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">positions</span><span class="p">):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_position_vector</span><span class="p">(</span><span class="n">cm</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Center of mass location for link </span><span class="si">{</span><span class="n">idx</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> must be a list or tuple of three elements (x, y, z).&quot;</span><span class="p">)</span>
-        
-        <span class="c1"># Convert each center of mass location to a sympy Matrix if it&#39;s a list or tuple</span>
-        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">cm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">positions</span><span class="p">):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cm</span><span class="p">,</span> <span class="n">Matrix</span><span class="p">):</span>
-                <span class="n">positions</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions</span> <span class="o">=</span> <span class="n">positions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_as_column_vector3</span><span class="p">(</span><span class="n">cm</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Center of mass location for link </span><span class="si">{</span><span class="n">idx</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">cm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions_explicit</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_invalidate_kinematics_cache</span><span class="p">()</span> <span class="c1"># CoM affects kinematics-cached quantities (r_cm, J_cm)</span>
         <span class="c1"># Invalidate dynamics cache since CoM locations affect the inertia matrix and potential energy</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_invalidate_dynamics_cache</span><span class="p">()</span> 
 
@@ -494,7 +584,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gravity</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Gravity acceleration is not defined. Please set it using the gravity setter.&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gravity</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_matrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_gravity</span><span class="p">)</span>
 
     <span class="nd">@gravity</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">gravity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">g</span><span class="p">):</span>
@@ -512,14 +602,8 @@
 <span class="sd">        &gt;&gt;&gt; RR = Robot((l1,0,0,q1,&quot;r&quot;), (l2,0,0,q2,&quot;r&quot;))</span>
 <span class="sd">        &gt;&gt;&gt; RR.gravity = (0, -g, 0)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Gravity acceleration must have three components (x, y, z).&quot;</span><span class="p">)</span>
-        
-        <span class="c1"># Convert g to a sympy Matrix if it&#39;s a list or tuple</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">Matrix</span><span class="p">):</span>
-            <span class="n">g</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_gravity</span> <span class="o">=</span> <span class="n">g</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gravity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_as_column_vector3</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="s2">&quot;Gravity acceleration&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gravity_explicit</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_invalidate_dynamics_cache</span><span class="p">()</span> <span class="c1"># Invalidate dynamics cache since gravity vector affects potential energy and gravity torque vector</span>
 
     <span class="k">def</span> <span class="nf">_r_cm_i</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">i</span><span class="p">):</span>
@@ -599,6 +683,7 @@
 <span class="sd">            A column vector </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_static_joint_variables</span><span class="p">(</span><span class="s2">&quot;v_cm&quot;</span><span class="p">)</span>
         <span class="n">rcm_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_cm</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="n">vcm_i</span> <span class="o">=</span> <span class="n">rcm_i</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">simplify</span><span class="p">(</span> <span class="n">vcm_i</span> <span class="p">)</span></div>
@@ -626,6 +711,7 @@
 <span class="sd">        i : int</span>
 <span class="sd">            Link number.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached</span><span class="p">(</span>
             <span class="s2">&quot;kinematics&quot;</span><span class="p">,</span>
             <span class="sa">f</span><span class="s2">&quot;Jv_cm_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -644,6 +730,7 @@
 <span class="sd">        i : int</span>
 <span class="sd">            Link number.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached</span><span class="p">(</span>
             <span class="s2">&quot;kinematics&quot;</span><span class="p">,</span>
             <span class="sa">f</span><span class="s2">&quot;Jw_cm_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -668,6 +755,7 @@
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            Jacobian matrix of i-th CoM.     </span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached</span><span class="p">(</span>
             <span class="s2">&quot;kinematics&quot;</span><span class="p">,</span>
             <span class="sa">f</span><span class="s2">&quot;J_cm_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -697,7 +785,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="n">point_wrt_i</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">(</span> <span class="n">point</span> <span class="p">)</span>
+        <span class="n">point_wrt_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_as_column_vector3</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="s2">&quot;Point&quot;</span><span class="p">)</span>
         <span class="n">point_wrt_0</span> <span class="o">=</span> <span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">vector_in_hcoords</span><span class="p">(</span> <span class="n">point_wrt_i</span> <span class="p">)</span> <span class="p">)[:</span><span class="mi">3</span><span class="p">,:]</span>
         
         <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
@@ -820,6 +908,8 @@
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            Angular velocity of the [i]-link w.r.t. {0}-Frame.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_static_joint_variables</span><span class="p">(</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached</span><span class="p">(</span>
             <span class="s2">&quot;kinematics&quot;</span><span class="p">,</span>
             <span class="sa">f</span><span class="s2">&quot;w_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -854,6 +944,7 @@
 <span class="sd">        sympy.matrices.dense.MutableDenseMatrix</span>
 <span class="sd">            Inertia tensor of the [i]-link w.r.t. {0}-Frame.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached</span><span class="p">(</span>
             <span class="s2">&quot;dynamics&quot;</span><span class="p">,</span>
             <span class="sa">f</span><span class="s2">&quot;I_cm0_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -920,7 +1011,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masses</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Link masses are not defined. Please set them using &quot;</span> \
-            <span class="s2">&quot;the set_masses() method.&quot;</span><span class="p">)</span>
+            <span class="s2">&quot;the masses setter.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;link&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masses</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
 
         
@@ -989,6 +1081,7 @@
 <span class="sd">            C_{{i,j}} = \\sum_{{k=1}}^n c_{{i,j,k}} \\dot{{q}}_k</span>
 <span class="sd">            </span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_static_joint_variables</span><span class="p">(</span><span class="s2">&quot;coriolis_matrix&quot;</span><span class="p">)</span>
         <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
         <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_matrix</span><span class="p">()</span>
         <span class="n">C</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
@@ -996,7 +1089,7 @@
             <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
                 <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
                 <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-                    <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">christoffel_symbols</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="n">k</span><span class="p">,</span><span class="n">M</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">[</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+                    <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">christoffel_symbols</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="n">k</span><span class="p">,</span><span class="n">M</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_dot</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">nsimplify</span><span class="p">(</span><span class="n">C</span><span class="p">)</span></div>
 
         
@@ -1023,7 +1116,8 @@
 <a class="viewcode-back" href="../../core.html#moro.core.Robot.gravity_vector">[docs]</a>
     <span class="k">def</span> <span class="nf">gravity_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Compute the gravity torque vector G(q). The gravity torque vector is computed as the gradient of the potential energy of the system:</span>
+<span class="sd">        Compute the gravity torque vector G(q). The gravity torque vector is computed </span>
+<span class="sd">        as the gradient of the potential energy of the system:</span>
 
 <span class="sd">        .. math::</span>
 <span class="sd">            G(q) = \\nabla U(q) = \\left[ \\frac{{\\partial U}}{{\\partial q_1}}, \\frac{{\\partial U}}{{\\partial q_2}}, ..., \\frac{{\\partial U}}{{\\partial q_n}} \\right]^T</span>
@@ -1054,10 +1148,10 @@
         <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_matrix</span><span class="p">()</span>
         <span class="n">C</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coriolis_matrix</span><span class="p">()</span>
         <span class="n">G</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gravity_vector</span><span class="p">()</span>
-        <span class="n">qpp</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="n">q</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">])</span>
-        <span class="n">qp</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="n">q</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">])</span>
+        <span class="n">qdd</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="n">q</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">])</span>
+        <span class="n">qd</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="n">q</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">])</span>
         <span class="n">tau</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span> <span class="n">symbols</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tau_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)])</span>
-        <span class="k">return</span> <span class="n">Eq</span><span class="p">(</span><span class="n">MatAdd</span><span class="p">(</span> <span class="n">MatMul</span><span class="p">(</span><span class="n">M</span><span class="p">,</span><span class="n">qpp</span><span class="p">),</span> <span class="n">MatMul</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="n">qp</span><span class="p">),</span>  <span class="n">G</span><span class="p">)</span> <span class="p">,</span> <span class="n">tau</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">Eq</span><span class="p">(</span><span class="n">MatAdd</span><span class="p">(</span> <span class="n">MatMul</span><span class="p">(</span><span class="n">M</span><span class="p">,</span><span class="n">qdd</span><span class="p">),</span> <span class="n">MatMul</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="n">qd</span><span class="p">),</span>  <span class="n">G</span><span class="p">)</span> <span class="p">,</span> <span class="n">tau</span><span class="p">)</span></div>
 
             
 <div class="viewcode-block" id="Robot.link_kinetic_energy">
@@ -1075,6 +1169,7 @@
 <span class="sd">        i: int</span>
 <span class="sd">            Link number.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="n">mi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="n">vi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_cm</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="n">wi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
@@ -1107,6 +1202,7 @@
 <span class="sd">        -------</span>
 <span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gravity</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Gravity acceleration is not defined. Please set it using &quot;</span> \
             <span class="s2">&quot;the gravity property.&quot;</span><span class="p">)</span> 
@@ -1167,24 +1263,18 @@
 <span class="sd">        </span>
 <span class="sd">        where :math:`\\mathcal{L}` is the Lagrangian of the system, defined as :math:`\\mathcal{L} = \\mathcal{K} - \\mathcal{P}`, where :math:`\\mathcal{K}` is the kinetic energy and :math:`\\mathcal{P}` is the potential energy.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_static_joint_variables</span><span class="p">(</span><span class="s2">&quot;dynamic_model&quot;</span><span class="p">)</span>
         <span class="n">L</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lagrangian</span><span class="p">()</span>
         <span class="n">equations</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">):</span>
             <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="n">qp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
-            <span class="n">equations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">Eq</span><span class="p">(</span> <span class="n">trigsimp</span><span class="p">(</span><span class="n">L</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">qp</span><span class="p">)</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">-</span> <span class="n">L</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="p">),</span> <span class="n">symbols</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tau_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span> 
+            <span class="n">qp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+            <span class="n">dL_dqp</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">qp</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">L</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">qp</span><span class="p">)</span>
+            <span class="n">equations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">Eq</span><span class="p">(</span> <span class="n">trigsimp</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">dL_dqp</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="o">-</span> <span class="n">L</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="p">),</span> <span class="n">symbols</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tau_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span> 
             
         <span class="k">return</span> <span class="n">equations</span></div>
 
     
-<div class="viewcode-block" id="Robot.solve_inverse_kinematics">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.solve_inverse_kinematics">[docs]</a>
-    <span class="k">def</span> <span class="nf">solve_inverse_kinematics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">pose</span><span class="p">,</span><span class="n">q0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Solve the inverse kinematics problem for a given end-effector pose. This method is not implemented yet and will be added in future versions of the library.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">pass</span></div>
-
     
     <span class="k">def</span> <span class="nf">_set_default_joint_limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">joint_limits</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1207,7 +1297,7 @@
 <span class="sd">        the default limits are (0, 1000) units. If you want to set custom joint limits, </span>
 <span class="sd">        you can use the joint_limits setter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_joint_limits</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_joint_limits</span><span class="p">)</span>
     
     <span class="nd">@joint_limits</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">joint_limits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">limits</span><span class="p">):</span>
@@ -1219,87 +1309,39 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">limits</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The number of joint limits must match DOF.&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">limit</span> <span class="ow">in</span> <span class="n">limits</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">limit</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Each joint-limit should be a 2-tuple.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_joint_limits</span> <span class="o">=</span> <span class="n">limits</span>
+        <span class="n">validated_limits</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">limit</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">limits</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">limit</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span>
+            <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Joint limit for joint </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> must be a 2-tuple (lower, upper).&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Joint limit for joint </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> must be a 2-tuple (lower, upper).&quot;</span><span class="p">)</span>
+
+            <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span> <span class="o">=</span> <span class="n">limit</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">lower_num</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lower</span><span class="p">)</span>
+                <span class="n">upper_num</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">upper</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Joint limit for joint </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> must contain numeric values.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
+
+            <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">lower_num</span><span class="p">)</span> <span class="ow">or</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">upper_num</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Joint limit for joint </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> cannot contain NaN.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">lower_num</span><span class="p">)</span> <span class="ow">or</span> <span class="n">math</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">upper_num</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Joint limit for joint </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> cannot contain infinite values.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">lower_num</span> <span class="o">&gt;</span> <span class="n">upper_num</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Joint limit for joint </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> must satisfy lower &lt;= upper.&quot;</span><span class="p">)</span>
+            <span class="n">validated_limits</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_joint_limits</span> <span class="o">=</span> <span class="n">validated_limits</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_joint_limits_explicit</span> <span class="o">=</span> <span class="kc">True</span>
     
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">_numerical_joint_limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">joint_limits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_limits</span> 
         <span class="n">joint_limits_num</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">b</span><span class="p">))</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="n">joint_limits</span><span class="p">]</span> 
         <span class="k">return</span> <span class="n">joint_limits_num</span>
-    
-<div class="viewcode-block" id="Robot.plot_diagram">
-<a class="viewcode-back" href="../../core.html#moro.core.Robot.plot_diagram">[docs]</a>
-    <span class="k">def</span> <span class="nf">plot_diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">num_vals</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Draw a simple wire-diagram or kinematic-diagram of the manipulator.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-
-<span class="sd">        num_vals : dict</span>
-<span class="sd">            Dictionary like: {svar1: nvalue1, svar2: nvalue2, ...}, </span>
-<span class="sd">            where svar1, svar2, ... are symbolic variables that are </span>
-<span class="sd">            currently used in model, and nvalue1, nvalue2, ... </span>
-<span class="sd">            are the numerical values that will substitute these variables.</span>
-
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">,</span><span class="n">projection</span><span class="o">=</span><span class="s1">&#39;3d&#39;</span><span class="p">)</span>
-        
-        <span class="c1"># Ts = self.Ts</span>
-        <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">Ti_0</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">):</span>
-            <span class="n">Ti_0</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">subs</span><span class="p">(</span><span class="n">num_vals</span><span class="p">))</span>
-            <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">T_i0</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">subs</span><span class="p">(</span><span class="n">num_vals</span><span class="p">))</span>
-            
-        <span class="n">X</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">points</span><span class="p">]</span>
-        <span class="n">Y</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">points</span><span class="p">]</span>
-        <span class="n">Z</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">points</span><span class="p">]</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">Z</span><span class="p">,</span> <span class="s2">&quot;o-&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#778877&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;mo&quot;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
-        <span class="c1"># ax.set_axis_off()</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">view_init</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span>
-        
-        <span class="n">px</span><span class="p">,</span><span class="n">py</span><span class="p">,</span><span class="n">pz</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span><span class="nb">float</span><span class="p">(</span><span class="n">Y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span><span class="nb">float</span><span class="p">(</span><span class="n">Z</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-        <span class="n">dim</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="n">px</span><span class="p">,</span><span class="n">py</span><span class="p">,</span><span class="n">pz</span><span class="p">])</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">_draw_uvw</span><span class="p">(</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span><span class="n">ax</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">T</span> <span class="ow">in</span> <span class="n">Ti_0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_draw_uvw</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
-            
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_zlim</span><span class="p">(</span><span class="o">-</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
-
-    
-    <span class="k">def</span> <span class="nf">_draw_uvw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">H</span><span class="p">,</span><span class="n">ax</span><span class="p">,</span><span class="n">sz</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Draw the u,v,w axes of a frame defined by the homogeneous transformation matrix H.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-
-<span class="sd">        H: sympy.matrices.dense.MutableDenseMatrix</span>
-<span class="sd">            Homogeneous transformation matrix that defines the frame to be drawn.</span>
-<span class="sd">        ax: matplotlib.axes._subplots.Axes3DSubplot</span>
-<span class="sd">            The 3D axis where the frame will be drawn.</span>
-<span class="sd">        sz: float</span>
-<span class="sd">            The length of the axes to be drawn.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">u</span> <span class="o">=</span> <span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">v</span> <span class="o">=</span> <span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">w</span> <span class="o">=</span> <span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span>
-        <span class="n">o</span> <span class="o">=</span> <span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
-        <span class="n">L</span> <span class="o">=</span> <span class="n">sz</span><span class="o">/</span><span class="mi">5</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">u</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="n">L</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">v</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="n">L</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">w</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="n">L</span><span class="p">)</span>
     
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">robot_type</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span> <span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
@@ -1309,9 +1351,59 @@
         <span class="n">robot_type</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span> <span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Robot </span><span class="si">{</span><span class="n">robot_type</span><span class="si">}</span><span class="s2">&quot;</span>
 
+<div class="viewcode-block" id="Robot.model_summary">
+<a class="viewcode-back" href="../../core.html#moro.core.Robot.model_summary">[docs]</a>
+    <span class="k">def</span> <span class="nf">model_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a readable summary of the robot&#39;s modeling state.</span>
+
+<span class="sd">        For each dynamic quantity it reports whether it is explicitly</span>
+<span class="sd">        defined, assumed by default (auto-generated symbolic placeholder),</span>
+<span class="sd">        or not set. Assumed values correspond to documented modeling</span>
+<span class="sd">        assumptions (e.g. diagonal inertia tensors implying zero products</span>
+<span class="sd">        of inertia) that should be overridden when they do not hold.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str</span>
+<span class="sd">            A multi-line summary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">_label</span><span class="p">(</span><span class="n">explicit</span><span class="p">,</span> <span class="n">defined</span><span class="p">,</span> <span class="n">assumed_text</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">defined</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;NOT SET&quot;</span>
+            <span class="k">return</span> <span class="s2">&quot;explicit&quot;</span> <span class="k">if</span> <span class="n">explicit</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;assumed (</span><span class="si">{</span><span class="n">assumed_text</span><span class="si">}</span><span class="s2">)&quot;</span>
+
+        <span class="n">robot_type</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">joint_types</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;Model summary | Robot </span><span class="si">{</span><span class="n">robot_type</span><span class="si">}</span><span class="s2"> | DOF = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;  joint_limits     : &quot;</span> <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;custom&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_joint_limits_explicit</span> <span class="k">else</span> <span class="s2">&quot;default&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;  masses           : &quot;</span> <span class="o">+</span> <span class="n">_label</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_masses_explicit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masses</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;symbolic m_i&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;  inertia_tensors  : &quot;</span> <span class="o">+</span> <span class="n">_label</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors_explicit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inertia_tensors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;diagonal symbolic&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;  cm_positions     : &quot;</span> <span class="o">+</span> <span class="n">_label</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions_explicit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm_positions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;  gravity          : &quot;</span> <span class="o">+</span> <span class="n">_label</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_gravity_explicit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gravity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+
+
     <span class="c1"># def _repr_latex_(self):</span>
     <span class="c1">#     return sp.latex(self.dh_table)</span>
     
+    <span class="k">def</span> <span class="nf">_has_static_joint_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s1">&#39;Return True if any joint variable is a static symbol (not a function of time).&#39;</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">AppliedUndef</span><span class="p">)</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_qs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_warn_static_joint_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operation</span><span class="p">):</span>
+        <span class="s1">&#39;Warn when a velocity-dependent operation is used with static joint variables.&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_static_joint_variables</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">operation</span><span class="si">}</span><span class="s2">() requires time-dependent joint variables, but at &quot;</span>
+                <span class="s2">&quot;least one joint variable is a static (non-time) symbol; &quot;</span>
+                <span class="s2">&quot;velocity-dependent results may be incorrect. Use dynamicsymbols &quot;</span>
+                <span class="s2">&quot;(e.g. moro.abc.q1..q6) for dynamic analyses.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="p">)</span>
+
     <span class="k">def</span> <span class="nf">_check_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Link&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check if the index i is a valid link index. If not, raise an appropriate error.</span>
@@ -1368,127 +1460,6 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">category</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">compute_fn</span><span class="p">()</span>
         
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">category</span><span class="p">][</span><span class="n">key</span><span class="p">]</span></div>
-
-
-            
-
-
-<span class="c1">#### RigidBody2D</span>
-
-<div class="viewcode-block" id="RigidBody2D">
-<a class="viewcode-back" href="../../core.html#moro.core.RigidBody2D">[docs]</a>
-<span class="k">class</span> <span class="nc">RigidBody2D</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Defines a rigid body (two-dimensional) through a series of points that </span>
-<span class="sd">    make it up.</span>
-<span class="sd">    </span>
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    </span>
-<span class="sd">    points: list, tuple</span>
-<span class="sd">        A list of 2-lists (or list of 2-tuples) containing the </span>
-<span class="sd">        N-points that make up the rigid body.</span>
-
-<span class="sd">    Examples</span>
-<span class="sd">    --------</span>
-
-<span class="sd">    &gt;&gt;&gt; points = [(0,0), (1,0), (0,1)]</span>
-<span class="sd">    &gt;&gt;&gt; rb = RigidBody2D(points)</span>
-
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">points</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_points</span> <span class="o">=</span> <span class="n">points</span> <span class="c1"># Points</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">Hs</span> <span class="o">=</span> <span class="p">[</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">),]</span> <span class="c1"># Transformation matrices</span>
-        
-<div class="viewcode-block" id="RigidBody2D.restart">
-<a class="viewcode-back" href="../../core.html#moro.core.RigidBody2D.restart">[docs]</a>
-    <span class="k">def</span> <span class="nf">restart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Restart to initial coordinates of the rigid body</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">Hs</span> <span class="o">=</span> <span class="p">[</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">),]</span></div>
-
-    
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">_points</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">H</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="c1">#</span>
-        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_points</span><span class="p">:</span>
-            <span class="n">Q</span> <span class="o">=</span> <span class="n">Matrix</span><span class="p">([</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span> <span class="c1"># Homogeneous coordinates</span>
-            <span class="n">_points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">H</span><span class="o">*</span><span class="n">Q</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">_points</span>
-    
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">H</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">_h</span> <span class="o">=</span> <span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">_mth</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">Hs</span><span class="p">:</span>
-            <span class="n">_h</span> <span class="o">=</span> <span class="n">_h</span><span class="o">*</span><span class="n">_mth</span>
-        <span class="k">return</span> <span class="n">_h</span>
-
-<div class="viewcode-block" id="RigidBody2D.rotate">
-<a class="viewcode-back" href="../../core.html#moro.core.RigidBody2D.rotate">[docs]</a>
-    <span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">angle</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Rotates the rigid body around z-axis.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">R</span> <span class="o">=</span> <span class="n">htmrot</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;z&quot;</span><span class="p">)</span> <span class="c1"># Applying rotation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">Hs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">R</span><span class="p">)</span></div>
-
-    
-<div class="viewcode-block" id="RigidBody2D.move">
-<a class="viewcode-back" href="../../core.html#moro.core.RigidBody2D.move">[docs]</a>
-    <span class="k">def</span> <span class="nf">move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">q</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Moves the rigid body</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">D</span> <span class="o">=</span> <span class="n">htmtra</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="c1"># Applying translation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">Hs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">D</span><span class="p">)</span></div>
-
-        
-<div class="viewcode-block" id="RigidBody2D.draw">
-<a class="viewcode-back" href="../../core.html#moro.core.RigidBody2D.draw">[docs]</a>
-    <span class="k">def</span> <span class="nf">draw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span><span class="n">kaxis</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Draw the rigid body</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">X</span><span class="p">,</span><span class="n">Y</span> <span class="o">=</span> <span class="p">[],[]</span>
-        <span class="n">cx</span><span class="p">,</span><span class="n">cy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_centroid</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
-            <span class="n">X</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">Y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">color</span><span class="p">,</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span><span class="n">cy</span><span class="p">,</span><span class="s2">&quot;r.&quot;</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>
-        
-        <span class="n">O</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
-        <span class="n">U</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">V</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">U</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">U</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> 
-                   <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">kaxis</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">O</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">V</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">V</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> 
-                   <span class="n">color</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">1001</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">kaxis</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span></div>
-
-
-    <span class="k">def</span> <span class="nf">_gca</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span>
-
-<div class="viewcode-block" id="RigidBody2D.get_centroid">
-<a class="viewcode-back" href="../../core.html#moro.core.RigidBody2D.get_centroid">[docs]</a>
-    <span class="k">def</span> <span class="nf">get_centroid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the centroid of the rigid body</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">)</span>
-        <span class="n">sx</span><span class="p">,</span><span class="n">sy</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span><span class="mi">0</span>
-        <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
-            <span class="n">sx</span> <span class="o">+=</span> <span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">sy</span> <span class="o">+=</span> <span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">cx</span> <span class="o">=</span> <span class="n">sx</span><span class="o">/</span><span class="n">n</span>
-        <span class="n">cy</span> <span class="o">=</span> <span class="n">sy</span><span class="o">/</span><span class="n">n</span>
-        <span class="k">return</span> <span class="n">cx</span><span class="p">,</span><span class="n">cy</span></div>
-</div>
 
 
 

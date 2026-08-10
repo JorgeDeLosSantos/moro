@@ -14,6 +14,9 @@ All notable changes to this project will be documented in this file.
 * Support for orthographic and perspective camera projections.
 * Shared JavaScript infrastructure for Three.js templates.
 * Comprehensive automated test suite for the visualization module.
+* `Robot.model_summary()` to inspect the modeling state and distinguish explicitly-set parameters from auto-generated defaults.
+* Public homogeneous transformation helpers: `rot2htm()`, `rt2htm()`, `htm2rot()`, `htm2tra()` and `invhtm()`.
+* Tests covering axis-angle conversion, skew-symmetric matrices and basic homogeneous transformation operations.
 
 ### Changed
 
@@ -22,6 +25,12 @@ All notable changes to this project will be documented in this file.
 * Improved Three.js animation performance by updating existing scene objects instead of recreating them every frame.
 * Simplified the visualization API by removing notebook-specific rendering methods in favor of a unified interface.
 * HTML templates are now packaged as library resources and loaded through `importlib.resources`.
+* Documented the default-values policy: intrinsic link parameters (`masses`, `inertia_tensors`) may auto-provide symbolic placeholders, while problem/environment configuration (`cm_positions`, `gravity`) always requires explicit values.
+* `inertia_tensors = None` now auto-generates diagonal symbolic tensors instead of raising an obscure TypeError; the helper was renamed to the internal `_generate_diagonal_inertia_tensors()` (stores the tensors directly, with no return value).
+* `axa2rot()` now uses Rodrigues' matrix formula and validates 3D vector inputs explicitly.
+* `skew()` now accepts the same 3D vector formats as `axa2rot()`: 3-element lists, 3-element tuples, column matrices and row matrices.
+* `htmrot()` now reuses the public `rot2htm()` helper.
+* Cleaned up the transformations API by replacing wildcard imports with explicit imports and refreshing related docstrings.
 
 ### Fixed
 
@@ -29,6 +38,14 @@ All notable changes to this project will be documented in this file.
 * Fixed animation scaling to remain consistent across all frames.
 * Fixed packaging of visualization templates for installation from GitHub and PyPI.
 * Improved synchronization between robot data and rendered scene during animations.
+* Fixed a stale cache for `r_cm` (and the `J_cm`/`Jv_cm`/`Jw_cm` family) when `cm_positions` changes: the kinematics cache is now invalidated too.
+* `joint_type` is now validated and case-insensitively normalized to `"r"/"p"`; invalid values raise a clear `ValueError` instead of silently treating the joint as prismatic.
+* `qis_range` now initializes cleanly and raises a clear `ValueError` when read before being set; the setter stores the assigned value (previously it stored a nested args tuple and reading it raised `AttributeError`).
+* `cm_positions` now accepts tuples without an item-assignment `TypeError` (the caller's container is no longer mutated in place).
+* `T_ij(i, j)` for `i < j` now uses the analytic inverse of a homogeneous transform instead of the costly symbolic matrix inverse (much faster, with cleaner expressions).
+* Velocity-dependent methods (`w`, `v_cm`, `coriolis_matrix` and those built on them) now emit a `UserWarning` when joint variables are static (not time-dependent), instead of silently returning incorrect dynamics.
+* `axa2rot()` now rejects the zero vector with a clear `ValueError`.
+* `axa2rot()` and `skew()` now reject invalid vector dimensions with descriptive errors instead of relying on internal SymPy exceptions.
 
 ---
 

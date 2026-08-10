@@ -3,9 +3,10 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Python Module Index &mdash; moro 0.3.0 documentation</title>
+  <title>The abc module &mdash; moro 0.3.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b76e3c8a" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
@@ -18,9 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
- 
-
-
+    <link rel="prev" title="The util module" href="util.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -43,7 +42,7 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
@@ -52,7 +51,7 @@
 <li class="toctree-l1"><a class="reference internal" href="inverse_kinematics.html">The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="visualization.html">The <code class="code docutils literal notranslate"><span class="pre">visualization</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="abc.html">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</a></li>
 </ul>
 
         </div>
@@ -69,8 +68,9 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Python Module Index</li>
+      <li class="breadcrumb-item active">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</li>
       <li class="wy-breadcrumbs-aside">
+            <a href="_sources/abc.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -78,59 +78,19 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-
-   <h1>Python Module Index</h1>
-
-   <div class="modindex-jumpbox">
-   <a href="#cap-m"><strong>m</strong></a>
-   </div>
-
-   <table class="indextable modindextable">
-     <tr class="pcap"><td></td><td>&#160;</td><td></td></tr>
-     <tr class="cap" id="cap-m"><td></td><td>
-       <strong>m</strong></td><td></td></tr>
-     <tr>
-       <td><img src="_static/minus.png" class="toggler"
-              id="toggle-1" style="display: none" alt="-" /></td>
-       <td>
-       <code class="xref">moro</code></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="abc.html#module-moro.abc"><code class="xref">moro.abc</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="core.html#module-moro.core"><code class="xref">moro.core</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="inverse_kinematics.html#module-moro.inverse_kinematics"><code class="xref">moro.inverse_kinematics</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="transformations.html#module-moro.transformations"><code class="xref">moro.transformations</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="util.html#module-moro.util"><code class="xref">moro.util</code></a></td><td>
-       <em></em></td></tr>
-     <tr class="cg-1">
-       <td></td>
-       <td>&#160;&#160;&#160;
-       <a href="visualization.html#module-moro.visualization"><code class="xref">moro.visualization</code></a></td><td>
-       <em></em></td></tr>
-   </table>
+  <section id="the-abc-module">
+<h1>The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module<a class="headerlink" href="#the-abc-module" title="Link to this heading"></a></h1>
+<p>This module defines the symbolic variables commonly used for kinematic and
+dynamic modeling of serial robots. These symbols can be imported directly
+and used with <a class="reference internal" href="core.html#moro.core.Robot" title="moro.core.Robot"><code class="xref py py-class docutils literal notranslate"><span class="pre">moro.core.Robot</span></code></a> and the rest of the library.</p>
+<span class="target" id="module-moro.abc"></span></section>
 
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="util.html" class="btn btn-neutral float-left" title="The util module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
 
   <hr/>
 

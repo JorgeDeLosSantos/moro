@@ -1,0 +1,505 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The inverse_kinematics module &mdash; moro 0.3.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b76e3c8a" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=e259d695"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The visualization module" href="visualization.html" />
+    <link rel="prev" title="The transformations module" href="transformations.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            moro
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transformations.html">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#moro.inverse_kinematics.IKSolution"><code class="docutils literal notranslate"><span class="pre">IKSolution</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKSolution.converged"><code class="docutils literal notranslate"><span class="pre">IKSolution.converged</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKSolution.error"><code class="docutils literal notranslate"><span class="pre">IKSolution.error</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKSolution.iterations"><code class="docutils literal notranslate"><span class="pre">IKSolution.iterations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKSolution.message"><code class="docutils literal notranslate"><span class="pre">IKSolution.message</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKSolution.method"><code class="docutils literal notranslate"><span class="pre">IKSolution.method</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKSolution.q"><code class="docutils literal notranslate"><span class="pre">IKSolution.q</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKSolution.residual"><code class="docutils literal notranslate"><span class="pre">IKSolution.residual</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.inverse_kinematics.IKTrajectorySolution"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKTrajectorySolution.converged"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution.converged</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKTrajectorySolution.errors"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution.errors</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKTrajectorySolution.failed_index"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution.failed_index</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKTrajectorySolution.iterations"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution.iterations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKTrajectorySolution.message"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution.message</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKTrajectorySolution.qs"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution.qs</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moro.inverse_kinematics.IKTrajectorySolution.solutions"><code class="docutils literal notranslate"><span class="pre">IKTrajectorySolution.solutions</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.inverse_kinematics.solve_position_ik"><code class="docutils literal notranslate"><span class="pre">solve_position_ik()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.inverse_kinematics.solve_position_trajectory"><code class="docutils literal notranslate"><span class="pre">solve_position_trajectory()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">The <code class="code docutils literal notranslate"><span class="pre">visualization</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="abc.html">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">moro</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/inverse_kinematics.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="the-inverse-kinematics-module">
+<h1>The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module<a class="headerlink" href="#the-inverse-kinematics-module" title="Link to this heading"></a></h1>
+<p>This module provides numerical solvers for the position inverse kinematics
+problem of serial robots. Three methods are available: Newton-Raphson,
+Levenberg-Marquardt (default), and Cyclic Coordinate Descent (CCD).</p>
+<p id="module-moro.inverse_kinematics">Numython R&amp;D, (c) 2026
+Moro is a Python library for kinematic and dynamic modeling of serial robots. 
+This library has been designed, mainly, for academic and research purposes, 
+using SymPy as base library.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKSolution">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">moro.inverse_kinematics.</span></span><span class="sig-name descname"><span class="pre">IKSolution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">converged</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'lm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">residual</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/inverse_kinematics.html#IKSolution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.inverse_kinematics.IKSolution" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Represents the result of a position inverse kinematics solve.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>q</strong><span class="classifier">list</span></dt><dd><p>Joint variables for the final solver state.</p>
+</dd>
+<dt><strong>converged</strong><span class="classifier">bool</span></dt><dd><p>Whether the solver reached the requested tolerance.</p>
+</dd>
+<dt><strong>iterations</strong><span class="classifier">int</span></dt><dd><p>Number of completed global iterations.</p>
+</dd>
+<dt><strong>error</strong><span class="classifier">float</span></dt><dd><p>Final position error norm. It equals <code class="docutils literal notranslate"><span class="pre">norm(residual)</span></code> when
+<code class="docutils literal notranslate"><span class="pre">residual</span></code> is finite; otherwise it is <code class="docutils literal notranslate"><span class="pre">np.inf</span></code>.</p>
+</dd>
+<dt><strong>method</strong><span class="classifier">str</span></dt><dd><p>Solver method used (“newton”, “lm”, or “ccd”).</p>
+</dd>
+<dt><strong>residual</strong><span class="classifier">list, optional</span></dt><dd><p>Final position residual <code class="docutils literal notranslate"><span class="pre">target_position</span> <span class="pre">-</span> <span class="pre">current_position</span></code>.
+It has three elements when available, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for numerical
+failures where no finite residual can be computed.</p>
+</dd>
+<dt><strong>message</strong><span class="classifier">str</span></dt><dd><p>Human-readable solver outcome message.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKSolution.converged">
+<span class="sig-name descname"><span class="pre">converged</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKSolution.converged" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKSolution.error">
+<span class="sig-name descname"><span class="pre">error</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKSolution.error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKSolution.iterations">
+<span class="sig-name descname"><span class="pre">iterations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKSolution.iterations" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKSolution.message">
+<span class="sig-name descname"><span class="pre">message</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKSolution.message" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKSolution.method">
+<span class="sig-name descname"><span class="pre">method</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'lm'</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKSolution.method" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKSolution.q">
+<span class="sig-name descname"><span class="pre">q</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKSolution.q" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKSolution.residual">
+<span class="sig-name descname"><span class="pre">residual</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKSolution.residual" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKTrajectorySolution">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">moro.inverse_kinematics.</span></span><span class="sig-name descname"><span class="pre">IKTrajectorySolution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solutions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">converged</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failed_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/inverse_kinematics.html#IKTrajectorySolution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.inverse_kinematics.IKTrajectorySolution" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Represents the global result of solving a sequence of position IK targets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>solutions</strong><span class="classifier">list of IKSolution</span></dt><dd><p>Per-target IK results in processing order. The list includes the
+failing solution when convergence stops at an intermediate target.
+It always contains at least one result.</p>
+</dd>
+<dt><strong>converged</strong><span class="classifier">bool</span></dt><dd><p>True only when all processed targets converged; a converged trajectory
+requires all individual solutions to be converged.</p>
+</dd>
+<dt><strong>failed_index</strong><span class="classifier">int, optional</span></dt><dd><p>Index of the first non-converged target. It is required for a failed
+trajectory and is None when all targets converged. The referenced
+solution is non-converged, is the final processed solution, and all
+previous solutions are converged.</p>
+</dd>
+<dt><strong>message</strong><span class="classifier">str</span></dt><dd><p>Short global outcome message.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKTrajectorySolution.converged">
+<span class="sig-name descname"><span class="pre">converged</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKTrajectorySolution.converged" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKTrajectorySolution.errors">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">errors</span></span><a class="headerlink" href="#moro.inverse_kinematics.IKTrajectorySolution.errors" title="Link to this definition"></a></dt>
+<dd><p>Return per-target final error norms in processing order.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKTrajectorySolution.failed_index">
+<span class="sig-name descname"><span class="pre">failed_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKTrajectorySolution.failed_index" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKTrajectorySolution.iterations">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">iterations</span></span><a class="headerlink" href="#moro.inverse_kinematics.IKTrajectorySolution.iterations" title="Link to this definition"></a></dt>
+<dd><p>Return per-target iteration counts in processing order.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKTrajectorySolution.message">
+<span class="sig-name descname"><span class="pre">message</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKTrajectorySolution.message" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKTrajectorySolution.qs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qs</span></span><a class="headerlink" href="#moro.inverse_kinematics.IKTrajectorySolution.qs" title="Link to this definition"></a></dt>
+<dd><p>Return per-target joint vectors in processing order.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.IKTrajectorySolution.solutions">
+<span class="sig-name descname"><span class="pre">solutions</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span></em><a class="headerlink" href="#moro.inverse_kinematics.IKTrajectorySolution.solutions" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.solve_position_ik">
+<span class="sig-prename descclassname"><span class="pre">moro.inverse_kinematics.</span></span><span class="sig-name descname"><span class="pre">solve_position_ik</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">robot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_position</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">joint_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error_change_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stagnation_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/inverse_kinematics.html#solve_position_ik"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.inverse_kinematics.solve_position_ik" title="Link to this definition"></a></dt>
+<dd><p>Solve the position inverse kinematics problem using Newton-Raphson,
+Levenberg-Marquardt, or Cyclic Coordinate Descent (CCD).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>robot</strong><span class="classifier">Robot</span></dt><dd><p>A Robot instance with forward kinematics and Jacobian defined.</p>
+</dd>
+<dt><strong>target_position</strong><span class="classifier">list, tuple or numpy.ndarray</span></dt><dd><p>Desired end-effector position <span class="math notranslate nohighlight">\([x, y, z]\)</span>.</p>
+</dd>
+<dt><strong>q0</strong><span class="classifier">list or numpy.ndarray, optional</span></dt><dd><p>Initial guess for joint variables. If None, a random guess 
+within joint limits is generated.</p>
+</dd>
+<dt><strong>joint_limits</strong><span class="classifier">list of tuples, optional</span></dt><dd><p>Joint limits as <code class="docutils literal notranslate"><span class="pre">[(q1_min,</span> <span class="pre">q1_max),</span> <span class="pre">(q2_min,</span> <span class="pre">q2_max),</span> <span class="pre">...]</span></code>.
+If None, <code class="docutils literal notranslate"><span class="pre">robot.joint_limits</span></code> is used.</p>
+</dd>
+<dt><strong>tol</strong><span class="classifier">float, optional</span></dt><dd><p>Convergence tolerance on the position error norm. Default is 1e-6.</p>
+</dd>
+<dt><strong>max_iter</strong><span class="classifier">int, optional</span></dt><dd><p>Maximum number of iterations. Default is 100 for Newton and LM,
+500 for CCD.</p>
+</dd>
+<dt><strong>method</strong><span class="classifier">str, optional</span></dt><dd><p>Solver method: <code class="docutils literal notranslate"><span class="pre">&quot;newton&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;lm&quot;</span></code> (Levenberg-Marquardt), or
+<code class="docutils literal notranslate"><span class="pre">&quot;ccd&quot;</span></code> (Cyclic Coordinate Descent). Default is <code class="docutils literal notranslate"><span class="pre">&quot;lm&quot;</span></code>.</p>
+</dd>
+<dt><strong>damping</strong><span class="classifier">float, optional</span></dt><dd><p>Initial damping parameter <span class="math notranslate nohighlight">\(\lambda\)</span> for Levenberg-Marquardt.
+Only used when <code class="docutils literal notranslate"><span class="pre">method=&quot;lm&quot;</span></code>. Default is 1.0.</p>
+</dd>
+<dt><strong>damping_scale</strong><span class="classifier">float, optional</span></dt><dd><p>Scaling factor for the damping parameter in Levenberg-Marquardt.
+Only used when <code class="docutils literal notranslate"><span class="pre">method=&quot;lm&quot;</span></code>. Default is 0.5.</p>
+</dd>
+<dt><strong>parameters</strong><span class="classifier">dict-like, optional</span></dt><dd><p>Symbol substitutions for geometric constants and other non-joint
+symbols used by IK expressions. This mapping is applied locally using
+SymPy <code class="docutils literal notranslate"><span class="pre">subs</span></code> and does not modify <code class="docutils literal notranslate"><span class="pre">robot</span></code> or its cached expressions.</p>
+</dd>
+<dt><strong>random_state</strong><span class="classifier">None, int, or numpy.random.Generator, optional</span></dt><dd><p>Random state used only when <code class="docutils literal notranslate"><span class="pre">q0</span> <span class="pre">is</span> <span class="pre">None</span></code>. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, a local
+generator from <code class="docutils literal notranslate"><span class="pre">np.random.default_rng()</span></code> is used. Integer seeds
+provide reproducible random initial guesses.</p>
+</dd>
+<dt><strong>step_tol</strong><span class="classifier">float, optional</span></dt><dd><p>Stagnation threshold for effective joint movement. The effective step
+is measured after applying joint limits:
+<code class="docutils literal notranslate"><span class="pre">norm(q_trial</span> <span class="pre">-</span> <span class="pre">q_current)</span></code> for Newton/LM and
+<code class="docutils literal notranslate"><span class="pre">norm(q_after_sweep</span> <span class="pre">-</span> <span class="pre">q_before_sweep)</span></code> for CCD.
+Must satisfy <code class="docutils literal notranslate"><span class="pre">step_tol</span> <span class="pre">&gt;=</span> <span class="pre">0</span></code>.</p>
+</dd>
+<dt><strong>error_change_tol</strong><span class="classifier">float, optional</span></dt><dd><p>Stagnation threshold for error improvement. If
+<code class="docutils literal notranslate"><span class="pre">previous_error</span> <span class="pre">-</span> <span class="pre">current_error</span> <span class="pre">&lt;=</span> <span class="pre">error_change_tol</span></code> consecutively,
+the solver can terminate due to stagnation.
+Must satisfy <code class="docutils literal notranslate"><span class="pre">error_change_tol</span> <span class="pre">&gt;=</span> <span class="pre">0</span></code>.</p>
+</dd>
+<dt><strong>stagnation_iterations</strong><span class="classifier">int, optional</span></dt><dd><p>Number of consecutive stalled iterations (or CCD sweeps) required
+before returning a stagnation result. Must be an integer &gt;= 1.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>IKSolution</dt><dd><p>An object containing the final joint variables, convergence status,
+iteration count, final error norm, method, residual, and message.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If inputs are invalid, if unresolved non-joint symbols remain in IK
+expressions, or if finite numeric functions cannot be built.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p><strong>Newton-Raphson</strong> (<code class="docutils literal notranslate"><span class="pre">method=&quot;newton&quot;</span></code>):</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{q}_{k+1} = \mathbf{q}_k + 
+\mathbf{J}_p^\dagger(\mathbf{q}_k) \, 
+(\mathbf{p}_d - \mathbf{f}(\mathbf{q}_k))\]</div>
+<p><strong>Levenberg-Marquardt</strong> (<code class="docutils literal notranslate"><span class="pre">method=&quot;lm&quot;</span></code>, default):</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{q}_{k+1} = \mathbf{q}_k + 
+(\mathbf{J}_p^T \mathbf{J}_p + \lambda^2 \mathbf{I})^{-1}
+\mathbf{J}_p^T \, (\mathbf{p}_d - \mathbf{f}(\mathbf{q}_k))\]</div>
+<p><strong>CCD</strong> (<code class="docutils literal notranslate"><span class="pre">method=&quot;ccd&quot;</span></code>) adjusts one joint at a time from the
+end-effector toward the base. For each revolute joint it computes 
+the angle that rotates the end-effector toward the target in the 
+plane perpendicular to the joint axis. For prismatic joints, it 
+slides along the axis to reduce the error. CCD does not use a 
+Jacobian matrix and is robust near singularities, but converges 
+linearly.</p>
+<p><code class="docutils literal notranslate"><span class="pre">tol</span></code> is expressed in the same linear units as the robot DH parameters
+and <code class="docutils literal notranslate"><span class="pre">target_position</span></code>.</p>
+<p>Joint limits are validated and used to clip every joint update. If <code class="docutils literal notranslate"><span class="pre">q0</span></code>
+is provided, it is validated and clipped to joint limits before iterations.</p>
+<p><code class="docutils literal notranslate"><span class="pre">residual</span></code> is the 3D vector <code class="docutils literal notranslate"><span class="pre">target_position</span> <span class="pre">-</span> <span class="pre">current_position</span></code> at
+termination whenever a finite value is available. <code class="docutils literal notranslate"><span class="pre">error</span></code> is the norm
+of that residual when available; otherwise, <code class="docutils literal notranslate"><span class="pre">error</span></code> is <code class="docutils literal notranslate"><span class="pre">np.inf</span></code> and
+<code class="docutils literal notranslate"><span class="pre">residual</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> (for example, after numerical failures).</p>
+<p><code class="docutils literal notranslate"><span class="pre">message</span></code> is a stable short description of the solver outcome
+(converged, maximum iterations, stagnation reason, or numerical failure).</p>
+<p>Stagnation can stop the solver early when the effective step becomes too
+small or the position error stops improving for
+<code class="docutils literal notranslate"><span class="pre">stagnation_iterations</span></code> consecutive iterations/sweeps.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">q0</span> <span class="pre">is</span> <span class="pre">None</span></code>, random initialization is sampled with a local NumPy
+Generator, so integer <code class="docutils literal notranslate"><span class="pre">random_state</span></code> values make initialization
+reproducible without changing NumPy’s global random state.</p>
+<p><code class="docutils literal notranslate"><span class="pre">iterations</span></code> counts completed global algorithm steps: Newton/LM count
+one per attempted update; CCD counts one per full sweep from joint n to 1.
+Therefore, if the initial guess already satisfies the tolerance,
+<code class="docutils literal notranslate"><span class="pre">iterations</span></code> is 0. If convergence is not reached, <code class="docutils literal notranslate"><span class="pre">iterations</span></code> equals
+the number of completed attempts/sweeps at termination (or <code class="docutils literal notranslate"><span class="pre">max_iter</span></code>
+when the iteration limit is reached).</p>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">moro</span> <span class="k">as</span> <span class="nn">mr</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">moro.abc</span> <span class="kn">import</span> <span class="n">l1</span><span class="p">,</span> <span class="n">l2</span><span class="p">,</span> <span class="n">q1</span><span class="p">,</span> <span class="n">q2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">moro.inverse_kinematics</span> <span class="kn">import</span> <span class="n">solve_position_ik</span>
+<span class="gp">&gt;&gt;&gt; </span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># 2R planar robot</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rr</span> <span class="o">=</span> <span class="n">mr</span><span class="o">.</span><span class="n">Robot</span><span class="p">((</span><span class="n">l1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">q1</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">q2</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Levenberg-Marquardt (default)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sol</span> <span class="o">=</span> <span class="n">solve_position_ik</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">rr</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">q0</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="n">l1</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">l2</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Reproducible random initialization (used only when q0 is None)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sol</span> <span class="o">=</span> <span class="n">solve_position_ik</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">rr</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="n">l1</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">l2</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Newton-Raphson</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sol</span> <span class="o">=</span> <span class="n">solve_position_ik</span><span class="p">(</span><span class="n">rr</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">q0</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+<span class="gp">... </span>                        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;newton&quot;</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="n">l1</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">l2</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># CCD</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sol</span> <span class="o">=</span> <span class="n">solve_position_ik</span><span class="p">(</span><span class="n">rr</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">q0</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+<span class="gp">... </span>                        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ccd&quot;</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="n">l1</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">l2</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="moro.inverse_kinematics.solve_position_trajectory">
+<span class="sig-prename descclassname"><span class="pre">moro.inverse_kinematics.</span></span><span class="sig-name descname"><span class="pre">solve_position_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">robot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">joint_limits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error_change_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stagnation_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/inverse_kinematics.html#solve_position_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.inverse_kinematics.solve_position_trajectory" title="Link to this definition"></a></dt>
+<dd><p>Solve position IK for a sequence of Cartesian position targets.</p>
+<p>This function is a thin orchestration layer over <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.
+It solves each target sequentially and reuses each converged solution as
+the initial guess for the next target.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>robot</strong><span class="classifier">Robot</span></dt><dd><p>Robot model with forward kinematics and Jacobian support.</p>
+</dd>
+<dt><strong>target_positions</strong><span class="classifier">iterable or numpy.ndarray</span></dt><dd><p>Sequence of position targets with shape <code class="docutils literal notranslate"><span class="pre">(m,</span> <span class="pre">3)</span></code>. A single vector
+with shape <code class="docutils literal notranslate"><span class="pre">(3,)</span></code> is rejected to avoid ambiguity with
+<code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>q0</strong><span class="classifier">list or numpy.ndarray</span></dt><dd><p>Initial joint seed for the first target. This argument is required.</p>
+</dd>
+<dt><strong>parameters</strong><span class="classifier">dict-like, optional</span></dt><dd><p>Symbol substitutions passed directly to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>method</strong><span class="classifier">str, optional</span></dt><dd><p>Solver method passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>joint_limits</strong><span class="classifier">list of tuples, optional</span></dt><dd><p>Joint limits passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>tol</strong><span class="classifier">float, optional</span></dt><dd><p>Position error tolerance passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>max_iter</strong><span class="classifier">int, optional</span></dt><dd><p>Maximum iterations passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>damping</strong><span class="classifier">float, optional</span></dt><dd><p>LM damping parameter passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>damping_scale</strong><span class="classifier">float, optional</span></dt><dd><p>LM damping scale passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>random_state</strong><span class="classifier">None, int, or numpy.random.Generator, optional</span></dt><dd><p>Forwarded for API consistency with <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>. With
+mandatory <code class="docutils literal notranslate"><span class="pre">q0</span></code> and sequential seeding, it typically has no effect.</p>
+</dd>
+<dt><strong>step_tol</strong><span class="classifier">float, optional</span></dt><dd><p>Stagnation step tolerance passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>error_change_tol</strong><span class="classifier">float, optional</span></dt><dd><p>Stagnation error-change tolerance passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+<dt><strong>stagnation_iterations</strong><span class="classifier">int, optional</span></dt><dd><p>Stagnation iteration count passed to <code class="docutils literal notranslate"><span class="pre">solve_position_ik</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>IKTrajectorySolution</dt><dd><p>Trajectory-level result. Processing stops at the first non-converged
+target, and the failing solution is included in <code class="docutils literal notranslate"><span class="pre">solutions</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This utility does not perform interpolation, timing, smoothing, full-pose
+orientation IK, branch optimization, or global trajectory planning.
+Reusing the previous solution can improve local continuity but does not
+guarantee global branch continuity.</p>
+<p>The returned <code class="docutils literal notranslate"><span class="pre">trajectory.qs</span></code> can be used directly as a sequence of joint
+configurations for animation pipelines.</p>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">moro</span> <span class="k">as</span> <span class="nn">mr</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">moro.abc</span> <span class="kn">import</span> <span class="n">l1</span><span class="p">,</span> <span class="n">l2</span><span class="p">,</span> <span class="n">q1</span><span class="p">,</span> <span class="n">q2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">moro.inverse_kinematics</span> <span class="kn">import</span> <span class="n">solve_position_trajectory</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">mr</span><span class="o">.</span><span class="n">Robot</span><span class="p">((</span><span class="n">l1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">q1</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">q2</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">targets</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">1.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">trajectory</span> <span class="o">=</span> <span class="n">solve_position_trajectory</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">robot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">targets</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">q0</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="n">l1</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">l2</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">trajectory</span><span class="o">.</span><span class="n">qs</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="transformations.html" class="btn btn-neutral float-left" title="The transformations module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="visualization.html" class="btn btn-neutral float-right" title="The visualization module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, P.J. De Los Santos.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

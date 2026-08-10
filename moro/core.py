@@ -4,6 +4,9 @@ Moro is a Python library for kinematic and dynamic modeling of serial robots.
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
 """
+import warnings
+import math
+
 import sympy as sp
 from sympy import (
     prod,
@@ -20,6 +23,7 @@ from sympy import (
     MatMul,
 )
 # Moro core dependencies
+from sympy.core.function import AppliedUndef
 from moro.transformations import dh
 from moro.util import (
     vector_in_hcoords,
@@ -55,16 +59,32 @@ class Robot:
     _CACHE_CATEGORIES = ("kinematics", "dynamics")
 
     def __init__(self,*args):
+        if len(args) == 0:
+            raise ValueError("Robot must be initialized with at least one DH parameter row.")
+
         self.Ts = [] # Transformation matrices i to i-1
         self.joint_types = [] # Joint type -> "r" revolute, "p" prismatic
         self._qs = [] # Joint variables
+        self._qis_range = None # qis_range (set via its setter when required)
         self._dh_parameters = [] # Store the DH parameters 
 
-        for k in args:
+        for row_idx, k in enumerate(args, start=1):
+            if not isinstance(k, (list, tuple)):
+                raise ValueError(f"DH parameter row {row_idx} must be a list or tuple.")
+            if len(k) not in (4, 5):
+                raise ValueError(
+                    f"DH parameter row {row_idx} must have exactly 4 or 5 elements "
+                    "(a, alpha, d, theta[, joint_type])."
+                )
             self.Ts.append(dh(k[0],k[1],k[2],k[3])) # Compute Ti->i-1
-            self._dh_parameters.append(k[:4]) # Store the DH parameters as they were passed in the constructor
+            self._dh_parameters.append(tuple(k[:4])) # Store the DH parameters as they were passed in the constructor
             if len(k)>4:
-                self.joint_types.append(k[4])
+                joint_type = str(k[4]).strip().lower()
+                if joint_type not in ("r", "p"):
+                    raise ValueError(
+                        f"Invalid joint type '{k[4]}'. Use 'r' for revolute or 'p' for prismatic."
+                    )
+                self.joint_types.append(joint_type)
             else: # By default, the joint type is assumed to be revolute
                 self.joint_types.append('r')
 
@@ -79,6 +99,13 @@ class Robot:
         self._inertia_tensors = None
         self._cm_positions = None
         self._gravity = None
+        # Flags reporting whether dynamic quantities were explicitly defined (True)
+        # or auto-generated with a documented default assumption (False).
+        self._masses_explicit = False
+        self._inertia_tensors_explicit = False
+        self._cm_positions_explicit = False
+        self._gravity_explicit = False
+        self._joint_limits_explicit = False
         self._set_default_joint_limits() # set default joint-limits on create
 
         # Cache for kinematics and dynamics computations
@@ -86,7 +113,7 @@ class Robot:
 
     @property
     def dh_parameters(self):
-        return self._dh_parameters
+        return list(self._dh_parameters)
     
     @property
     def dh_table(self):
@@ -201,7 +228,10 @@ class Robot:
         if i == j: 
             return eye(4)
         if i < j:
-            return simplify(prod(self.Ts[i:j]).inv())
+            T = prod(self.Ts[i:j])
+            R = T[:3, :3]
+            p = T[:3, 3]
+            return R.T.row_join(-R.T * p).col_join(Matrix([[0, 0, 0, 1]]))
         
         return simplify(prod(self.Ts[j:i]))
 
@@ -240,15 +270,19 @@ class Robot:
     
     @property
     def qs(self):
-        return self._qs
+        return list(self._qs)
     
     @property
     def qis_range(self):
+        if self._qis_range is None:
+            raise ValueError(
+                "qis_range has not been set. Assign a value via the qis_range setter first."
+            )
         return self._qis_range
         
     @qis_range.setter
-    def qis_range(self, *args):
-        self._qis_range = args
+    def qis_range(self, value):
+        self._qis_range = value
 
     @property
     def masses(self):
@@ -264,7 +298,7 @@ class Robot:
         if self._masses is None:
             raise ValueError("Link masses are not defined. Please set them using "
                              "the masses setter.")
-        return self._masses
+        return list(self._masses)
 
     @masses.setter
     def masses(self,masses):
@@ -279,13 +313,39 @@ class Robot:
         """
         if masses is None:
             masses = [ symbols(f"m_{i+1}") for i in range(self.dof) ]
+            self._masses_explicit = False
+        else:
+            self._masses_explicit = True
 
         if len(masses) != self.dof:
             raise ValueError(f"Number of masses must be equal to the number of links ({self.dof}).")
         else:
-            self._masses = masses
+            self._masses = list(masses)
 
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since link masses affect the inertia matrix and potential energy
+
+    def _as_column_vector3(self, value, name):
+        """
+        Convert a 3-component vector-like object to a defensive SymPy Matrix(3, 1).
+        Row matrices with exactly three components are normalized to columns.
+        """
+        try:
+            matrix = Matrix(value)
+        except Exception as exc:
+            raise ValueError(f"{name} must represent a three-dimensional vector.") from exc
+
+        if matrix.shape == (3, 1):
+            return Matrix(matrix)
+        if matrix.shape == (1, 3):
+            return Matrix(matrix.T)
+        if matrix.shape == (3,):
+            return Matrix(matrix).reshape(3, 1)
+        if len(matrix) == 3 and (matrix.rows == 3 or matrix.cols == 3):
+            return Matrix(list(matrix)).reshape(3, 1)
+        raise ValueError(f"{name} must have exactly three components.")
+
+    def _copy_matrix(self, matrix):
+        return Matrix(matrix)
 
     @property
     def inertia_tensors(self):
@@ -304,7 +364,7 @@ class Robot:
         """
         if self._inertia_tensors is None:
             raise ValueError("Inertia tensors are not defined. Please set them using the inertia_tensors setter.")
-        return self._inertia_tensors
+        return [self._copy_matrix(tensor) for tensor in self._inertia_tensors]
     
     @inertia_tensors.setter
     def inertia_tensors(self,tensors):
@@ -324,27 +384,49 @@ class Robot:
         tensors: sympy.matrices.dense.MutableDenseMatrix
             A list containinig `sympy.matrices.dense.MutableDenseMatrix` that 
             corresponds to each inertia tensor w.r.t. {i}'-Frame.
-        """
-        if tensors is not None and len(tensors) != self.dof:
-            raise ValueError(f"Number of inertia tensors must be equal to the number of links ({self.dof}).")
 
-        dof = self.dof
-        self._inertia_tensors = []
-        for k in range(dof):
-            self._inertia_tensors.append( tensors[k] )
-        
+        Notes
+        -----
+        If ``tensors`` is None, diagonal inertia tensors are auto-generated as
+        symbolic variables (assuming zero products of inertia, i.e. symmetric
+        links). This is a modeling assumption; override it by providing explicit
+        tensors when your links are not symmetric.
+        """
+        if tensors is None:
+            self._generate_diagonal_inertia_tensors()
+            self._inertia_tensors_explicit = False
+        elif len(tensors) != self.dof:
+            raise ValueError(f"Number of inertia tensors must be equal to the number of links ({self.dof}).")
+        else:
+            normalized_tensors = []
+            for idx, tensor in enumerate(tensors, start=1):
+                try:
+                    tensor_matrix = Matrix(tensor)
+                except Exception as exc:
+                    raise ValueError(f"Inertia tensor for link {idx} must be convertible to a 3x3 Matrix.") from exc
+                if tensor_matrix.shape != (3, 3):
+                    raise ValueError(
+                        f"Inertia tensor for link {idx} must be a 3x3 matrix; "
+                        f"got shape {tensor_matrix.shape}."
+                    )
+                normalized_tensors.append(Matrix(tensor_matrix))
+            self._inertia_tensors = normalized_tensors
+            self._inertia_tensors_explicit = True
+
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since inertia tensors affect the inertia matrix and Coriolis matrix
 
-    def generate_diagonal_inertia_tensors(self):
+    def _generate_diagonal_inertia_tensors(self):
         """
-        Generate diagonal inertia tensors for each link.
+        Generate diagonal inertia tensors for each link and store them in
+        ``self._inertia_tensors``. Internal helper: diagonal tensors are a
+        modeling assumption (zero products of inertia) for symmetric links.
         """
         inertia_tensors = []
         for k in range(self.dof):
-            Istr = f"I_{{x_{k+1}x_{k+1}}}, I_{{y_{k+1}y_{k+1}}} I_{{z_{k+1}z_{k+1}}}"
+            Istr = f"I_{{x_{k+1}x_{k+1}}}, I_{{y_{k+1}y_{k+1}}}, I_{{z_{k+1}z_{k+1}}}"
             Ix, Iy, Iz = symbols(Istr)
             inertia_tensors.append(diag(Ix, Iy, Iz))
-        return inertia_tensors
+        self._inertia_tensors = inertia_tensors
 
     @property
     def cm_positions(self):
@@ -361,7 +443,7 @@ class Robot:
         """
         if self._cm_positions is None:
             raise ValueError("Center of mass locations are not defined. Please set them using the cm_positions setter.")
-        return self._cm_positions
+        return [self._copy_matrix(position) for position in self._cm_positions]
     
     @cm_positions.setter
     def cm_positions(self,positions):
@@ -385,17 +467,12 @@ class Robot:
         if len(positions) != self.dof:
             raise ValueError(f"Number of center of mass locations must be equal to the number of links ({self.dof}).")
         
-        # Validate that each center of mass location is a 3-element list or tuple
-        for idx, cm in enumerate(positions):
-            if not is_position_vector(cm):
-                raise ValueError(f"Center of mass location for link {idx+1} must be a list or tuple of three elements (x, y, z).")
-        
-        # Convert each center of mass location to a sympy Matrix if it's a list or tuple
-        for idx, cm in enumerate(positions):
-            if not isinstance(cm, Matrix):
-                positions[idx] = Matrix(cm)
-
-        self._cm_positions = positions
+        self._cm_positions = [
+            self._as_column_vector3(cm, f"Center of mass location for link {idx+1}")
+            for idx, cm in enumerate(positions)
+        ]
+        self._cm_positions_explicit = True
+        self._invalidate_kinematics_cache() # CoM affects kinematics-cached quantities (r_cm, J_cm)
         # Invalidate dynamics cache since CoM locations affect the inertia matrix and potential energy
         self._invalidate_dynamics_cache() 
 
@@ -411,7 +488,7 @@ class Robot:
         """
         if self._gravity is None:
             raise ValueError("Gravity acceleration is not defined. Please set it using the gravity setter.")
-        return self._gravity
+        return self._copy_matrix(self._gravity)
 
     @gravity.setter
     def gravity(self,g):
@@ -429,14 +506,8 @@ class Robot:
         >>> RR = Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
         >>> RR.gravity = (0, -g, 0)
         """
-        if len(g) != 3:
-            raise ValueError("Gravity acceleration must have three components (x, y, z).")
-        
-        # Convert g to a sympy Matrix if it's a list or tuple
-        if not isinstance(g, Matrix):
-            g = Matrix(g)
-
-        self._gravity = g
+        self._gravity = self._as_column_vector3(g, "Gravity acceleration")
+        self._gravity_explicit = True
         self._invalidate_dynamics_cache() # Invalidate dynamics cache since gravity vector affects potential energy and gravity torque vector
 
     def _r_cm_i(self,i):
@@ -511,6 +582,7 @@ class Robot:
             A column vector 
         """
         self._check_index(i)
+        self._warn_static_joint_variables("v_cm")
         rcm_i = self.r_cm(i)
         vcm_i = rcm_i.diff(t)
         return simplify( vcm_i )
@@ -600,7 +672,7 @@ class Robot:
         """
         self._check_index(i)
         idx = i - 1
-        point_wrt_i = Matrix( point )
+        point_wrt_i = self._as_column_vector3(point, "Point")
         point_wrt_0 = ( self.T_i0(i) * vector_in_hcoords( point_wrt_i ) )[:3,:]
         
         n = self.dof
@@ -709,6 +781,7 @@ class Robot:
             Angular velocity of the [i]-link w.r.t. {0}-Frame.
         """
         self._check_index(i)
+        self._warn_static_joint_variables("w")
         return self._get_cached(
             "kinematics",
             f"w_{i}",
@@ -802,6 +875,7 @@ class Robot:
         if self._masses is None:
             raise ValueError("Link masses are not defined. Please set them using " \
             "the masses setter.")
+        self._check_index(i, name="link")
         return self._masses[i-1]
         
     def inertia_matrix(self):
@@ -864,6 +938,7 @@ class Robot:
             C_{{i,j}} = \\sum_{{k=1}}^n c_{{i,j,k}} \\dot{{q}}_k
             
         """
+        self._warn_static_joint_variables("coriolis_matrix")
         n = self.dof
         M = self.inertia_matrix()
         C = zeros(n)
@@ -871,7 +946,7 @@ class Robot:
             for j in range(1,n+1):
                 C[i-1,j-1] = 0
                 for k in range(1,n+1):
-                    C[i-1,j-1] += self.christoffel_symbols(i,j,k,M) * self.qs[k-1].diff()
+                    C[i-1,j-1] += self.christoffel_symbols(i,j,k,M) * self.q_dot(k)
         return nsimplify(C)
         
     def christoffel_symbols(self,i,j,k,M):
@@ -1018,12 +1093,14 @@ class Robot:
         
         where :math:`\\mathcal{L}` is the Lagrangian of the system, defined as :math:`\\mathcal{L} = \\mathcal{K} - \\mathcal{P}`, where :math:`\\mathcal{K}` is the kinetic energy and :math:`\\mathcal{P}` is the potential energy.
         """
+        self._warn_static_joint_variables("dynamic_model")
         L = self.lagrangian()
         equations = []
         for i in range(self.dof):
             q = self.qs[i]
-            qp = self.qs[i].diff()
-            equations.append( Eq( trigsimp(L.diff(qp).diff(t) - L.diff(q) ), symbols(f"tau_{i+1}") ) ) 
+            qp = self.qs[i].diff(t)
+            dL_dqp = 0 if qp == 0 else L.diff(qp)
+            equations.append( Eq( trigsimp(sp.diff(dL_dqp, t) - L.diff(q) ), symbols(f"tau_{i+1}") ) ) 
             
         return equations
     
@@ -1049,7 +1126,7 @@ class Robot:
         the default limits are (0, 1000) units. If you want to set custom joint limits, 
         you can use the joint_limits setter.
         """
-        return self._joint_limits
+        return list(self._joint_limits)
     
     @joint_limits.setter
     def joint_limits(self,limits):
@@ -1061,10 +1138,33 @@ class Robot:
         """
         if len(limits) != self.dof:
             raise ValueError("The number of joint limits must match DOF.")
-        for limit in limits:
-            if len(limit) != 2:
-                raise ValueError("Each joint-limit should be a 2-tuple.")
-        self._joint_limits = limits
+        validated_limits = []
+        for idx, limit in enumerate(limits, start=1):
+            try:
+                if len(limit) != 2:
+                    raise ValueError
+            except TypeError as exc:
+                raise ValueError(f"Joint limit for joint {idx} must be a 2-tuple (lower, upper).") from exc
+            except ValueError:
+                raise ValueError(f"Joint limit for joint {idx} must be a 2-tuple (lower, upper).")
+
+            lower, upper = limit
+            try:
+                lower_num = float(lower)
+                upper_num = float(upper)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Joint limit for joint {idx} must contain numeric values.") from exc
+
+            if math.isnan(lower_num) or math.isnan(upper_num):
+                raise ValueError(f"Joint limit for joint {idx} cannot contain NaN.")
+            if math.isinf(lower_num) or math.isinf(upper_num):
+                raise ValueError(f"Joint limit for joint {idx} cannot contain infinite values.")
+            if lower_num > upper_num:
+                raise ValueError(f"Joint limit for joint {idx} must satisfy lower <= upper.")
+            validated_limits.append((lower, upper))
+
+        self._joint_limits = validated_limits
+        self._joint_limits_explicit = True
     
     @property
     def _numerical_joint_limits(self):
@@ -1080,9 +1180,56 @@ class Robot:
         robot_type = "".join( self.joint_types ).upper()
         return f"Robot {robot_type}"
 
+    def model_summary(self):
+        """
+        Return a readable summary of the robot's modeling state.
+
+        For each dynamic quantity it reports whether it is explicitly
+        defined, assumed by default (auto-generated symbolic placeholder),
+        or not set. Assumed values correspond to documented modeling
+        assumptions (e.g. diagonal inertia tensors implying zero products
+        of inertia) that should be overridden when they do not hold.
+
+        Returns
+        -------
+        str
+            A multi-line summary.
+        """
+        def _label(explicit, defined, assumed_text):
+            if not defined:
+                return "NOT SET"
+            return "explicit" if explicit else f"assumed ({assumed_text})"
+
+        robot_type = "".join(self.joint_types).upper()
+        lines = [
+            f"Model summary | Robot {robot_type} | DOF = {self.dof}",
+            "  joint_limits     : " + ("custom" if self._joint_limits_explicit else "default"),
+            "  masses           : " + _label(self._masses_explicit, self._masses is not None, "symbolic m_i"),
+            "  inertia_tensors  : " + _label(self._inertia_tensors_explicit, self._inertia_tensors is not None, "diagonal symbolic"),
+            "  cm_positions     : " + _label(self._cm_positions_explicit, self._cm_positions is not None, "-"),
+            "  gravity          : " + _label(self._gravity_explicit, self._gravity is not None, "-"),
+        ]
+        return "\n".join(lines)
+
     # def _repr_latex_(self):
     #     return sp.latex(self.dh_table)
     
+    def _has_static_joint_variables(self):
+        'Return True if any joint variable is a static symbol (not a function of time).'
+        return any(not isinstance(q, AppliedUndef) for q in self._qs)
+
+    def _warn_static_joint_variables(self, operation):
+        'Warn when a velocity-dependent operation is used with static joint variables.'
+        if self._has_static_joint_variables():
+            warnings.warn(
+                f"{operation}() requires time-dependent joint variables, but at "
+                "least one joint variable is a static (non-time) symbol; "
+                "velocity-dependent results may be incorrect. Use dynamicsymbols "
+                "(e.g. moro.abc.q1..q6) for dynamic analyses.",
+                UserWarning,
+                stacklevel=3,
+            )
+
     def _check_index(self, i, name="Link"):
         """
         Check if the index i is a valid link index. If not, raise an appropriate error.

@@ -19,7 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="The util module" href="util.html" />
+    <link rel="next" title="The inverse_kinematics module" href="inverse_kinematics.html" />
     <link rel="prev" title="The core module" href="core.html" /> 
 </head>
 
@@ -45,24 +45,33 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="core.html">The <code class="code docutils literal notranslate"><span class="pre">core</span></code> module</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">The <code class="code docutils literal notranslate"><span class="pre">transformations</span></code> module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.axa2rot"><code class="docutils literal notranslate"><span class="pre">axa2rot()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.dh"><code class="docutils literal notranslate"><span class="pre">dh()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.eul2rot"><code class="docutils literal notranslate"><span class="pre">eul2rot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.transformations.htm2rot"><code class="docutils literal notranslate"><span class="pre">htm2rot()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.transformations.htm2tra"><code class="docutils literal notranslate"><span class="pre">htm2tra()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.htmrot"><code class="docutils literal notranslate"><span class="pre">htmrot()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.htmtra"><code class="docutils literal notranslate"><span class="pre">htmtra()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.transformations.invhtm"><code class="docutils literal notranslate"><span class="pre">invhtm()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.rot"><code class="docutils literal notranslate"><span class="pre">rot()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.rot2axa"><code class="docutils literal notranslate"><span class="pre">rot2axa()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.rot2eul"><code class="docutils literal notranslate"><span class="pre">rot2eul()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.transformations.rot2htm"><code class="docutils literal notranslate"><span class="pre">rot2htm()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.rotx"><code class="docutils literal notranslate"><span class="pre">rotx()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.roty"><code class="docutils literal notranslate"><span class="pre">roty()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.rotz"><code class="docutils literal notranslate"><span class="pre">rotz()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#moro.transformations.rt2htm"><code class="docutils literal notranslate"><span class="pre">rt2htm()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#moro.transformations.skew"><code class="docutils literal notranslate"><span class="pre">skew()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="inverse_kinematics.html">The <code class="code docutils literal notranslate"><span class="pre">inverse_kinematics</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">The <code class="code docutils literal notranslate"><span class="pre">visualization</span></code> module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="util.html">The <code class="code docutils literal notranslate"><span class="pre">util</span></code> module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="abc.html">The <code class="code docutils literal notranslate"><span class="pre">abc</span></code> module</a></li>
 </ul>
 
         </div>
@@ -98,20 +107,22 @@ using SymPy as base library.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.axa2rot">
 <span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">axa2rot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#axa2rot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.axa2rot" title="Link to this definition"></a></dt>
-<dd><p>Given a R^3 vector (k) and an angle (theta), return 
-the SO(3) matrix associated.</p>
-<dl class="field-list">
+<dd><p>Build a rotation matrix from an axis-angle representation.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl>
-<dt><strong>k</strong><span class="classifier"><cite>sympy.matrices.dense.MutableDenseMatrix</cite> or list or tuple</span></dt><dd><p>Axis of rotation, must be a 3D vector. If k is given as a list or tuple, it will be converted to a sympy Matrix.</p>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>k</strong><span class="classifier">list, tuple or sympy Matrix</span></dt><dd><p>Rotation axis. Accepted formats are a 3-element list, a 3-element tuple,
+a column matrix of shape (3, 1), or a row matrix of shape (1, 3). The
+vector is normalized internally to a column matrix. The zero vector is
+rejected because it does not define a rotation axis.</p>
 </dd>
-<dt><strong>theta</strong><span class="classifier">float, int or symbolic</span></dt><dd><p>Rotation angle (given in radians by default).</p>
+<dt><strong>theta</strong><span class="classifier">float, int or symbolic</span></dt><dd><p>Rotation angle in radians.</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl>
-<dt><strong>R</strong><span class="classifier"><cite>sympy.matrices.dense.MutableDenseMatrix</cite></span></dt><dd><p>Rotation matrix in SO(3) corresponding to a rotation of “theta” about the axis defined by “k”.</p>
+<dd class="field-even"><dl class="simple">
+<dt><strong>R</strong><span class="classifier">sympy.matrices.dense.MutableDenseMatrix</span></dt><dd><p>Rotation matrix of shape (3, 3) computed with Rodrigues’ formula.</p>
 </dd>
 </dl>
 </dd>
@@ -172,27 +183,132 @@ the SO(3) matrix associated.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.eul2rot">
 <span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">eul2rot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">phi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">psi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'zxz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#eul2rot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.eul2rot" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Build a rotation matrix from proper Euler angles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>phi</strong><span class="classifier">int, float or symbolic</span></dt><dd><p>First Euler angle.</p>
+</dd>
+<dt><strong>theta</strong><span class="classifier">int, float or symbolic</span></dt><dd><p>Intermediate Euler angle.</p>
+</dd>
+<dt><strong>psi</strong><span class="classifier">int, float or symbolic</span></dt><dd><p>Third Euler angle.</p>
+</dd>
+<dt><strong>seq</strong><span class="classifier">str, optional</span></dt><dd><p>Proper Euler sequence. Supported sequences are <code class="docutils literal notranslate"><span class="pre">&quot;xyx&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;xzx&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;yxy&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;yzy&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;zxz&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;zyz&quot;</span></code>. Matching is
+case-insensitive. Tait-Bryan sequences such as <code class="docutils literal notranslate"><span class="pre">&quot;xyz&quot;</span></code> are not
+supported here.</p>
+</dd>
+<dt><strong>deg</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, the input angles are interpreted as degrees and converted to
+radians before constructing the matrix.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Rotation matrix.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This function uses column vectors and active rotations. For a sequence
+<code class="docutils literal notranslate"><span class="pre">seq=&quot;abc&quot;</span></code>, the convention is defined by the matrix product
+<code class="docutils literal notranslate"><span class="pre">R</span> <span class="pre">=</span> <span class="pre">R_a(phi)</span> <span class="pre">&#64;</span> <span class="pre">R_b(theta)</span> <span class="pre">&#64;</span> <span class="pre">R_c(psi)</span></code>, where each elementary rotation is
+produced by <a class="reference internal" href="#moro.transformations.rot" title="moro.transformations.rot"><code class="xref py py-func docutils literal notranslate"><span class="pre">rot()</span></code></a>. For proper Euler sequences, <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">==</span> <span class="pre">c</span></code>.</p>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">eul2rot</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">pi</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="n">pi</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="s2">&quot;zxz&quot;</span><span class="p">)</span>
+<span class="go">⎡-√2   -√6         ⎤</span>
+<span class="go">⎢────  ────   √3/2 ⎥</span>
+<span class="go">⎢ 4     4          ⎥</span>
+<span class="go">⎢                  ⎥</span>
+<span class="go">⎢-√2    √6         ⎥</span>
+<span class="go">⎢────   ──   -1/2  ⎥</span>
+<span class="go">⎢ 4     4          ⎥</span>
+<span class="go">⎢                  ⎥</span>
+<span class="go">⎢ √6    √2         ⎥</span>
+<span class="go">⎢ ──    ──    1/2  ⎥</span>
+<span class="go">⎣ 4     4          ⎦</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">eul2rot</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">6</span><span class="p">,</span> <span class="n">pi</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span> <span class="n">pi</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="s2">&quot;xyx&quot;</span><span class="p">)</span>
+<span class="go">⎡√2              √2        ⎤</span>
+<span class="go">⎢──      √6/4    ──        ⎥</span>
+<span class="go">⎢2               4         ⎥</span>
+<span class="go">⎢                          ⎥</span>
+<span class="go">⎢√2    3/8 + √3  1   3⋅√3 ⎥</span>
+<span class="go">⎢──    ────────  ─ - ──── ⎥</span>
+<span class="go">⎢4        4      8    8   ⎥</span>
+<span class="go">⎢                          ⎥</span>
+<span class="go">⎢-√6   1   3⋅√3  √3   3/8⎥</span>
+<span class="go">⎢────  ─ + ────  ── - ───⎥</span>
+<span class="go">⎣ 4    8    8    4     4 ⎦</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="moro.transformations.htm2rot">
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">htm2rot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#htm2rot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.htm2rot" title="Link to this definition"></a></dt>
+<dd><p>Extract the rotation block from a homogeneous transformation matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>T</strong><span class="classifier">array-like or sympy Matrix</span></dt><dd><p>Homogeneous transformation matrix. It is converted with <code class="docutils literal notranslate"><span class="pre">Matrix(T)</span></code>
+and must have shape (4, 4). No full SE(3) membership validation is
+performed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Upper-left rotation block of shape (3, 3).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="moro.transformations.htm2tra">
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">htm2tra</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#htm2tra"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.htm2tra" title="Link to this definition"></a></dt>
+<dd><p>Extract the translation vector from a homogeneous transformation matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>T</strong><span class="classifier">array-like or sympy Matrix</span></dt><dd><p>Homogeneous transformation matrix. It is converted with <code class="docutils literal notranslate"><span class="pre">Matrix(T)</span></code>
+and must have shape (4, 4). No full SE(3) membership validation is
+performed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Translation column vector of shape (3, 1).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.htmrot">
 <span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">htmrot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'z'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#htmrot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.htmrot" title="Link to this definition"></a></dt>
-<dd><p>Return a homogeneous transformation matrix that represents a 
-rotation “theta” about “axis”.</p>
+<dd><p>Return a homogeneous transformation matrix for a pure rotation.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl>
-<dt><strong>theta</strong><span class="classifier">float, int or <cite>symbolic</cite></span></dt><dd><p>Rotation angle (given in radians by default)</p>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>theta</strong><span class="classifier">float, int or symbolic</span></dt><dd><p>Rotation angle. By default, the value is interpreted in radians.</p>
 </dd>
-<dt><strong>axis</strong><span class="classifier">str</span></dt><dd><p>Rotation axis</p>
+<dt><strong>axis</strong><span class="classifier">str</span></dt><dd><p>Rotation axis, <code class="docutils literal notranslate"><span class="pre">&quot;x&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;y&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;z&quot;</span></code>. Matching is
+case-insensitive. Default is <code class="docutils literal notranslate"><span class="pre">&quot;z&quot;</span></code>.</p>
 </dd>
-<dt><strong>deg</strong><span class="classifier">bool</span></dt><dd><p>¿Is theta given in degrees?</p>
+<dt><strong>deg</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, <code class="docutils literal notranslate"><span class="pre">theta</span></code> is interpreted as degrees. Default is False.</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl>
-<dt><strong>H</strong><span class="classifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">sympy.matrices.dense.MutableDenseMatrix</span></code></span></dt><dd><p>Homogeneous transformation matrix</p>
+<dt><strong>H</strong><span class="classifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">sympy.matrices.dense.MutableDenseMatrix</span></code></span></dt><dd><p>Homogeneous transformation matrix of shape (4, 4).</p>
 </dd>
 </dl>
 </dd>
@@ -237,14 +353,16 @@ rotation “theta” about “axis”.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.htmtra">
-<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">htmtra</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#htmtra"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.htmtra" title="Link to this definition"></a></dt>
-<dd><p>Calculate the homogeneous transformation matrix of a translation</p>
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">htmtra</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#htmtra"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.htmtra" title="Link to this definition"></a></dt>
+<dd><p>Calculate the homogeneous transformation matrix of a translation.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>*args</strong><span class="classifier">list, tuple, int, float</span></dt><dd><p>Translation vector or components</p>
+<dt><strong>x</strong><span class="classifier">int, float or symbolic, optional</span></dt><dd><p>Translation along the x-axis. Default is 0.</p>
 </dd>
-<dt><strong>**kwargs</strong><span class="classifier">float, int</span></dt><dd><p>dx, dy and dz keyword arguments</p>
+<dt><strong>y</strong><span class="classifier">int, float or symbolic, optional</span></dt><dd><p>Translation along the y-axis. Default is 0.</p>
+</dd>
+<dt><strong>z</strong><span class="classifier">int, float or symbolic, optional</span></dt><dd><p>Translation along the z-axis. Default is 0.</p>
 </dd>
 </dl>
 </dd>
@@ -256,28 +374,16 @@ rotation “theta” about “axis”.</p>
 </dd>
 </dl>
 <p class="rubric">Examples</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">htmtra</span><span class="p">([</span><span class="mi">50</span><span class="p">,</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span><span class="mi">30</span><span class="p">])</span>
-<span class="go">⎡1  0  0   50 ⎤</span>
-<span class="go">⎢             ⎥</span>
-<span class="go">⎢0  1  0  -100⎥</span>
-<span class="go">⎢             ⎥</span>
-<span class="go">⎢0  0  1   30 ⎥</span>
-<span class="go">⎢             ⎥</span>
-<span class="go">⎣0  0  0   1  ⎦</span>
-</pre></div>
-</div>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="o">=</span> <span class="n">symbols</span><span class="p">(</span><span class="s2">&quot;a,b,c&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">htmtra</span><span class="p">([</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span><span class="p">])</span>
-<span class="go">⎡1  0  0  a⎤</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">htmtra</span><span class="p">()</span>
+<span class="go">⎡1  0  0  0⎤</span>
 <span class="go">⎢          ⎥</span>
-<span class="go">⎢0  1  0  b⎥</span>
+<span class="go">⎢0  1  0  0⎥</span>
 <span class="go">⎢          ⎥</span>
-<span class="go">⎢0  0  1  c⎥</span>
+<span class="go">⎢0  0  1  0⎥</span>
 <span class="go">⎢          ⎥</span>
 <span class="go">⎣0  0  0  1⎦</span>
 </pre></div>
 </div>
-<p>Using float/integer arguments:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">htmtra</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="o">-</span><span class="mi">40</span><span class="p">,</span><span class="mi">50</span><span class="p">)</span>
 <span class="go">⎡1  0  0  10 ⎤</span>
 <span class="go">⎢            ⎥</span>
@@ -288,31 +394,72 @@ rotation “theta” about “axis”.</p>
 <span class="go">⎣0  0  0   1 ⎦</span>
 </pre></div>
 </div>
-<p>Using keyword arguments:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">htmtra</span><span class="p">(</span><span class="n">dz</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span><span class="n">dx</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span><span class="n">dy</span><span class="o">=-</span><span class="mi">200</span><span class="p">)</span>
-<span class="go">⎡1  0  0  300 ⎤</span>
-<span class="go">⎢             ⎥</span>
-<span class="go">⎢0  1  0  -200⎥</span>
-<span class="go">⎢             ⎥</span>
-<span class="go">⎢0  0  1  100 ⎥</span>
-<span class="go">⎢             ⎥</span>
-<span class="go">⎣0  0  0   1  ⎦</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">htmtra</span><span class="p">(</span><span class="n">z</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="go">⎡1  0  0   0 ⎤</span>
+<span class="go">⎢            ⎥</span>
+<span class="go">⎢0  1  0   0 ⎥</span>
+<span class="go">⎢            ⎥</span>
+<span class="go">⎢0  0  1  100⎥</span>
+<span class="go">⎢            ⎥</span>
+<span class="go">⎣0  0  0   1 ⎦</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="o">=</span> <span class="n">symbols</span><span class="p">(</span><span class="s2">&quot;a,b,c&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">htmtra</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">a</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">b</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">c</span><span class="p">)</span>
+<span class="go">⎡1  0  0  a⎤</span>
+<span class="go">⎢          ⎥</span>
+<span class="go">⎢0  1  0  b⎥</span>
+<span class="go">⎢          ⎥</span>
+<span class="go">⎢0  0  1  c⎥</span>
+<span class="go">⎢          ⎥</span>
+<span class="go">⎣0  0  0  1⎦</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="moro.transformations.invhtm">
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">invhtm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#invhtm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.invhtm" title="Link to this definition"></a></dt>
+<dd><p>Compute the structured inverse of a homogeneous transformation matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>T</strong><span class="classifier">array-like or sympy Matrix</span></dt><dd><p>Homogeneous transformation matrix. It is converted with <code class="docutils literal notranslate"><span class="pre">Matrix(T)</span></code>
+and must have shape (4, 4). No full SE(3) membership validation is
+performed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Inverse homogeneous transformation matrix computed from the rigid-body
+structure, using <code class="docutils literal notranslate"><span class="pre">R.T</span></code> and <code class="docutils literal notranslate"><span class="pre">-R.T*p</span></code> instead of a general matrix
+inverse.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.rot">
 <span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">rot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'z'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.rot" title="Link to this definition"></a></dt>
-<dd><p>Return a rotation matrix that represents a rotation of “theta” about “axis”.</p>
-<dl class="field-list">
+<dd><p>Return a rotation matrix that represents a rotation of <code class="docutils literal notranslate"><span class="pre">theta</span></code> about <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl>
-<dt><strong>theta</strong><span class="classifier">float, int or <cite>symbolic</cite></span></dt><dd><p>Rotation angle (given in radians by default)</p>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>theta</strong><span class="classifier">float, int or symbolic</span></dt><dd><p>Rotation angle. By default, the value is interpreted in radians.</p>
 </dd>
-<dt><strong>axis</strong><span class="classifier">str</span></dt><dd><p>Rotation axis, “x”, “y” or “z” (default is “z”)</p>
+<dt><strong>axis</strong><span class="classifier">str</span></dt><dd><p>Rotation axis, <code class="docutils literal notranslate"><span class="pre">&quot;x&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;y&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;z&quot;</span></code>. Matching is
+case-insensitive. Default is <code class="docutils literal notranslate"><span class="pre">&quot;z&quot;</span></code>.</p>
 </dd>
-<dt><strong>deg</strong><span class="classifier">bool</span></dt><dd><p>¿Is theta given in degrees?, False is default value.</p>
+<dt><strong>deg</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, <code class="docutils literal notranslate"><span class="pre">theta</span></code> is interpreted as degrees. Default is False.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Rotation matrix of shape (3, 3).</p>
 </dd>
 </dl>
 </dd>
@@ -321,22 +468,26 @@ rotation “theta” about “axis”.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.rot2axa">
-<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">rot2axa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rot2axa"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.rot2axa" title="Link to this definition"></a></dt>
-<dd><p>Given a SO(3) matrix return the axis-angle representation.</p>
-<dl class="field-list">
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">rot2axa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-09</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rot2axa"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.rot2axa" title="Link to this definition"></a></dt>
+<dd><p>Return the axis-angle representation of a rotation matrix.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl>
-<dt><strong>R</strong><span class="classifier"><cite>sympy.matrices.dense.MutableDenseMatrix</cite></span></dt><dd><p>Rotation matrix in SO(3).</p>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>R</strong><span class="classifier">sympy Matrix</span></dt><dd><p>Rotation matrix in SO(3).</p>
 </dd>
-<dt><strong>deg</strong><span class="classifier">bool</span></dt><dd><p>If True, the angle is returned in degrees. By default, it is False (angle in radians or symbolic).</p>
+<dt><strong>deg</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, the angle is returned in degrees. Default is False.</p>
+</dd>
+<dt><strong>tol</strong><span class="classifier">float, optional</span></dt><dd><p>Positive tolerance used to validate numeric rotation matrices, classify
+angles close to 0, classify angles close to pi, and tolerate small
+floating-point errors in trigonometric quantities. Default is 1e-9.</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl>
-<dt><strong>k</strong><span class="classifier"><cite>sympy.matrices.dense.MutableDenseMatrix</cite></span></dt><dd><p>Axis of rotation, a 3D vector.</p>
+<dd class="field-even"><dl class="simple">
+<dt><strong>k</strong><span class="classifier">sympy.matrices.dense.MutableDenseMatrix</span></dt><dd><p>Axis of rotation, a 3D vector.</p>
 </dd>
-<dt><strong>theta</strong><span class="classifier">float, int or symbolic</span></dt><dd><p>Rotation angle (given in radians by default, or symbolic).</p>
+<dt><strong>theta</strong><span class="classifier">float, int or symbolic</span></dt><dd><p>Rotation angle in radians by default, or in degrees when <code class="docutils literal notranslate"><span class="pre">deg=True</span></code>.</p>
 </dd>
 </dl>
 </dd>
@@ -345,8 +496,65 @@ rotation “theta” about “axis”.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.rot2eul">
-<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">rot2eul</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'zxz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rot2eul"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.rot2eul" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">rot2eul</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'zxz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-09</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rot2eul"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.rot2eul" title="Link to this definition"></a></dt>
+<dd><p>Calculate proper Euler angles from a rotation matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>R</strong><span class="classifier">matrix-like, shape (3, 3)</span></dt><dd><p>Rotation matrix. The function validates only that the input has shape
+<code class="docutils literal notranslate"><span class="pre">(3,</span> <span class="pre">3)</span></code>; it does not yet perform a full SO(3) membership check.</p>
+</dd>
+<dt><strong>seq</strong><span class="classifier">str, optional</span></dt><dd><p>Proper Euler sequence. Supported sequences are <code class="docutils literal notranslate"><span class="pre">&quot;xyx&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;xzx&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;yxy&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;yzy&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;zxz&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;zyz&quot;</span></code>. Matching is
+case-insensitive.</p>
+</dd>
+<dt><strong>deg</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, returned angles are converted from radians to degrees.</p>
+</dd>
+<dt><strong>tol</strong><span class="classifier">float, optional</span></dt><dd><p>Positive numerical tolerance used only for floating-point classification
+near the singularities <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">=</span> <span class="pre">0</span></code> and <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">=</span> <span class="pre">pi</span></code> and for clipping
+small numerical excursions of <code class="docutils literal notranslate"><span class="pre">cos(theta)</span></code> outside <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>list of tuple</dt><dd><p>In the general case, returns two equivalent solutions
+<code class="docutils literal notranslate"><span class="pre">[(phi1,</span> <span class="pre">theta1,</span> <span class="pre">psi1),</span> <span class="pre">(phi2,</span> <span class="pre">theta2,</span> <span class="pre">psi2)]</span></code>. In singular cases,
+returns a single representative solution with <code class="docutils literal notranslate"><span class="pre">psi</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The convention matches <a class="reference internal" href="#moro.transformations.eul2rot" title="moro.transformations.eul2rot"><code class="xref py py-func docutils literal notranslate"><span class="pre">eul2rot()</span></code></a>: column vectors, active rotations and
+<code class="docutils literal notranslate"><span class="pre">R</span> <span class="pre">=</span> <span class="pre">R_a(phi)</span> <span class="pre">&#64;</span> <span class="pre">R_b(theta)</span> <span class="pre">&#64;</span> <span class="pre">R_a(psi)</span></code> for <code class="docutils literal notranslate"><span class="pre">seq=&quot;aba&quot;</span></code>. Euler angle
+representations are not unique; both general-case solutions reconstruct the
+same matrix, the second solution may contain a negative intermediate angle,
+and no additional range normalization is applied. At singularities, <code class="docutils literal notranslate"><span class="pre">phi</span></code>
+and <code class="docutils literal notranslate"><span class="pre">psi</span></code> are not independently determined; setting <code class="docutils literal notranslate"><span class="pre">psi</span> <span class="pre">=</span> <span class="pre">0</span></code> is only a
+representative convention.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="moro.transformations.rot2htm">
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">rot2htm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rot2htm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.rot2htm" title="Link to this definition"></a></dt>
+<dd><p>Build a homogeneous transformation matrix from a rotation matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>R</strong><span class="classifier">array-like or sympy Matrix</span></dt><dd><p>Rotation block. It is converted with <code class="docutils literal notranslate"><span class="pre">Matrix(R)</span></code> and must have shape
+(3, 3). No full SO(3) membership validation is performed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Homogeneous transformation matrix with zero translation and shape (4, 4).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="moro.transformations.rotx">
@@ -357,7 +565,7 @@ rotation “theta” about “axis”.</p>
 <dd class="field-odd"><dl>
 <dt><strong>theta</strong><span class="classifier">float, int or <cite>symbolic</cite></span></dt><dd><p>Rotation angle (given in radians by default)</p>
 </dd>
-<dt><strong>deg</strong><span class="classifier">bool</span></dt><dd><p>¿Is theta given in degrees?, False is default value.</p>
+<dt><strong>deg</strong><span class="classifier">bool</span></dt><dd><p>If True, <cite>theta</cite> is interpreted as degrees. Default is False.</p>
 </dd>
 </dl>
 </dd>
@@ -394,7 +602,7 @@ rotation “theta” about “axis”.</p>
 <dd class="field-odd"><dl>
 <dt><strong>theta</strong><span class="classifier">float, int or <cite>symbolic</cite></span></dt><dd><p>Rotation angle (given in radians by default)</p>
 </dd>
-<dt><strong>deg</strong><span class="classifier">bool</span></dt><dd><p>¿Is theta given in degrees?, False is default value.</p>
+<dt><strong>deg</strong><span class="classifier">bool</span></dt><dd><p>If True, <cite>theta</cite> is interpreted as degrees. Default is False.</p>
 </dd>
 </dl>
 </dd>
@@ -480,19 +688,46 @@ rotation “theta” about “axis”.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="moro.transformations.skew">
-<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">skew</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#skew"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.skew" title="Link to this definition"></a></dt>
-<dd><p>Return skew-symmetric matrix associated to u vector.</p>
-<dl class="field-list">
+<dt class="sig sig-object py" id="moro.transformations.rt2htm">
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">rt2htm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#rt2htm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.rt2htm" title="Link to this definition"></a></dt>
+<dd><p>Build a homogeneous transformation matrix from rotation and translation.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl>
-<dt><strong>u</strong><span class="classifier"><cite>sympy.matrices.dense.MutableDenseMatrix</cite> or list or tuple</span></dt><dd><p>A 3D vector. If u is given as a list or tuple, it will be converted to a sympy Matrix.</p>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>R</strong><span class="classifier">array-like or sympy Matrix</span></dt><dd><p>Rotation block. It is converted with <code class="docutils literal notranslate"><span class="pre">Matrix(R)</span></code> and must have shape
+(3, 3). No full SO(3) membership validation is performed.</p>
+</dd>
+<dt><strong>p</strong><span class="classifier">list, tuple or sympy Matrix</span></dt><dd><p>Translation vector. Accepted formats are a 3-element list, a 3-element
+tuple, a column matrix of shape (3, 1), or a row matrix of shape (1, 3).
+The vector is normalized internally to a column matrix.</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl>
-<dt><strong>S</strong><span class="classifier"><cite>sympy.matrices.dense.MutableDenseMatrix</cite></span></dt><dd><p>Skew-symmetric matrix associated to u.</p>
+<dd class="field-even"><dl class="simple">
+<dt>sympy.matrices.dense.MutableDenseMatrix</dt><dd><p>Homogeneous transformation matrix of shape (4, 4).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="moro.transformations.skew">
+<span class="sig-prename descclassname"><span class="pre">moro.transformations.</span></span><span class="sig-name descname"><span class="pre">skew</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/moro/transformations.html#skew"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moro.transformations.skew" title="Link to this definition"></a></dt>
+<dd><p>Return the skew-symmetric matrix associated with a 3D vector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>u</strong><span class="classifier">list, tuple or sympy Matrix</span></dt><dd><p>Vector. Accepted formats are a 3-element list, a 3-element tuple, a
+column matrix of shape (3, 1), or a row matrix of shape (1, 3). The
+vector is normalized internally to a column matrix.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>S</strong><span class="classifier">sympy.matrices.dense.MutableDenseMatrix</span></dt><dd><p>Skew-symmetric matrix of shape (3, 3).</p>
 </dd>
 </dl>
 </dd>
@@ -506,7 +741,7 @@ rotation “theta” about “axis”.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="core.html" class="btn btn-neutral float-left" title="The core module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="util.html" class="btn btn-neutral float-right" title="The util module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="inverse_kinematics.html" class="btn btn-neutral float-right" title="The inverse_kinematics module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
