@@ -52,11 +52,11 @@ RR.dynamic_model_matrix_form() # M*qdd + C*qd + G = tau
 - Check out the full API reference at [https://jorgedelossantos.github.io/moro/](https://jorgedelossantos.github.io/moro/). 
 
 - Examples:
-    - Forward kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1I2rTyGTYck_WBwpO9DM2Ho4iq4prefmC?usp=sharing)
-    - Inverse kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/150GvAqYKKi_C5FcysB6lhM094bxyMZ5z?usp=sharing)
-    - Computing jacobian [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1XTBz3UDyVml4RF-k_5snQPrGUPgCCyJf?usp=sharing)
-    - Dynamic modeling (Euler-Lagrange) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/12c1HqJvYESN-blMAVkJ6bZAcMFN96PTE?usp=sharing)
-    - Visualization [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1s0BtRHBr3mUHngCfE9A_nlVoytDImxcr?usp=sharing)
+    - Forward kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Forward%20kinematics.ipynb)
+    - Inverse kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Inverse%20kinematics.ipynb)
+    - Computing jacobian [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Jacobian%20matrix.ipynb)
+    - Dynamic modeling (Euler-Lagrange) [![Open In Colab](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Dynamic%20model.ipynb)
+    - Visualization [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Visualization.ipynb)
 
 ## Roadmap
 
