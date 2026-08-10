@@ -55,8 +55,9 @@ RR.dynamic_model_matrix_form() # M*qdd + C*qd + G = tau
     - Forward kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Forward%20kinematics.ipynb)
     - Inverse kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Inverse%20kinematics.ipynb)
     - Computing jacobian [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Jacobian%20matrix.ipynb)
-    - Dynamic modeling (Euler-Lagrange) [![Open In Colab](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Dynamic%20model.ipynb)
+    - Dynamic modeling (Euler-Lagrange) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Dynamic%20model.ipynb)
     - Visualization [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Visualization.ipynb)
+    - Transformations [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Transformations.ipynb)
 
 ## Roadmap
 
