@@ -47,7 +47,8 @@ extensions = [
     'sphinx.ext.githubpages',
     "sphinx_rtd_theme",
     "numpydoc",
-    "myst_parser"
+    "myst_parser",
+    "sphinx.ext.githubpages"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
