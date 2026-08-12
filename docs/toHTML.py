@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
+# import os
+# import subprocess
+
+# source = "source"
+# build = "."
+# instr = "sphinx-build -b html "+source+" "+build
+# subprocess.run(instr, shell=True)
+# os.startfile(build+r"\index.html")
+
+from pathlib import Path
 import os
 import subprocess
 
-source = "source"
-build = "."
-instr = "sphinx-build -b html "+source+" "+build
-os.system(instr)
-os.startfile(build+r"\index.html")
+docs_dir = Path(__file__).parent
+source = docs_dir / "source"
+build = docs_dir / "build" / "html"
 
-# instr = ["sphinx-build", "-b", "html", source, build]
+subprocess.run(
+    ["sphinx-build", "-b", "html", str(source), str(build)],
+    check=True,
+)
 
-# try:
-#     # Ejecuta el comando
-#     subprocess.run(instr, check=True)
-#     # Abre el archivo index.html generado
-#     os.startfile(os.path.join(build, "index.html"))
-# except subprocess.CalledProcessError as e:
-#     print(f"Error al ejecutar Sphinx: {e}")
+os.startfile(build / "index.html")
