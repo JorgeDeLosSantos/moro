@@ -7,6 +7,7 @@ using SymPy as base library.
 from .version import __version__
 
 from .core import Robot
+from .util import enable_vprinting
 from .transformations import (
     rotx, roty, rotz,
     rot2eul, eul2rot,
@@ -21,6 +22,7 @@ from .transformations import (
 __all__ = [
     "__version__",
     "Robot",
+    "enable_vprinting",
     "rotx",
     "roty",
     "rotz",

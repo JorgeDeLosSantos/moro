@@ -19,6 +19,14 @@ def assert_matrix_equal(a, b):
     assert all(sp.simplify(v) == 0 for v in diff)
 
 
+def mutate_matrix_if_possible(matrix, row, col, value):
+    try:
+        matrix[row, col] = value
+        return True
+    except TypeError:
+        return False
+
+
 def test_robot_initialization_and_basic_properties():
     robot = Robot((1, 0, 0, q1), (2, 0, 0, q2, "p"))
 
@@ -95,6 +103,42 @@ def test_robot_center_of_mass_and_inertia_matrix_single_link():
 
     assert_matrix_equal(robot.r_cm(1), expected_rcm)
     assert_matrix_equal(robot.inertia_matrix(), expected_m)
+
+
+def test_cached_T_returns_defensive_copy():
+    robot = Robot((1, 0, 0, q1),)
+
+    T1 = robot.T
+    expected = sp.Matrix(T1)
+    mutated = mutate_matrix_if_possible(T1, 0, 0, 999)
+    T2 = robot.T
+
+    assert mutated or T1[0, 0] == expected[0, 0]
+    assert T2[0, 0] == expected[0, 0]
+    assert T2[0, 0] != 999
+    assert_matrix_equal(T2, expected)
+
+
+def test_cached_J_and_inertia_matrix_return_defensive_copies():
+    c, m, iz = sp.symbols("c m iz")
+    robot = Robot((0, 0, 0, q1),)
+    robot.cm_positions = [(c, 0, 0)]
+    robot.masses = [m]
+    robot.inertia_tensors = [sp.diag(0, 0, iz)]
+
+    J1 = robot.J
+    expected_J = sp.Matrix(J1)
+    mutated_J = mutate_matrix_if_possible(J1, 0, 0, 999)
+    assert mutated_J or J1[0, 0] == expected_J[0, 0]
+    assert_matrix_equal(robot.J, expected_J)
+    assert robot.J[0, 0] != 999
+
+    M1 = robot.inertia_matrix()
+    expected_M = sp.Matrix(M1)
+    mutated_M = mutate_matrix_if_possible(M1, 0, 0, 999)
+    assert mutated_M or M1[0, 0] == expected_M[0, 0]
+    assert_matrix_equal(robot.inertia_matrix(), expected_M)
+    assert robot.inertia_matrix()[0, 0] != 999
 
 
 
@@ -287,6 +331,11 @@ def test_mutation_defensive_copies_for_masses_cm_positions_and_inertia_tensors()
     exposed_tensors[0][2, 2] = 99
     assert robot.inertia_tensors[0][2, 2] == iz
 
+    robot.gravity = (0, -c, 0)
+    exposed_gravity = robot.gravity
+    exposed_gravity[1, 0] = cc
+    assert robot.gravity == sp.Matrix([0, -c, 0])
+
 
 def test_other_mutable_getters_do_not_expose_internal_containers():
     robot = Robot((1, 0, 0, q1),)
@@ -302,6 +351,25 @@ def test_other_mutable_getters_do_not_expose_internal_containers():
     limits = robot.joint_limits
     limits[0] = (-1, 1)
     assert robot.joint_limits[0] == (-sp.pi, sp.pi)
+
+    Ts = robot.Ts
+    Ts[0][0, 0] = 999
+    assert robot.Ts[0][0, 0] != 999
+    assert robot.T[0, 0] != 999
+
+    joint_types = robot.joint_types
+    joint_types[0] = "p"
+    assert robot.joint_type(1) == "r"
+    assert robot.joint_limits[0] == (-sp.pi, sp.pi)
+
+
+def test_Ts_and_joint_types_are_read_only_properties():
+    robot = Robot((1, 0, 0, q1),)
+
+    with pytest.raises(AttributeError):
+        robot.Ts = []
+    with pytest.raises(AttributeError):
+        robot.joint_types = []
 
 
 def test_joint_limits_valid_and_invalid_invariants():
@@ -391,3 +459,20 @@ def test_dh_row_structure_validation():
         Robot("not-a-dh-row")
     with pytest.raises(ValueError, match="at least one DH"):
         Robot()
+
+
+def test_christoffel_and_kinetic_energy_use_exact_rational_half():
+    c, m, iz = sp.symbols("c m iz")
+    robot = Robot((0, 0, 0, q1),)
+    robot.cm_positions = [(c, 0, 0)]
+    robot.masses = [m]
+    robot.inertia_tensors = [sp.diag(0, 0, iz)]
+
+    M = sp.Matrix([[q1**2]])
+    christoffel = robot.christoffel_symbols(1, 1, 1, M)
+    assert christoffel == q1
+    assert not christoffel.has(sp.Float)
+
+    K = robot.link_kinetic_energy(1)
+    assert sp.Rational(1, 2) in K.atoms(sp.Rational)
+    assert not K.has(sp.Float)
