@@ -41,7 +41,7 @@ jobs:
 
       - name: Install documentation dependencies
         run: |
-          pip install sphinx myst-parser
+          python -m pip install sphinx myst-parser sphinx-rtd-theme numpydoc
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
