@@ -1419,7 +1419,7 @@ class TestSolvePositionIK:
 
     def test_ccd_rejects_unsupported_joint_type(self):
         robot = Robot((0, 0, q1, 0, "p"))
-        robot.joint_types[0] = "x"
+        robot._joint_types[0] = "x"
 
         with pytest.raises(ValueError, match="Unsupported joint type"):
             solve_position_ik(

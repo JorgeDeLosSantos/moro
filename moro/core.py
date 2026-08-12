@@ -22,13 +22,13 @@ from sympy import (
     MatAdd,
     MatMul,
 )
+from sympy.matrices.immutable import ImmutableMatrix
+from sympy.matrices.matrixbase import MatrixBase
 # Moro core dependencies
 from sympy.core.function import AppliedUndef
 from moro.transformations import dh
 from moro.util import (
     vector_in_hcoords,
-    is_position_vector,
-    is_SE3,
 )
 from moro.abc import t
 
@@ -62,8 +62,8 @@ class Robot:
         if len(args) == 0:
             raise ValueError("Robot must be initialized with at least one DH parameter row.")
 
-        self.Ts = [] # Transformation matrices i to i-1
-        self.joint_types = [] # Joint type -> "r" revolute, "p" prismatic
+        self._Ts = [] # Transformation matrices i to i-1
+        self._joint_types = [] # Joint type -> "r" revolute, "p" prismatic
         self._qs = [] # Joint variables
         self._qis_range = None # qis_range (set via its setter when required)
         self._dh_parameters = [] # Store the DH parameters 
@@ -76,7 +76,7 @@ class Robot:
                     f"DH parameter row {row_idx} must have exactly 4 or 5 elements "
                     "(a, alpha, d, theta[, joint_type])."
                 )
-            self.Ts.append(dh(k[0],k[1],k[2],k[3])) # Compute Ti->i-1
+            self._Ts.append(dh(k[0],k[1],k[2],k[3])) # Compute Ti->i-1
             self._dh_parameters.append(tuple(k[:4])) # Store the DH parameters as they were passed in the constructor
             if len(k)>4:
                 joint_type = str(k[4]).strip().lower()
@@ -84,11 +84,11 @@ class Robot:
                     raise ValueError(
                         f"Invalid joint type '{k[4]}'. Use 'r' for revolute or 'p' for prismatic."
                     )
-                self.joint_types.append(joint_type)
+                self._joint_types.append(joint_type)
             else: # By default, the joint type is assumed to be revolute
-                self.joint_types.append('r')
+                self._joint_types.append('r')
 
-            if self.joint_types[-1] == "r":
+            if self._joint_types[-1] == "r":
                 self._qs.append(k[3])
             else:
                 self._qs.append(k[2]) 
@@ -110,6 +110,14 @@ class Robot:
 
         # Cache for kinematics and dynamics computations
         self._cache = {category: {} for category in self._CACHE_CATEGORIES}
+
+    @property
+    def Ts(self):
+        return [self._copy_matrix(T) for T in self._Ts]
+
+    @property
+    def joint_types(self):
+        return list(self._joint_types)
 
     @property
     def dh_parameters(self):
@@ -228,12 +236,12 @@ class Robot:
         if i == j: 
             return eye(4)
         if i < j:
-            T = prod(self.Ts[i:j])
+            T = prod(self._Ts[i:j])
             R = T[:3, :3]
             p = T[:3, 3]
             return R.T.row_join(-R.T * p).col_join(Matrix([[0, 0, 0, 1]]))
         
-        return simplify(prod(self.Ts[j:i]))
+        return simplify(prod(self._Ts[j:i]))
 
     def T_i0(self,i):
         """
@@ -338,8 +346,6 @@ class Robot:
             return Matrix(matrix)
         if matrix.shape == (1, 3):
             return Matrix(matrix.T)
-        if matrix.shape == (3,):
-            return Matrix(matrix).reshape(3, 1)
         if len(matrix) == 3 and (matrix.rows == 3 or matrix.cols == 3):
             return Matrix(list(matrix)).reshape(3, 1)
         raise ValueError(f"{name} must have exactly three components.")
@@ -525,11 +531,11 @@ class Robot:
             A column vector :math:`\\mathbf{r}_{G_i}^i`
         """
         self._check_index(i, name="link") 
-        if self.cm_positions is None:
+        if self._cm_positions is None:
             raise ValueError("Center of mass locations are not defined. " \
                              "Please set them using the cm_positions setter.")
         
-        return self.cm_positions[i-1]
+        return self._cm_positions[i-1]
 
     
     def r_cm(self,i):
@@ -558,7 +564,7 @@ class Robot:
         Internal method to compute the position of the center of mass of the i-th link w.r.t. the base frame. This method is called by r_cm() and its result is cached for future calls.
         """
         self._check_index(i, name="link") 
-        if self.cm_positions is None:
+        if self._cm_positions is None:
             raise ValueError("Center of mass locations are not defined. " \
             "Please set them using the cm_positions setter.")  
 
@@ -671,7 +677,6 @@ class Robot:
         
         """
         self._check_index(i)
-        idx = i - 1
         point_wrt_i = self._as_column_vector3(point, "Point")
         point_wrt_0 = ( self.T_i0(i) * vector_in_hcoords( point_wrt_i ) )[:3,:]
         
@@ -680,7 +685,7 @@ class Robot:
         for j in range(1, n+1):
             idx = j - 1
             if j <= i:
-                if self.joint_types[idx]=='r':
+                if self._joint_types[idx]=='r':
                     jp = self.z(j-1).cross(point_wrt_0 - self.r_o(j-1))
                     jo = self.z(j-1)
                 else:
@@ -703,7 +708,7 @@ class Robot:
             Joint number.
         """
         self._check_index(i, name="joint")
-        return self.joint_types[i-1]
+        return self._joint_types[i-1]
     
     def q(self,i):
         """
@@ -826,14 +831,14 @@ class Robot:
         located in the center of mass of link [i] and aligned with the base frame. 
         This method is called by I_cm0() and its result is cached for future calls.
         """
-        if self.inertia_tensors is None:
+        if self._inertia_tensors is None:
             raise ValueError("Inertia tensors are not defined. Please set them using the " \
             "inertia_tensors setter.")
 
         if i == 0:
             raise ValueError("i must be greater than 0")
         idx = i - 1
-        Iii = self.inertia_tensors[idx]
+        Iii = self._inertia_tensors[idx]
         Ii = simplify( self.R_i0(i) * Iii * self.R_i0(i).T )
         return Ii
     
@@ -854,12 +859,12 @@ class Robot:
             Inertia tensor of the [i]-link w.r.t. {i}'-Frame.
         """
         self._check_index(i)
-        if self.inertia_tensors is None:
+        if self._inertia_tensors is None:
             raise ValueError("Inertia tensors are not defined. Please set them using the " \
             "inertia_tensors setter.") 
         
         idx = i - 1
-        I_cm = self.inertia_tensors[idx]
+        I_cm = self._copy_matrix(self._inertia_tensors[idx])
         return I_cm
     
     def m(self,i):
@@ -905,9 +910,9 @@ class Robot:
         """
         if self._masses is None:
             raise ValueError("Link masses are not defined. Use masses setter.")
-        if self.inertia_tensors is None:
+        if self._inertia_tensors is None:
             raise ValueError("Inertia tensors are not defined. Use inertia_tensors setter.")
-        if self.cm_positions is None:
+        if self._cm_positions is None:
             raise ValueError("Center of mass locations are not defined. Use cm_positions setter.")
 
         n = self.dof
@@ -917,7 +922,7 @@ class Robot:
         Jv = [self.Jv_cm_i(i+1) for i in range(n)]
         Jw = [self.Jw_cm_i(i+1) for i in range(n)]
         R  = [self.R_i0(i+1)    for i in range(n)]
-        I  = [self.I_cm(i+1)    for i in range(n)]
+        I  = [self._inertia_tensors[i] for i in range(n)]
         m  = [self.m(i+1)     for i in range(n)]
 
         # Compute inertia matrix
@@ -962,7 +967,7 @@ class Robot:
         mij = M[idx_i, idx_j]
         mik = M[idx_i, idx_k]
         mjk = M[idx_j, idx_k]
-        cijk = (1/2)*( mij.diff(q[idx_k]) + mik.diff(q[idx_j]) - mjk.diff(q[idx_i]) )
+        cijk = sp.Rational(1, 2)*( mij.diff(q[idx_k]) + mik.diff(q[idx_j]) - mjk.diff(q[idx_i]) )
         return cijk
     
     def gravity_vector(self):
@@ -1021,8 +1026,9 @@ class Robot:
         I_cmi = self.I_cm(i)
         Ri = self.R_i0(i)
         
-        Ktra_i = (1/2) * mi * vi.T * vi
-        Krot_i = (1/2) * wi.T * Ri * I_cmi * Ri.T * wi
+        half = sp.Rational(1, 2)
+        Ktra_i = half * mi * vi.T * vi
+        Krot_i = half * wi.T * Ri * I_cmi * Ri.T * wi
         Ki = Ktra_i + Krot_i
         return Ki
 
@@ -1045,11 +1051,11 @@ class Robot:
         
         """
         self._check_index(i)
-        if self.gravity is None:
+        if self._gravity is None:
             raise ValueError("Gravity acceleration is not defined. Please set it using " \
             "the gravity property.") 
         
-        return - self.m(i) * self.gravity.T * self.r_cm(i)
+        return - self.m(i) * self._gravity.T * self.r_cm(i)
         
     def kinetic_energy(self):
         """
@@ -1108,7 +1114,7 @@ class Robot:
     def _set_default_joint_limits(self):
         joint_limits = []
         for k in range(self.dof):
-            if self.joint_types[k] == "r":  # for revolute joint
+            if self._joint_types[k] == "r":  # for revolute joint
                 lower_value = -sp.pi # -180°
                 upper_value = sp.pi  # 180°
             else: # for prismatic joint
@@ -1173,11 +1179,11 @@ class Robot:
         return joint_limits_num
     
     def __str__(self):
-        robot_type = "".join( self.joint_types ).upper()
+        robot_type = "".join( self._joint_types ).upper()
         return f"Robot {robot_type}"
     
     def __repr__(self):
-        robot_type = "".join( self.joint_types ).upper()
+        robot_type = "".join( self._joint_types ).upper()
         return f"Robot {robot_type}"
 
     def model_summary(self):
@@ -1200,7 +1206,7 @@ class Robot:
                 return "NOT SET"
             return "explicit" if explicit else f"assumed ({assumed_text})"
 
-        robot_type = "".join(self.joint_types).upper()
+        robot_type = "".join(self._joint_types).upper()
         lines = [
             f"Model summary | Robot {robot_type} | DOF = {self.dof}",
             "  joint_limits     : " + ("custom" if self._joint_limits_explicit else "default"),
@@ -1285,7 +1291,12 @@ class Robot:
         if key not in self._cache[category]:
             self._cache[category][key] = compute_fn()
         
-        return self._cache[category][key]
+        return self._copy_cached_value(self._cache[category][key])
+
+    def _copy_cached_value(self, value):
+        if isinstance(value, MatrixBase) and not isinstance(value, ImmutableMatrix):
+            return Matrix(value)
+        return value
 
 
 
