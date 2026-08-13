@@ -20,7 +20,7 @@ Moro is a Python library for kinematic and dynamic modeling of serial robots. Th
    examples
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: API Reference
 
    core
@@ -31,10 +31,25 @@ Moro is a Python library for kinematic and dynamic modeling of serial robots. Th
    abc
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: Theory
+
+   theory/notation
+   theory/rotations
+   theory/homogeneous-transformations
+   theory/denavit-hartenberg
+   theory/forward-kinematics
+   theory/differential-kinematics
+   theory/inverse-kinematics
+   theory/dynamics
+
+.. toctree::
+   :maxdepth: 1
    :caption: Development
 
    development/naming_conventions
+
+
 
 Indices and tables
 ==================
