@@ -9,7 +9,7 @@ Forward kinematics for RR manipulator
 
 In the figure is shown a RR manipulator with references frames and its DH parameters table. Now, the goal is to calculate the forward kinematics using :code:`moro`, how this is done?
 
-.. image:: https://raw.githubusercontent.com/numython-rd/moro/9bfbb6ec0b8162b726c0f0ff7be1b84a02a5bca8/examples/nbook/es/img/rr_robot_dh.svg
+.. image:: https://raw.githubusercontent.com/JorgeDeLosSantos/moro/main/examples/nbooks/img/rr_robot_dh.svg
 	:width: 400
 
 Well, the next lines of code can do this task:
