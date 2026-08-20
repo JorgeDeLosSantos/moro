@@ -42,7 +42,7 @@ where `joint_type` can be:
 * `"r"` for a revolute joint;
 * `"p"` for a prismatic joint.
 
-For a planar 2R manipulator with link lengths (l_1) and (l_2), we can write:
+For a planar 2R manipulator with link lengths $l_1$ and $l_2$, we can write:
 
 ```python
 robot = Robot(
@@ -98,11 +98,11 @@ T = robot.T
 T
 ```
 
-For the planar 2R manipulator, `T` is a symbolic (4\times4) homogeneous transformation matrix whose elements depend on (q_1), (q_2), (l_1), and (l_2).
+For the planar 2R manipulator, `T` is a symbolic $4\times4$ homogeneous transformation matrix whose elements depend on $q_1$, $q_2$, $l_1$, and $l_2$.
 
 Because the result is symbolic, you can inspect it directly, simplify it, or substitute numerical values later.
 
-Intermediate transformations are also available when needed. For example, the transformation from the base frame to frame ({1}) can be obtained with:
+Intermediate transformations are also available when needed. For example, the transformation from the base frame to frame `{1}` can be obtained with:
 
 ```python
 robot.T_i0(1)
@@ -131,12 +131,12 @@ Once the symbolic model has been obtained, numerical values can be substituted u
 
 Consider the configuration:
 
-[
+$$
 l_1 = 1,\qquad
 l_2 = 1,\qquad
 q_1 = 0.5,\qquad
 q_2 = 0.8.
-]
+$$
 
 We can store these values in a dictionary:
 
