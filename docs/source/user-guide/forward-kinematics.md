@@ -29,13 +29,13 @@ T
 
 For this planar 2R manipulator, the result corresponds to:
 
-[
+$$
 T_2^0,
-]
+$$
 
 the pose of frame `{2}` with respect to the base frame `{0}`.
 
-Because the robot parameters are symbolic, the resulting matrix remains symbolic in terms of (l_1), (l_2), (q_1), and (q_2).
+Because the robot parameters are symbolic, the resulting matrix remains symbolic in terms of $l_1$, $l_2$, $q_1$, and $q_2$.
 
 The end-effector transformation is equivalent to:
 
@@ -60,15 +60,15 @@ T20 = robot.T_i0(2)
 
 These correspond to:
 
-[
+$$
 T_1^0
-]
+$$
 
 and:
 
-[
+$$
 T_2^0.
-]
+$$
 
 For the base frame itself:
 
@@ -76,11 +76,11 @@ For the base frame itself:
 robot.T_i0(0)
 ```
 
-returns the (4\times4) identity matrix:
+returns the $4\times4$ identity matrix:
 
-[
+$$
 T_0^0 = I.
-]
+$$
 
 This makes it possible to inspect any stage of the kinematic chain rather than only the final end-effector pose.
 
@@ -94,9 +94,9 @@ robot.T_ij(i, j)
 
 This returns:
 
-[
+$$
 T_i^j,
-]
+$$
 
 the pose of frame `{i}` expressed with respect to frame `{j}`.
 
@@ -110,13 +110,13 @@ T02 = robot.T_ij(0, 2)
 
 These represent:
 
-[
+$$
 T_2^0,\qquad
 T_2^1,\qquad
 T_0^2.
-]
+$$
 
-The last example describes the base frame relative to frame `{2}` and therefore corresponds to the inverse transformation of (T_2^0).
+The last example describes the base frame relative to frame `{2}` and therefore corresponds to the inverse transformation of $T_2^0$.
 
 Both frame indices must satisfy:
 
@@ -143,9 +143,9 @@ robot.R_i0(i)
 
 This returns the rotation matrix:
 
-[
+$$
 R_i^0,
-]
+$$
 
 which describes the orientation of frame `{i}` with respect to the base frame.
 
@@ -195,7 +195,7 @@ r2_from_T = robot.T_i0(2)[:3, 3]
 
 ### Frame z-axes
 
-The direction of the (z_i) axis expressed in the base frame is available through:
+The direction of the $z_i$ axis expressed in the base frame is available through:
 
 ```python id="3i7u97"
 robot.z(i)
@@ -208,16 +208,16 @@ z0 = robot.z(0)
 z1 = robot.z(1)
 ```
 
-The base-frame (z)-axis is:
+The base-frame $z$-axis is:
 
-[
+$$
 z_0 =
 \begin{bmatrix}
-0\
-0\
+0\\
+0\\
 1
 \end{bmatrix}.
-]
+$$
 
 These axis vectors are especially useful when working with differential kinematics and geometric Jacobians.
 
@@ -227,12 +227,12 @@ A symbolic forward-kinematics result can be evaluated at a particular robot conf
 
 Consider:
 
-[
+$$
 l_1 = 1,\qquad
 l_2 = 1,\qquad
 q_1 = 0.5,\qquad
 q_2 = 0.8.
-]
+$$
 
 Create a substitution dictionary:
 
@@ -355,12 +355,12 @@ R = robot.R_i0(2)
 
 Now evaluate the robot at:
 
-[
+$$
 l_1 = 1,\qquad
 l_2 = 0.8,\qquad
 q_1 = \frac{\pi}{4},\qquad
 q_2 = -\frac{\pi}{6}.
-]
+$$
 
 ```python id="3g4daz"
 from sympy import pi
@@ -399,13 +399,13 @@ When working with forward kinematics in `moro`, keep the following conventions i
 
 * frame `{0}` is the base frame;
 * frame `{n}` is the final frame associated with the end-effector;
-* `robot.T` represents (T_n^0);
-* `robot.T_i0(i)` represents (T_i^0);
-* `robot.T_ij(i, j)` represents (T_i^j);
+* `robot.T` represents $T_n^0$;
+* `robot.T_i0(i)` represents $T_i^0$;
+* `robot.T_ij(i, j)` represents $T_i^j$;
 * valid robot frame indices range from `0` to `robot.dof`;
 * `robot.R_i0(i)` returns the orientation of frame `{i}` with respect to `{0}`;
 * `robot.r_o(i)` returns the position of the origin of frame `{i}` expressed in `{0}`;
-* `robot.z(i)` returns the direction of the (z_i) axis expressed in `{0}`;
+* `robot.z(i)` returns the direction of the $z_i$ axis expressed in `{0}`;
 * symbolic parameters remain symbolic until numerical values are substituted;
 * angles follow the conventions established when the robot model is created.
 
