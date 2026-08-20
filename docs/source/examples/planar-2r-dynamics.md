@@ -20,15 +20,15 @@ The objective is to show how the symbolic kinematic model of a robot becomes a d
 
 Consider a planar two-link manipulator with two revolute joints:
 
-\[
+$$
 q_1,\; q_2,
-\]
+$$
 
 and link lengths:
 
-\[
+$$
 l_1,\; l_2.
-\]
+$$
 
 The robot moves in the \(xy\)-plane and both joints rotate about axes parallel to \(z\).
 
@@ -41,7 +41,7 @@ Its Denavit-Hartenberg table is:
 
 We want to obtain the equations of motion in the standard form
 
-\[
+$$
 M(q)\ddot q
 +
 C(q,\dot q)\dot q
@@ -49,11 +49,11 @@ C(q,\dot q)\dot q
 G(q)
 =
 \tau,
-\]
+$$
 
 where
 
-\[
+$$
 q=
 \begin{bmatrix}
 q_1\\
@@ -65,7 +65,7 @@ q_2
 \tau_1\\
 \tau_2
 \end{bmatrix}.
-\]
+$$
 
 ## Robot model
 
@@ -149,9 +149,9 @@ For this example, assume that both centers of mass lie along the local \(x\)-axi
 
 Using positive symbolic distances:
 
-\[
+$$
 l_{c1},\; l_{c2},
-\]
+$$
 
 we define:
 
@@ -291,7 +291,7 @@ They form the basis of the kinetic-energy calculation.
 
 The kinetic energy of each link contains translational and rotational contributions:
 
-\[
+$$
 K_i
 =
 \frac{1}{2}m_i v_{C_i}^{T}v_{C_i}
@@ -300,7 +300,7 @@ K_i
 \omega_i^{T}
 R_i^0 I_{C_i}^{i}(R_i^0)^T
 \omega_i.
-\]
+$$
 
 The kinetic energy of link 1 is:
 
@@ -325,9 +325,9 @@ K
 
 The resulting expression depends on:
 
-\[
+$$
 q_1,\; q_2,\; \dot q_1,\; \dot q_2
-\]
+$$
 
 and on the mass, geometry, and inertia parameters.
 
@@ -351,9 +351,9 @@ The gravitational potential used by `moro` is based on the center-of-mass positi
 
 The Lagrangian is then:
 
-\[
+$$
 \mathcal{L}=K-P.
-\]
+$$
 
 It can be computed directly with:
 
@@ -373,17 +373,17 @@ M
 
 For a two-degree-of-freedom manipulator:
 
-\[
+$$
 M(q)
 \in
 \mathbb{R}^{2\times2}.
-\]
+$$
 
 The inertia matrix relates the generalized accelerations to the inertial part of the joint torques.
 
 It is constructed from the translational and rotational Jacobians of the link centers of mass:
 
-\[
+$$
 M(q)
 =
 \sum_{i=1}^{2}
@@ -394,7 +394,7 @@ J_{\omega_i}^{T}
 R_i^0 I_{C_i}^{i}(R_i^0)^T
 J_{\omega_i}
 \right].
-\]
+$$
 
 The matrix is symbolic and can be reused for different configurations and physical parameter values.
 
@@ -409,17 +409,17 @@ C
 
 For this robot:
 
-\[
+$$
 C(q,\dot q)
 \in
 \mathbb{R}^{2\times2}.
-\]
+$$
 
 The velocity-dependent generalized-force contribution is:
 
-\[
+$$
 C(q,\dot q)\dot q.
-\]
+$$
 
 Construct the joint-velocity vector:
 
@@ -441,9 +441,9 @@ The matrix `C` is computed from the inertia matrix through the Christoffel symbo
 
 Different conventions can produce different valid Coriolis matrices, provided that the product
 
-\[
+$$
 C(q,\dot q)\dot q
-\]
+$$
 
 represents the same velocity-dependent generalized forces.
 
@@ -458,21 +458,21 @@ G
 
 For the planar RR robot:
 
-\[
+$$
 G(q)
 \in
 \mathbb{R}^{2}.
-\]
+$$
 
 The gravity vector is obtained from the gradient of the potential energy with respect to the generalized coordinates.
 
 Conceptually:
 
-\[
+$$
 G(q)
 =
 \frac{\partial P}{\partial q}.
-\]
+$$
 
 It represents the generalized torques required to balance the gravitational contribution at a given configuration when velocity and acceleration are zero.
 
@@ -502,7 +502,7 @@ contains the equation associated with \(q_2\).
 
 The equations have the form:
 
-\[
+$$
 \frac{d}{dt}
 \left(
 \frac{\partial\mathcal{L}}
@@ -513,7 +513,7 @@ The equations have the form:
 {\partial q_i}
 =
 \tau_i.
-\]
+$$
 
 They can be displayed together with:
 
@@ -528,7 +528,7 @@ This representation is useful when studying the Euler-Lagrange formulation direc
 
 The same dynamic model can also be written in the standard manipulator form:
 
-\[
+$$
 M(q)\ddot q
 +
 C(q,\dot q)\dot q
@@ -536,7 +536,7 @@ C(q,\dot q)\dot q
 G(q)
 =
 \tau.
-\]
+$$
 
 Use:
 
@@ -558,13 +558,13 @@ qdd = sp.Matrix([
 
 and the generalized torque vector can be written conceptually as:
 
-\[
+$$
 \tau=
 \begin{bmatrix}
 \tau_1\\
 \tau_2
 \end{bmatrix}.
-\]
+$$
 
 The two interfaces:
 
@@ -603,57 +603,57 @@ The symbolic dynamic model can be evaluated by substituting numerical values.
 
 Assume:
 
-\[
+$$
 l_1=1.0,
 \qquad
 l_2=0.8,
-\]
+$$
 
-\[
+$$
 l_{c1}=0.5,
 \qquad
 l_{c2}=0.4,
-\]
+$$
 
-\[
+$$
 m_1=2.0,
 \qquad
 m_2=1.5,
-\]
+$$
 
-\[
+$$
 I_1=0.15,
 \qquad
 I_2=0.08,
-\]
+$$
 
 and:
 
-\[
+$$
 g=9.81.
-\]
+$$
 
 Consider the state:
 
-\[
+$$
 q_1=30^\circ,
 \qquad
 q_2=-20^\circ,
-\]
+$$
 
-\[
+$$
 \dot q_1=0.4,
 \qquad
 \dot q_2=-0.2,
-\]
+$$
 
 with accelerations:
 
-\[
+$$
 \ddot q_1=0.5,
 \qquad
 \ddot q_2=0.1.
-\]
+$$
 
 Create the substitution dictionary:
 
@@ -832,7 +832,7 @@ robot.dynamic_model_matrix_form()
 
 The matrix form
 
-\[
+$$
 M(q)\ddot q
 +
 C(q,\dot q)\dot q
@@ -840,7 +840,7 @@ C(q,\dot q)\dot q
 G(q)
 =
 \tau
-\]
+$$
 
 can be evaluated for prescribed joint positions, velocities, and accelerations to determine the required generalized torques.
 
@@ -850,13 +850,13 @@ The current dynamic capabilities of `moro` do not integrate the equations of mot
 
 In other words, `moro` does not currently solve a problem of the form:
 
-\[
+$$
 \tau(t),\;
 q(0),\;
 \dot q(0)
 \quad\longrightarrow\quad
 q(t).
-\]
+$$
 
 Forward dynamics and numerical trajectory integration would require solving the differential equations of motion over time and are outside the current scope of the library.
 
