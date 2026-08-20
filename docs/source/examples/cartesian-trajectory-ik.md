@@ -19,15 +19,15 @@ The key idea is that `solve_position_trajectory()` does not generate a Cartesian
 
 Consider a planar two-link manipulator with revolute joints:
 
-\[
+$$
 q_1,\; q_2,
-\]
+$$
 
 and link lengths:
 
-\[
+$$
 l_1,\; l_2.
-\]
+$$
 
 Using the classical Denavit-Hartenberg convention, the robot is described by:
 
@@ -38,22 +38,22 @@ Using the classical Denavit-Hartenberg convention, the robot is described by:
 
 We want the end-effector to follow a sequence of Cartesian positions
 
-\[
+$$
 p_d^{(0)},\;
 p_d^{(1)},\;
 \dots,\;
 p_d^{(N-1)}.
-\]
+$$
 
 For each target, inverse kinematics must determine a corresponding joint configuration
 
-\[
+$$
 q^{(k)} =
 \begin{bmatrix}
 q_1^{(k)} \\
 q_2^{(k)}
 \end{bmatrix}.
-\]
+$$
 
 The complete sequence of joint configurations can then be interpreted as a discrete robot motion.
 
@@ -80,11 +80,11 @@ robot = Robot(
 
 We will use:
 
-\[
+$$
 l_1=1.0,
 \qquad
 l_2=1.0.
-\]
+$$
 
 Store the geometry in a parameter dictionary:
 
@@ -103,29 +103,29 @@ For this example, consider a smooth curve in the robot plane.
 
 Let
 
-\[
+$$
 s\in[0,1]
-\]
+$$
 
 be a path parameter and define:
 
-\[
+$$
 x(s)=1.0+0.3\cos(2\pi s),
-\]
+$$
 
-\[
+$$
 y(s)=0.8+0.3\sin(2\pi s),
-\]
+$$
 
-\[
+$$
 z(s)=0.
-\]
+$$
 
 This describes a small circular path centered at:
 
-\[
+$$
 (1.0,\;0.8).
-\]
+$$
 
 Sample the curve numerically:
 
