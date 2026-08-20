@@ -607,7 +607,7 @@ else:
     print(trajectory.message)
 ```
 
-When a failure occurs, the trajectory object still contains the configurations successfully computed before the failing target.
+When a failure occurs, the trajectory object contains all processed solutions, including the non-converged solution associated with the failing target.
 
 For example:
 
@@ -615,7 +615,9 @@ For example:
 len(trajectory.qs)
 ```
 
-indicates how many configurations were recovered.
+indicates how many targets were processed, including the failing target when the trajectory did not converge completely.
+
+The successfully converged configurations are therefore those preceding `trajectory.failed_index`.
 
 A failure may occur because:
 
