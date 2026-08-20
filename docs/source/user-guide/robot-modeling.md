@@ -49,10 +49,10 @@ The parameters correspond to the classical Denavit-Hartenberg convention:
 
 | Position | Parameter    | Description                 |
 | -------- | ------------ | --------------------------- |
-| 1        | (a_i)        | Link length                 |
-| 2        | (\alpha_i)   | Link twist                  |
-| 3        | (d_i)        | Link offset                 |
-| 4        | (\theta_i)   | Joint angle                 |
+| 1        | $a_i$        | Link length                 |
+| 2        | $\alpha_i$   | Link twist                  |
+| 3        | $d_i$        | Link offset                 |
+| 4        | $\theta_i$   | Joint angle                 |
 | 5        | `joint_type` | Revolute or prismatic joint |
 
 If the joint type is omitted, the joint is assumed to be revolute.
@@ -86,7 +86,7 @@ For a detailed explanation of the frame assignment and the meaning of each param
 * `"r"` for revolute joints;
 * `"p"` for prismatic joints.
 
-For a revolute joint, the joint variable is taken from the (\theta_i) parameter.
+For a revolute joint, the joint variable is taken from the $\theta_i$ parameter.
 
 For example:
 
@@ -100,7 +100,7 @@ robot = Robot(
 
 Here, `q1` represents the rotational joint coordinate.
 
-For a prismatic joint, the joint variable is taken from the (d_i) parameter:
+For a prismatic joint, the joint variable is taken from the $d_i$ parameter:
 
 ```python
 robot = Robot(
@@ -246,7 +246,7 @@ robot.qs
 
 The user does not need to provide the joint variables separately. `moro` determines them from the joint types and the corresponding Denavit-Hartenberg parameters.
 
-For a revolute joint, the joint coordinate is obtained from (\theta_i), while for a prismatic joint it is obtained from (d_i).
+For a revolute joint, the joint coordinate is obtained from $\theta_i$, while for a prismatic joint it is obtained from $d_i$.
 
 ## Joint limits
 
@@ -260,8 +260,8 @@ robot.joint_limits
 
 By default, `moro` assigns:
 
-* ((-\pi, \pi)) to revolute joints;
-* ((0, 1000)) to prismatic joints.
+* $(-\pi, \pi)$ to revolute joints;
+* $(0, 1000)$ to prismatic joints.
 
 For example:
 
