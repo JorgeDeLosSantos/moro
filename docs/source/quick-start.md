@@ -228,7 +228,7 @@ From here, the **User Guide** develops each topic in more detail:
 * **Forward Kinematics** — compute and inspect transformations throughout the kinematic chain.
 * **Jacobians** — compute geometric Jacobians for the end-effector and other points.
 * **Inverse Kinematics** — solve position inverse kinematics problems numerically.
-* **Dynamics** — derive inverse dynamic models using the available formulations.
+* **Dynamics** — derive symbolic equations of motion and inspect the standard matrix-form dynamic model.
 * **Visualization** — plot and animate robot configurations with the available backends.
 
 For complete worked problems, see the **Examples** section.
