@@ -14,4 +14,3 @@ and the other pages in the User Guide.
    transformations
    inverse_kinematics
    visualization
-   abc
