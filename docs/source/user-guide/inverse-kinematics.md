@@ -4,16 +4,16 @@
 
 Given a desired Cartesian position for the end-effector,
 
-[
+$$
 p_d =
 \begin{bmatrix}
-x_d \
-y_d \
+x_d \\
+y_d \\
 z_d
 \end{bmatrix},
-]
+$$
 
-the inverse-kinematics solver searches for a joint configuration (q) such that the end-effector position is sufficiently close to the target.
+the inverse-kinematics solver searches for a joint configuration $q$ such that the end-effector position is sufficiently close to the target.
 
 The current interface focuses on position only. Full-pose inverse kinematics, including end-effector orientation constraints, is not currently supported.
 
@@ -153,21 +153,20 @@ It uses the linear part of the geometric Jacobian together with a damping term.
 
 In simplified form, the joint update is:
 
-[
+$$
 \Delta q
-========
-
+=
 \left(
 J^T J + \lambda^2 I
 \right)^{-1}
 J^T e,
-]
+$$
 
 where:
 
-[
+$$
 e = p_d-p(q).
-]
+$$
 
 The damping parameter is adjusted during the solution process according to whether a proposed step improves the position error.
 
@@ -221,12 +220,11 @@ The method uses the end-effector position Jacobian and computes an update based 
 
 Conceptually:
 
-[
+$$
 \Delta q
-========
-
+=
 J^\dagger e.
-]
+$$
 
 Newton-type methods can converge rapidly when the initial guess is appropriate, but their behavior may be more sensitive to singularities, poor initial guesses, or joint constraints.
 
@@ -367,13 +365,13 @@ Because the default limits stored by `Robot` are convenience values rather than 
 
 The solver is considered converged when:
 
-[
-\left|
+$$
+\left\|
 p_d-p(q)
-\right|
+\right\|
 <
 \mathrm{tol}.
-]
+$$
 
 The default tolerance is:
 
@@ -515,11 +513,11 @@ solution.error
 
 and corresponds to:
 
-[
-\left|
+$$
+\left\|
 p_d-p(q)
-\right|.
-]
+\right\|.
+$$
 
 ### Residual
 
@@ -531,10 +529,10 @@ solution.residual
 
 and is defined as:
 
-[
+$$
 r =
 p_d-p(q).
-]
+$$
 
 When available, it contains three values:
 
@@ -544,12 +542,11 @@ When available, it contains three values:
 
 and:
 
-[
+$$
 \text{solution.error}
-=====================
-
-|\text{solution.residual}|.
-]
+=
+\left\|\text{solution.residual}\right\|.
+$$
 
 If a numerical failure prevents a finite residual from being evaluated, `residual` can be `None` and `error` is reported as infinity.
 
@@ -884,9 +881,9 @@ solution.residual
 
 which represents:
 
-[
+$$
 p_d-p(q).
-]
+$$
 
 ## A worked example
 
@@ -1013,7 +1010,7 @@ The inverse-kinematics capabilities in the current version of `moro` are intenti
 
 Keep the following points in mind:
 
-* only Cartesian position targets ([x,y,z]) are currently supported;
+* only Cartesian position targets `[x, y, z]` are currently supported;
 * orientation constraints are not part of the IK objective;
 * the solver may return different valid configurations for the same target;
 * the result can depend strongly on the initial guess;
