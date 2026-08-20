@@ -14,7 +14,7 @@ Rotation matrices about the coordinate axes can be generated with:
 from moro import rotx, roty, rotz
 ```
 
-For example, a rotation of (\pi/2) radians about the (z)-axis is:
+For example, a rotation of $\pi/2$ radians about the $z$-axis is:
 
 ```python
 from sympy import pi
@@ -132,9 +132,9 @@ By default, angles are interpreted in radians. Use `deg=True` when specifying de
 
 `moro` uses column vectors and active rotations. For a proper Euler sequence `aba`, the convention is:
 
-[
+$$
 R = R_a(\phi) R_b(\theta) R_a(\psi).
-]
+$$
 
 Tait-Bryan sequences such as `xyz` or `zyx` are not currently supported by `eul2rot()` and `rot2eul()`.
 
@@ -186,8 +186,8 @@ For a more detailed discussion of Euler-angle non-uniqueness and singularities, 
 
 A rotation can also be represented using:
 
-* a rotation axis (\mathbf{k});
-* a rotation angle (\theta).
+* a rotation axis $\mathbf{k}$;
+* a rotation angle $\theta$.
 
 ### From axis-angle to a rotation matrix
 
@@ -256,9 +256,9 @@ For numerical matrices, `rot2axa()` uses a tolerance when validating the rotatio
 k, theta = rot2axa(R, tol=1e-8)
 ```
 
-For the identity rotation, the rotation axis is not uniquely defined. `moro` uses the (x)-axis as a representative choice and returns an angle of zero.
+For the identity rotation, the rotation axis is not uniquely defined. `moro` uses the $x$-axis as a representative choice and returns an angle of zero.
 
-Rotations close to (\pi) are handled separately because the usual general formula becomes numerically sensitive in that region.
+Rotations close to $\pi$ are handled separately because the usual general formula becomes numerically sensitive in that region.
 
 ## Skew-symmetric matrices
 
@@ -270,29 +270,27 @@ from moro.transformations import skew
 
 For a vector:
 
-[
+$$
 \mathbf{u}
-==========
-
+=
 \begin{bmatrix}
-u_x \
-u_y \
+u_x \\
+u_y \\
 u_z
 \end{bmatrix},
-]
+$$
 
 the corresponding matrix is:
 
-[
+$$
 [\mathbf{u}]_\times
-===================
-
+=
 \begin{bmatrix}
-0 & -u_z & u_y \
-u_z & 0 & -u_x \
+0 & -u_z & u_y \\
+u_z & 0 & -u_x \\
 -u_y & u_x & 0
 \end{bmatrix}.
-]
+$$
 
 For example:
 
@@ -332,16 +330,15 @@ T = htmtra(1, 2, 3)
 
 is equivalent to a translation vector:
 
-[
+$$
 \mathbf{p}
-==========
-
+=
 \begin{bmatrix}
-1 \
-2 \
+1 \\
+2 \\
 3
 \end{bmatrix}.
-]
+$$
 
 Keyword arguments can also be used:
 
@@ -371,7 +368,7 @@ For example:
 T = htmrot(pi / 2, axis="z")
 ```
 
-This produces a (4\times4) homogeneous transformation with zero translation.
+This produces a $4\times4$ homogeneous transformation with zero translation.
 
 As with the elementary rotation functions, degrees can be used explicitly:
 
@@ -418,8 +415,8 @@ The translation vector may be specified as:
 
 * a list;
 * a tuple;
-* a (3\times1) SymPy matrix;
-* a (1\times3) SymPy matrix.
+* a $3\times1$ SymPy matrix;
+* a $1\times3$ SymPy matrix.
 
 The vector is converted internally to a column vector.
 
@@ -440,9 +437,9 @@ R = htm2rot(T)
 p = htm2tra(T)
 ```
 
-`htm2rot()` returns the upper-left (3\times3) rotation block.
+`htm2rot()` returns the upper-left $3\times3$ rotation block.
 
-`htm2tra()` returns the (3\times1) translation vector.
+`htm2tra()` returns the $3\times1$ translation vector.
 
 These functions are useful when only one part of a previously computed transformation is required.
 
@@ -458,25 +455,24 @@ T_inv = invhtm(T)
 
 For:
 
-[
+$$
 T =
 \begin{bmatrix}
-R & p \
+R & p \\
 0 & 1
 \end{bmatrix},
-]
+$$
 
 the inverse is computed using the rigid-body structure:
 
-[
+$$
 T^{-1}
-======
-
+=
 \begin{bmatrix}
-R^T & -R^Tp \
+R^T & -R^Tp \\
 0 & 1
 \end{bmatrix}.
-]
+$$
 
 This avoids applying a general-purpose matrix inversion algorithm.
 
@@ -495,7 +491,7 @@ The product:
 T * T_inv
 ```
 
-should simplify to the (4\times4) identity matrix.
+should simplify to the $4\times4$ identity matrix.
 
 ## Denavit-Hartenberg transformations
 
@@ -538,9 +534,9 @@ For a detailed explanation of the convention itself, see **Theory → Denavit-Ha
 
 Consider a rigid-body pose composed of:
 
-* a rotation of (45^\circ) about the (z)-axis;
-* a translation of (2) units along (x);
-* a translation of (1) unit along (y).
+* a rotation of $45^\circ$ about the $z$-axis;
+* a translation of $2$ units along $x$;
+* a translation of $1$ unit along $y$.
 
 First construct the rotation:
 
@@ -603,16 +599,16 @@ When using transformation utilities in `moro`, keep the following conventions in
 * Euler-angle representations are generally not unique;
 * homogeneous transformations use the standard rigid-body form
 
-[
+$$
 T =
 \begin{bmatrix}
-R & p \
+R & p \\
 0 & 1
 \end{bmatrix};
-]
+$$
 
 * vector inputs accepted by functions such as `rt2htm()`, `skew()`, and `axa2rot()` are normalized internally to column-vector form when appropriate;
-* functions such as `rot2htm()`, `rt2htm()`, `htm2rot()`, and `invhtm()` validate input dimensions but do not perform a complete mathematical membership test for (SO(3)) or (SE(3)).
+* functions such as `rot2htm()`, `rt2htm()`, `htm2rot()`, and `invhtm()` validate input dimensions but do not perform a complete mathematical membership test for $SO(3)$ or $SE(3)$.
 
 The mathematical interpretation of these conventions is developed in the **Theory** section.
 
