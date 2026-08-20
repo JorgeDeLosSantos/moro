@@ -77,7 +77,7 @@ Once the robot has been created, its kinematic quantities can be obtained direct
 
 Because the joint variables are symbolic, the resulting transformation remains an expression in terms of `q1` and `q2` until numerical values are substituted.
 
-More complete examples, including visualization, Jacobians, inverse kinematics, and dynamics, are introduced in the [Quick Start](getting-started/quick-start) and throughout the [User Guide](user-guide/index).
+More complete examples, including visualization, Jacobians, inverse kinematics, and dynamics, are introduced in the [Quick Start](quick-start.md) and throughout the **User Guide**.
 
 ## Who is moro for?
 
@@ -122,12 +122,12 @@ These limitations are intentional at the current stage of development. The focus
 
 If this is your first time using `moro`, a good starting point is:
 
-1. [Installation](getting-started/installation) — install the library and verify your environment.
-2. [Quick Start](getting-started/quick-start) — build and analyze your first robot model.
-3. [User Guide](user-guide/index) — explore individual features in more detail.
+1. [Installation](installation.md) — install the library and verify your environment.
+2. [Quick Start](quick-start.md) — build and analyze your first robot model.
+3. **User Guide** — explore individual features in more detail.
 
-For complete worked problems, see the [Examples](examples/index).
+For complete worked problems, see the **Examples** section.
 
-For detailed descriptions of classes, functions, parameters, and return values, see the [API Reference](api/index).
+For detailed descriptions of classes, functions, parameters, and return values, see the [API Reference](api/index.rst).
 
-For the mathematical background behind the implemented methods, see the [Theory](theory/index) section.
+For the mathematical background behind the implemented methods, see the **Theory** section.
