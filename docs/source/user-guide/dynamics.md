@@ -107,7 +107,7 @@ robot.cm_positions = [
 ]
 ```
 
-For example, consider a planar model where each link frame is located at its distal end and each center of mass lies along the negative local (x_i)-axis:
+For example, consider a planar model where each link frame is located at its distal end and each center of mass lies along the negative local $x_i$-axis:
 
 ```python
 from sympy import symbols
@@ -151,7 +151,7 @@ robot.inertia_tensors = [
 ]
 ```
 
-Each tensor must be a (3\times3) matrix.
+Each tensor must be a $3\times3$ matrix.
 
 The tensor of link `i` is defined with respect to a frame:
 
@@ -198,14 +198,13 @@ robot.I_cm0(1)
 
 which applies the corresponding link rotation:
 
-[
+$$
 I_{C_i}^{0}
-===========
-
+=
 R_i^0
 I_{C_i}^{i}
 (R_i^0)^T.
-]
+$$
 
 ### Automatically generated diagonal tensors
 
@@ -219,14 +218,14 @@ is used, `moro` creates symbolic diagonal inertia tensors automatically.
 
 Conceptually:
 
-[
+$$
 I_i =
 \begin{bmatrix}
-I_{x_i x_i} & 0 & 0 \
-0 & I_{y_i y_i} & 0 \
+I_{x_i x_i} & 0 & 0 \\
+0 & I_{y_i y_i} & 0 \\
 0 & 0 & I_{z_i z_i}
 \end{bmatrix}.
-]
+$$
 
 This assumes zero products of inertia.
 
@@ -240,7 +239,7 @@ The gravity acceleration is specified with respect to the robot base frame:
 robot.gravity = (gx, gy, gz)
 ```
 
-For example, if gravity acts along the negative (y)-axis:
+For example, if gravity acts along the negative $y$-axis:
 
 ```python
 from sympy import symbols
@@ -348,12 +347,11 @@ Use:
 K1 = robot.link_kinetic_energy(1)
 ```
 
-For link (i), the kinetic energy includes both translational and rotational contributions:
+For link $i$, the kinetic energy includes both translational and rotational contributions:
 
-[
+$$
 K_i
-===
-
+=
 \frac{1}{2}
 m_i
 v_{G_i}^T
@@ -363,7 +361,7 @@ v_{G_i}
 \omega_i^T
 R_i^0 I_{C_i}^{i}(R_i^0)^T
 \omega_i.
-]
+$$
 
 The total kinetic energy is:
 
@@ -373,9 +371,9 @@ K = robot.kinetic_energy()
 
 which corresponds to:
 
-[
+$$
 K = \sum_{i=1}^{n} K_i.
-]
+$$
 
 ### Link potential energy
 
@@ -387,12 +385,11 @@ P1 = robot.link_potential_energy(1)
 
 and is computed as:
 
-[
+$$
 P_i
-===
-
+=
 -m_i g^T r_{G_i}.
-]
+$$
 
 The total potential energy is:
 
@@ -402,9 +399,9 @@ P = robot.potential_energy()
 
 with:
 
-[
+$$
 P = \sum_{i=1}^{n} P_i.
-]
+$$
 
 ### Lagrangian
 
@@ -416,9 +413,9 @@ L = robot.lagrangian()
 
 and is defined as:
 
-[
+$$
 L = K - P.
-]
+$$
 
 All these quantities are returned symbolically.
 
@@ -430,14 +427,13 @@ The manipulator inertia matrix is computed with:
 M = robot.inertia_matrix()
 ```
 
-For a robot with (n) degrees of freedom, the result is an (n\times n) symbolic matrix.
+For a robot with $n$ degrees of freedom, the result is an $n\times n$ symbolic matrix.
 
 `moro` constructs it from the translational and rotational kinetic-energy contributions of all links:
 
-[
+$$
 M(q)
-====
-
+=
 \sum_{i=1}^{n}
 \left[
 m_i
@@ -450,7 +446,7 @@ I_{C_i}^{i}
 (R_i^0)^T
 J_{\omega_i}
 \right].
-]
+$$
 
 Before calling `inertia_matrix()`, the following must be defined:
 
@@ -490,17 +486,17 @@ C = robot.coriolis_matrix()
 
 which returns:
 
-[
+$$
 C(q,\dot q).
-]
+$$
 
 The implementation constructs this matrix from the Christoffel symbols of the first kind.
 
 The resulting matrix satisfies the usual form:
 
-[
+$$
 C(q,\dot q)\dot q.
-]
+$$
 
 Since this quantity depends on joint velocities, the joint variables should be time dependent.
 
@@ -514,12 +510,11 @@ G = robot.gravity_vector()
 
 which returns the generalized gravity-force vector:
 
-[
+$$
 G(q)
-====
-
+=
 \nabla P(q).
-]
+$$
 
 The result has one component per degree of freedom.
 
@@ -539,17 +534,16 @@ equations = robot.dynamic_model()
 
 This returns one equation per joint:
 
-[
+$$
 \frac{d}{dt}
 \left(
 \frac{\partial L}{\partial \dot q_i}
 \right)
--------
-
-# \frac{\partial L}{\partial q_i}
-
+-
+\frac{\partial L}{\partial q_i}
+=
 \tau_i.
-]
+$$
 
 For example:
 
@@ -570,20 +564,19 @@ model = robot.dynamic_model_matrix_form()
 
 which represents:
 
-[
+$$
 M(q)\ddot q
 +
 C(q,\dot q)\dot q
 +
 G(q)
-====
-
+=
 \tau.
-]
+$$
 
 This form is often convenient when inspecting the structure of the dynamic model or comparing it with the standard robotics notation.
 
-The two interfaces represent the same underlying model from different viewpoints: `dynamic_model()` exposes the Euler-Lagrange equations individually, while `dynamic_model_matrix_form()` organizes the dynamics into the usual (M), (C), and (G) terms.
+The two interfaces represent the same underlying model from different viewpoints: `dynamic_model()` exposes the Euler-Lagrange equations individually, while `dynamic_model_matrix_form()` organizes the dynamics into the usual $M$, $C$, and $G$ terms.
 
 ## Evaluating symbolic dynamics
 
@@ -681,7 +674,7 @@ robot.cm_positions = [
 ]
 ```
 
-For a planar mechanism, suppose only the (z)-axis moments of inertia are relevant:
+For a planar mechanism, suppose only the $z$-axis moments of inertia are relevant:
 
 ```python
 Iz1, Iz2 = symbols("Iz1 Iz2", positive=True)
@@ -692,7 +685,7 @@ robot.inertia_tensors = [
 ]
 ```
 
-Define gravity along the negative (y)-direction:
+Define gravity along the negative $y$-direction:
 
 ```python
 g = symbols("g", positive=True)
@@ -785,18 +778,17 @@ The current implementation provides symbolic equations of motion and inverse-dyn
 
 In particular, `moro` does not currently integrate:
 
-[
+$$
 M(q)\ddot q
 +
 C(q,\dot q)\dot q
 +
 G(q)
-====
-
+=
 \tau
-]
+$$
 
-over time to obtain a trajectory (q(t)) from applied torques and initial conditions.
+over time to obtain a trajectory $q(t)$ from applied torques and initial conditions.
 
 Numerical simulation, control, contact dynamics, collision forces, and physics-engine integration are also outside the current scope.
 
