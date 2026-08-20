@@ -19,15 +19,15 @@ Consider a planar manipulator composed of two revolute joints and two rigid link
 
 Let
 
-\[
+$$
 q_1,\; q_2
-\]
+$$
 
 be the joint variables, and
 
-\[
+$$
 l_1,\; l_2
-\]
+$$
 
 the link lengths.
 
@@ -109,7 +109,7 @@ T
 
 For this planar 2R manipulator, the transformation has the structure
 
-\[
+$$
 T_2^0 =
 \begin{bmatrix}
 \cos(q_1+q_2) &
@@ -126,7 +126,7 @@ l_1\sin q_1+l_2\sin(q_1+q_2)
 \\
 0 & 0 & 0 & 1
 \end{bmatrix}.
-\]
+$$
 
 The transformation of each intermediate frame can also be obtained individually:
 
@@ -156,7 +156,7 @@ p
 
 For this robot,
 
-\[
+$$
 p(q)=
 \begin{bmatrix}
 l_1\cos q_1+l_2\cos(q_1+q_2)
@@ -165,7 +165,7 @@ l_1\sin q_1+l_2\sin(q_1+q_2)
 \\
 0
 \end{bmatrix}.
-\]
+$$
 
 The zero third component reflects the fact that the manipulator is planar.
 
@@ -198,7 +198,7 @@ Jw
 
 For the planar 2R manipulator, the linear part is
 
-\[
+$$
 J_v =
 \begin{bmatrix}
 -l_1\sin q_1-l_2\sin(q_1+q_2)
@@ -211,11 +211,11 @@ l_2\cos(q_1+q_2)
 \\
 0 & 0
 \end{bmatrix},
-\]
+$$
 
 while the angular part is
 
-\[
+$$
 J_\omega =
 \begin{bmatrix}
 0 & 0
@@ -224,18 +224,18 @@ J_\omega =
 \\
 1 & 1
 \end{bmatrix}.
-\]
+$$
 
 The Jacobian relates joint velocities to the end-effector linear and angular velocities:
 
-\[
+$$
 \begin{bmatrix}
 v\\
 \omega
 \end{bmatrix}
 =
 J(q)\dot q.
-\]
+$$
 
 For this mechanism, all angular motion occurs about the \(z\)-axis.
 
@@ -243,19 +243,19 @@ For this mechanism, all angular motion occurs about the \(z\)-axis.
 
 Now consider the numerical values
 
-\[
+$$
 l_1=1.0,
 \qquad
 l_2=0.8,
-\]
+$$
 
 and the joint configuration
 
-\[
+$$
 q_1=\frac{\pi}{4},
 \qquad
 q_2=-\frac{\pi}{6}.
-\]
+$$
 
 Create a substitution dictionary:
 
