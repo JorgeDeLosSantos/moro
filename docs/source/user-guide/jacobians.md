@@ -29,26 +29,26 @@ J = robot.J
 J
 ```
 
-For a robot with (n) degrees of freedom, the geometric Jacobian has size:
+For a robot with $n$ degrees of freedom, the geometric Jacobian has size:
 
-[
+$$
 6 \times n.
-]
+$$
 
 It can be written as:
 
-[
+$$
 J =
 \begin{bmatrix}
-J_v \
+J_v \\
 J_\omega
 \end{bmatrix},
-]
+$$
 
 where:
 
-* (J_v) relates joint velocities to the linear velocity of the point;
-* (J_\omega) relates joint velocities to its angular velocity.
+* $J_v$ relates joint velocities to the linear velocity of the point;
+* $J_\omega$ relates joint velocities to its angular velocity.
 
 For `robot.J`, the point of interest is the origin of the final frame `{n}`, that is, the end-effector origin.
 
@@ -77,27 +77,27 @@ contains the angular-velocity contribution.
 
 For a joint-velocity vector:
 
-[
+$$
 \dot q =
 \begin{bmatrix}
-\dot q_1 \
-\dot q_2 \
-\vdots \
+\dot q_1 \\
+\dot q_2 \\
+\vdots \\
 \dot q_n
 \end{bmatrix},
-]
+$$
 
 the corresponding end-effector velocities satisfy:
 
-[
+$$
 v = J_v \dot q,
-]
+$$
 
 and:
 
-[
+$$
 \omega = J_\omega \dot q.
-]
+$$
 
 Because the Jacobian is symbolic, these relationships can be inspected before assigning numerical values to the joint coordinates.
 
@@ -121,7 +121,7 @@ For example:
 Jp = robot.J_point([0.2, 0, 0], 2)
 ```
 
-computes the Jacobian of a point located (0.2) units along the (x_2)-axis from the origin of frame `{2}`.
+computes the Jacobian of a point located $0.2$ units along the $x_2$-axis from the origin of frame `{2}`.
 
 The point can be specified using a list, tuple, or a compatible SymPy vector.
 
@@ -143,46 +143,41 @@ This makes `J_point()` the most general Jacobian interface for points rigidly at
 
 The columns of the geometric Jacobian depend on the corresponding joint type.
 
-For a revolute joint (j), the contribution to a point located at (p) is:
+For a revolute joint $j$, the contribution to a point located at $p$ is:
 
-[
+$$
 J_{v_j}
-=======
-
+=
 z_{j-1}
 \times
 \left(
 p-r_{O_{j-1}}
 \right),
-]
+$$
 
 and:
 
-[
+$$
 J_{\omega_j}
-============
-
+=
 z_{j-1}.
-]
+$$
 
 For a prismatic joint:
 
-[
+$$
 J_{v_j}
-=======
-
+=
 z_{j-1},
-]
+$$
 
 and:
 
-[
+$$
 J_{\omega_j}
-============
-
+=
 0.
-
-]
+$$
 
 `moro` builds these contributions automatically from the joint types stored in the `Robot` model.
 
@@ -237,9 +232,9 @@ Jcm2 = robot.J_cm_i(2)
 
 Each result has size:
 
-[
+$$
 6 \times n.
-]
+$$
 
 ### Linear center-of-mass Jacobian
 
@@ -281,12 +276,12 @@ As with the forward-kinematics results, Jacobians returned by `moro` are symboli
 
 Consider the configuration:
 
-[
+$$
 l_1 = 1,\qquad
 l_2 = 0.8,\qquad
 q_1 = \frac{\pi}{4},\qquad
 q_2 = -\frac{\pi}{6}.
-]
+$$
 
 Define:
 
@@ -458,7 +453,7 @@ The `J_point()` interface makes it possible to compute these quantities without 
 When working with Jacobians in `moro`, keep the following points in mind:
 
 * `robot.J` is the geometric Jacobian of the end-effector origin;
-* geometric Jacobians have size (6\times n);
+* geometric Jacobians have size $6\times n$;
 * the first three rows correspond to linear velocity;
 * the last three rows correspond to angular velocity;
 * `robot.J_point(point, i)` expects the point coordinates to be expressed in frame `{i}`;
