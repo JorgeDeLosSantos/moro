@@ -22,7 +22,7 @@ Rather than hiding the underlying mathematics behind a highly abstract interface
 * computing geometric Jacobians;
 * solving numerical inverse kinematics problems;
 * solving sequences of inverse kinematics problems along position trajectories;
-* computing inverse dynamics using Euler-Lagrange and recursive formulations;
+* deriving symbolic robot dynamics using Euler-Lagrange equations and the standard matrix form;
 * evaluating symbolic models for specific joint configurations;
 * plotting robotic manipulators;
 * animating robot motion using Matplotlib and Three.js-based visualization backends.
