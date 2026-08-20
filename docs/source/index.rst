@@ -1,37 +1,54 @@
-.. moro documentation master file, created by
-   sphinx-quickstart on Wed Oct  7 23:31:26 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+moro
+====
 
-Welcome to moro's documentation!
-================================
+``moro`` is a Python library for symbolic modeling, analysis, and
+visualization of serial robot manipulators.
 
-.. image:: https://numython-rd.github.io/projects/moro/img/logo-moro.png
-  :width: 180
-
-Moro is a Python library for kinematic and dynamic modeling of serial robots. This library has been designed, mainly, for teaching purposes, using SymPy as base library. 
+It is designed primarily for robotics education and for workflows that
+benefit from symbolic kinematics and dynamics.
 
 .. toctree::
    :maxdepth: 2
    :caption: Getting Started
 
+   overview
    installation
-   getting_started
-   examples
+   quick-start
+
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
+   :caption: User Guide
+
+   user-guide/robot-modeling
+   user-guide/transformations
+   user-guide/forward-kinematics
+   user-guide/jacobians
+   user-guide/inverse-kinematics
+   user-guide/dynamics
+   user-guide/visualization
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Examples
+
+   examples/planar-2r
+   examples/anthropomorphic-rrr
+   examples/position-inverse-kinematics
+   examples/cartesian-trajectory-ik
+   examples/planar-2r-dynamics
+
+
+.. toctree::
+   :maxdepth: 2
    :caption: API Reference
 
-   core
-   transformations
-   inverse_kinematics
-   visualization
-   util
-   abc
+   api/index
+
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Theory
 
    theory/notation
@@ -43,17 +60,10 @@ Moro is a Python library for kinematic and dynamic modeling of serial robots. Th
    theory/inverse-kinematics
    theory/dynamics
 
+
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Development
 
+   development/contributing
    development/naming_conventions
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

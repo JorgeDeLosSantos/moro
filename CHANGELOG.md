@@ -4,52 +4,69 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-20
+
 ### Added
 
+* New `inverse_kinematics` module for numerical position inverse kinematics.
+* `solve_position_ik()` with Levenberg-Marquardt, Newton-Raphson, and Cyclic Coordinate Descent (CCD) methods.
+* `IKSolution` result object with convergence status, iteration count, final error, residual, solver method, and diagnostic message.
+* `solve_position_trajectory()` for sequential position inverse kinematics along user-defined Cartesian target sequences.
+* `IKTrajectorySolution` for inspecting per-target solutions, errors, iterations, and failed-target information.
+* Support for symbolic geometric parameters in inverse-kinematics problems through the `parameters` argument.
+* Joint-limit handling, reproducible random initialization, and stagnation detection for numerical IK solvers.
 * Interactive Three.js backend for robot visualization in Jupyter notebooks.
 * Interactive robot animations using Three.js.
 * Configurable visualization styles through the new `VisualizationStyle` class.
 * End-effector trajectory visualization for robot animations.
 * Predefined camera views (front, top, and isometric) in the Three.js viewer.
 * Support for orthographic and perspective camera projections.
-* Shared JavaScript infrastructure for Three.js templates.
-* Comprehensive automated test suite for the visualization module.
-* `Robot.model_summary()` to inspect the modeling state and distinguish explicitly-set parameters from auto-generated defaults.
-* Public homogeneous transformation helpers: `rot2htm()`, `rt2htm()`, `htm2rot()`, `htm2tra()` and `invhtm()`.
-* Tests covering axis-angle conversion, skew-symmetric matrices and basic homogeneous transformation operations.
+* `Robot.model_summary()` to inspect the modeling state and distinguish explicitly set parameters from automatically generated defaults.
+* Public homogeneous transformation helpers: `rot2htm()`, `rt2htm()`, `htm2rot()`, `htm2tra()`, and `invhtm()`.
+* Expanded automated test coverage for inverse kinematics, transformations, visualization, and robot-model validation.
+* New structured documentation including Overview, Installation, Quick Start, User Guide, Examples, API Reference, Theory, and Development sections.
+* New worked examples covering planar and spatial manipulators, numerical inverse kinematics, Cartesian IK trajectories, and symbolic dynamics.
+* Contributor documentation and naming conventions for library development.
 
 ### Changed
 
-* Refactored the visualization package into multiple modules with clear responsibilities.
-* Unified visualization configuration across Matplotlib and Three.js backends through `VisualizationStyle`.
+* Refactored the visualization package into multiple modules with clearer responsibilities.
+* Unified visualization configuration across Matplotlib and Three.js through `VisualizationStyle`.
 * Improved Three.js animation performance by updating existing scene objects instead of recreating them every frame.
-* Simplified the visualization API by removing notebook-specific rendering methods in favor of a unified interface.
-* HTML templates are now packaged as library resources and loaded through `importlib.resources`.
-* Documented the default-values policy: intrinsic link parameters (`masses`, `inertia_tensors`) may auto-provide symbolic placeholders, while problem/environment configuration (`cm_positions`, `gravity`) always requires explicit values.
-* `inertia_tensors = None` now auto-generates diagonal symbolic tensors instead of raising an obscure TypeError; the helper was renamed to the internal `_generate_diagonal_inertia_tensors()` (stores the tensors directly, with no return value).
-* `axa2rot()` now uses Rodrigues' matrix formula and validates 3D vector inputs explicitly.
-* `skew()` now accepts the same 3D vector formats as `axa2rot()`: 3-element lists, 3-element tuples, column matrices and row matrices.
+* Simplified the visualization API around `RobotVisualizer.plot()` and `RobotVisualizer.animate()`.
+* HTML visualization templates are now packaged as library resources and loaded through `importlib.resources`.
+* Improved validation of robot DH rows, joint types, joint limits, center-of-mass positions, inertia tensors, and gravity vectors.
+* Joint types are now normalized case-insensitively to `"r"` or `"p"`.
+* Documented the default-values policy for dynamic model parameters.
+* `inertia_tensors = None` now generates symbolic diagonal inertia tensors as an explicit modeling convenience.
+* Improved caching and invalidation of kinematic and dynamic quantities when model parameters change.
+* `T_ij(i, j)` now uses the analytic inverse of homogeneous transformations when `i < j`, avoiding a general symbolic matrix inverse.
+* Velocity-dependent dynamic methods now warn when static joint symbols are used instead of time-dependent generalized coordinates.
+* Euler-angle conversion utilities now consistently support the six proper Euler sequences: `xyx`, `xzx`, `yxy`, `yzy`, `zxz`, and `zyz`.
+* Improved validation and singular-case handling in Euler-angle and axis-angle conversion utilities.
+* `axa2rot()` now uses Rodrigues' rotation formula.
+* `skew()` and `axa2rot()` now accept consistent 3D vector input formats.
 * `htmrot()` now reuses the public `rot2htm()` helper.
-* Cleaned up the transformations API by replacing wildcard imports with explicit imports and refreshing related docstrings.
+* Reorganized the Sphinx documentation into narrative MyST pages and focused RST API-reference pages.
+* Documentation builds now use `docs/source` as the source tree and `docs/build/html` as generated output.
 
 ### Fixed
 
 * Fixed frame orientation rendering in the Three.js backend.
-* Fixed animation scaling to remain consistent across all frames.
-* Fixed packaging of visualization templates for installation from GitHub and PyPI.
-* Improved synchronization between robot data and rendered scene during animations.
-* Fixed a stale cache for `r_cm` (and the `J_cm`/`Jv_cm`/`Jw_cm` family) when `cm_positions` changes: the kinematics cache is now invalidated too.
-* `joint_type` is now validated and case-insensitively normalized to `"r"/"p"`; invalid values raise a clear `ValueError` instead of silently treating the joint as prismatic.
-* `qis_range` now initializes cleanly and raises a clear `ValueError` when read before being set; the setter stores the assigned value (previously it stored a nested args tuple and reading it raised `AttributeError`).
-* `cm_positions` now accepts tuples without an item-assignment `TypeError` (the caller's container is no longer mutated in place).
-* `T_ij(i, j)` for `i < j` now uses the analytic inverse of a homogeneous transform instead of the costly symbolic matrix inverse (much faster, with cleaner expressions).
-* Velocity-dependent methods (`w`, `v_cm`, `coriolis_matrix` and those built on them) now emit a `UserWarning` when joint variables are static (not time-dependent), instead of silently returning incorrect dynamics.
+* Fixed animation scaling so robot geometry remains visually consistent across frames.
+* Fixed packaging of visualization templates for installations from GitHub and PyPI.
+* Improved synchronization between robot data and rendered scenes during animations.
+* Fixed stale cached center-of-mass positions and associated Jacobians after changing `cm_positions`.
+* Invalid joint types now raise a clear `ValueError` instead of being silently interpreted incorrectly.
+* Fixed initialization and storage behavior of `qis_range`.
+* `cm_positions` no longer mutates caller-provided containers and now accepts tuples correctly.
 * `axa2rot()` now rejects the zero vector with a clear `ValueError`.
-* `axa2rot()` and `skew()` now reject invalid vector dimensions with descriptive errors instead of relying on internal SymPy exceptions.
+* `axa2rot()` and `skew()` now reject invalid vector dimensions with descriptive errors.
+* Improved inverse-kinematics handling of numerical failures, stagnation, joint-limit clipping, and result consistency.
 
 ---
 
-## [0.3.0] - 2026-07-XX
+## [0.3.0] - 2026-03-09
 
 ### Added
 

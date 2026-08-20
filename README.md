@@ -1,68 +1,160 @@
 # moro
 
 [![PyPI version](https://img.shields.io/pypi/v/moro.svg)](https://pypi.org/project/moro/)
-[![License](https://img.shields.io/github/license/JorgeDeLosSantos/moro.svg)](https://github.com/JorgeDeLosSantos/moro/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/JorgeDeLosSantos/moro.svg)](https://github.com/JorgeDeLosSantos/moro/blob/master/LICENSE.txt)
 
-A Python library for kinematic and dynamic (symbolic) modeling of robots.
+`moro` is a Python library for symbolic modeling, analysis, and visualization of serial robot manipulators.
+
+It is designed primarily for robotics education and for workflows where inspecting the underlying kinematic and dynamic expressions is as important as evaluating them numerically.
 
 ## Features
 
-* **Transformations:** Use `SO(3)` rotation matrices and `SE(3)` homogeneous transformation matrices.
-* **Forward kinematics:** Easily compute forward kinematics using Denavit-Hartenberg parameters.
-* **Differential kinematics:** Compute the jacobian matrix.
-* **Dynamic modeling:** Derive equations of motion symbolically using the Euler–Lagrange formulation.
+* **Robot modeling:** Define serial manipulators with revolute and prismatic joints using Denavit-Hartenberg parameters.
+* **Transformations:** Work with `SO(3)` rotation matrices, `SE(3)` homogeneous transformations, Euler angles, and axis-angle representations.
+* **Forward kinematics:** Compute symbolic end-effector and intermediate-frame transformations.
+* **Differential kinematics:** Compute geometric Jacobians for the end-effector and other points.
+* **Inverse kinematics:** Solve numerical Cartesian position IK using Levenberg-Marquardt, Newton-Raphson, or CCD.
+* **IK trajectories:** Solve ordered sequences of Cartesian position targets using warm-started inverse kinematics.
+* **Dynamics:** Derive symbolic equations of motion and the standard `M(q) qdd + C(q, qd) qd + G(q) = tau` model.
+* **Visualization:** Plot and animate robot configurations using Matplotlib or an interactive Three.js backend.
 
 ## Installation
 
-Install the latest stable version from **PyPI**:
+Install the latest stable release from PyPI:
 
-```
+```bash
 pip install moro
 ```
 
-Or install the development version directly from the GitHub repository:
+To install the current development version from the `develop` branch:
 
+```bash
+pip install git+https://github.com/JorgeDeLosSantos/moro.git@develop
 ```
-pip install git+https://github.com/JorgeDeLosSantos/moro.git
-```
+
+`moro` requires Python 3.9 or newer.
 
 ## Quick Start
 
-Here is a quick example showing how easy it is to create a 2R planar robot and derive its dynamic model using the Euler–Lagrange formulation:
+The following example creates a symbolic planar 2R manipulator and evaluates its forward kinematics and Jacobian at one configuration:
 
 ```python
-import moro as mr
-from moro import m1,m2,l1,l2,lc1,lc2,q1,q2,g
+from moro import Robot
+from moro.abc import q1, q2, l1, l2
 
-RR = mr.Robot((l1,0,0,q1,"r"), (l2,0,0,q2,"r"))
+robot = Robot(
+    (l1, 0, 0, q1, "r"),
+    (l2, 0, 0, q2, "r"),
+)
 
-RR.masses = [m1,m2] 
-RR.inertia_tensors = RR.generate_diagonal_inertia_tensors()
-rG11 = [-(l1-lc1),0,0] # CoM of link 1 in {1}-frame
-rG22 = [-(l2-lc2),0,0] # CoM of link 2 in {2}-frame
-RR.cm_positions = [rG11,rG22] 
-RR.gravity = [0,-g,0] # gravity acc. in {0}-frame
+T = robot.T
+J = robot.J
 
-RR.dynamic_model_matrix_form() # M*qdd + C*qd + G = tau
+values = {
+    l1: 1.0,
+    l2: 1.0,
+    q1: 0.5,
+    q2: 0.8,
+}
+
+T_num = T.subs(values).evalf()
+J_num = J.subs(values).evalf()
 ```
 
+The same symbolic model can also be visualized:
 
-## Documentation and examples
+```python
+from moro.visualization import RobotVisualizer
 
-- Check out the full API reference at [https://jorgedelossantos.github.io/moro/](https://jorgedelossantos.github.io/moro/). 
+viz = RobotVisualizer(robot)
+viz.plot(values)
+```
 
-- Examples:
-    - Forward kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Forward%20kinematics.ipynb)
-    - Inverse kinematics [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Inverse%20kinematics.ipynb)
-    - Computing jacobian [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Jacobian%20matrix.ipynb)
-    - Dynamic modeling (Euler-Lagrange) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Dynamic%20model.ipynb)
-    - Visualization [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Visualization.ipynb)
-    - Transformations [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JorgeDeLosSantos/moro/blob/master/examples/nbooks/Transformations.ipynb)
+For interactive visualization in a notebook:
+
+```python
+viz.plot(values, backend="threejs")
+```
+
+## Inverse Kinematics
+
+A Cartesian position target can be solved numerically with:
+
+```python
+from moro.inverse_kinematics import solve_position_ik
+
+solution = solve_position_ik(
+    robot,
+    [1.5, 0.5, 0.0],
+    q0=[0.1, 0.1],
+    parameters={
+        l1: 1.0,
+        l2: 1.0,
+    },
+)
+
+if solution.converged:
+    print(solution.q)
+else:
+    print(solution.message)
+```
+
+Current inverse-kinematics support is focused on Cartesian position. Full-pose IK with orientation constraints is not yet included.
+
+## Dynamics
+
+Dynamic models can be built by assigning masses, centers of mass, inertia tensors, and gravity to an existing `Robot` model.
+
+For example:
+
+```python
+import sympy as sp
+
+from moro.abc import m1, m2, lc1, lc2, g
+
+I1, I2 = sp.symbols("I1 I2", positive=True)
+
+robot.masses = [m1, m2]
+robot.cm_positions = [
+    (-lc1, 0, 0),
+    (-lc2, 0, 0),
+]
+robot.inertia_tensors = [
+    sp.diag(0, 0, I1),
+    sp.diag(0, 0, I2),
+]
+robot.gravity = (0, -g, 0)
+
+M = robot.inertia_matrix()
+C = robot.coriolis_matrix()
+G = robot.gravity_vector()
+
+model = robot.dynamic_model_matrix_form()
+```
+
+The current dynamics API derives symbolic equations of motion and supports inverse-dynamics-style evaluation. Forward dynamics integration is not currently included.
+
+## Documentation
+
+The complete documentation is available at:
+
+https://jorgedelossantos.github.io/moro/
+
+It includes:
+
+* Getting Started guides;
+* a practical User Guide;
+* complete worked examples;
+* API Reference;
+* mathematical Theory notes;
+* contributor documentation and naming conventions.
 
 ## Roadmap
 
-Want to know what's coming next? Check out the [Moro Roadmap Wiki.](https://github.com/jorgedelossantos/moro/wiki/Roadmap)
+Want to know what may come next? See the [Moro Roadmap Wiki](https://github.com/JorgeDeLosSantos/moro/wiki/Roadmap).
 
-## Bug Reports & Support
+## Bug Reports and Contributions
 
-If you encounter any bugs, have questions, or want to request a feature, please open an issue on the [GitHub Issue Tracker](https://github.com/jorgedelossantos/moro/issues). Contributions are always welcome!
+If you encounter a bug, have a question, or want to request a feature, please open an issue in the [GitHub Issue Tracker](https://github.com/JorgeDeLosSantos/moro/issues).
+
+Contributions are welcome. See the contributor documentation included in the project documentation for the recommended development workflow.
