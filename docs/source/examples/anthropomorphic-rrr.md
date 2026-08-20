@@ -14,15 +14,15 @@ The first joint rotates about the base vertical axis, while the second and third
 
 Let
 
-\[
+$$
 q_1,\; q_2,\; q_3
-\]
+$$
 
 be the joint variables, and let
 
-\[
+$$
 d_1,\; l_2,\; l_3
-\]
+$$
 
 represent the geometric dimensions of the robot.
 
@@ -110,7 +110,7 @@ For this robot, the transformation depends on all three joint variables and cont
 
 The end-effector position has the structure
 
-\[
+$$
 p =
 \begin{bmatrix}
 \left(l_2\cos q_2+l_3\cos(q_2+q_3)\right)\cos q_1
@@ -119,7 +119,7 @@ p =
 \\
 d_1+l_2\sin q_2+l_3\sin(q_2+q_3)
 \end{bmatrix}.
-\]
+$$
 
 This expression already shows the characteristic structure of an anthropomorphic manipulator:
 
@@ -197,7 +197,7 @@ p = robot.r_o(3)
 
 The position depends on the three joint coordinates:
 
-\[
+$$
 p(q_1,q_2,q_3)=
 \begin{bmatrix}
 x
@@ -206,26 +206,26 @@ y
 \\
 z
 \end{bmatrix}.
-\]
+$$
 
 For this particular robot,
 
-\[
+$$
 x=
 \left(l_2\cos q_2+l_3\cos(q_2+q_3)\right)\cos q_1,
-\]
+$$
 
-\[
+$$
 y=
 \left(l_2\cos q_2+l_3\cos(q_2+q_3)\right)\sin q_1,
-\]
+$$
 
 and
 
-\[
+$$
 z=
 d_1+l_2\sin q_2+l_3\sin(q_2+q_3).
-\]
+$$
 
 Unlike the planar 2R example, the end-effector position can now vary in all three Cartesian coordinates.
 
@@ -256,7 +256,7 @@ Jw
 
 The complete relationship is:
 
-\[
+$$
 \begin{bmatrix}
 v
 \\
@@ -264,7 +264,7 @@ v
 \end{bmatrix}
 =
 J(q)\dot q.
-\]
+$$
 
 In this case, the Jacobian describes motion in three-dimensional space, so both its linear and angular parts contain information that is not present in a purely planar mechanism.
 
@@ -274,33 +274,33 @@ The Jacobian columns correspond to the contribution of each revolute joint to th
 
 Now assign numerical values to the robot geometry:
 
-\[
+$$
 d_1=1.0,
 \qquad
 l_2=1.2,
 \qquad
 l_3=0.9.
-\]
+$$
 
 Consider the joint configuration:
 
-\[
+$$
 q_1=\frac{\pi}{6},
 \qquad
 q_2=-\frac{\pi}{9},
 \qquad
 q_3=\frac{7\pi}{36}.
-\]
+$$
 
 These values correspond to approximately:
 
-\[
+$$
 q_1=30^\circ,
 \qquad
 q_2=-20^\circ,
 \qquad
 q_3=35^\circ.
-\]
+$$
 
 Create the substitution dictionary:
 
@@ -502,9 +502,9 @@ This RRR robot is also a useful model for more advanced analyses.
 
 For example, the end-effector position
 
-\[
+$$
 p(q_1,q_2,q_3)
-\]
+$$
 
 can be used as the basis for numerical inverse kinematics, and the geometric Jacobian can be used by iterative inverse-kinematics algorithms.
 
