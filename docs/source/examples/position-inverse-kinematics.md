@@ -26,21 +26,21 @@ Consider the anthropomorphic RRR manipulator defined by the Denavit-Hartenberg t
 
 We want to determine the joint coordinates
 
-\[
+$$
 q =
 \begin{bmatrix}
 q_1 & q_2 & q_3
 \end{bmatrix}^{T}
-\]
+$$
 
 that place the end-effector at a prescribed Cartesian position
 
-\[
+$$
 p_d =
 \begin{bmatrix}
 x_d & y_d & z_d
 \end{bmatrix}^{T}.
-\]
+$$
 
 In this example, only end-effector position is considered. Orientation is not part of the inverse-kinematics objective.
 
@@ -69,13 +69,13 @@ robot = Robot(
 
 We will use the numerical geometric parameters:
 
-\[
+$$
 d_1=1.0,
 \qquad
 l_2=1.2,
 \qquad
 l_3=0.9.
-\]
+$$
 
 Store them in a dictionary:
 
@@ -97,14 +97,14 @@ This guarantees that the target belongs to the robot workspace.
 
 Choose the reference configuration:
 
-\[
+$$
 q_\text{ref} =
 \begin{bmatrix}
 30^\circ &
 -20^\circ &
 35^\circ
 \end{bmatrix}^{T}.
-\]
+$$
 
 In radians:
 
@@ -536,15 +536,15 @@ These vectors do not necessarily have to be identical.
 
 Inverse kinematics solves the Cartesian condition:
 
-\[
+$$
 p(q)=p_d,
-\]
+$$
 
 not the condition:
 
-\[
+$$
 q=q_\text{ref}.
-\]
+$$
 
 If several joint configurations produce the same end-effector position, the numerical solver may converge to any one of them depending on its initial state and numerical method.
 
@@ -617,9 +617,9 @@ visualize the solution
 
 One important distinction is that `solve_position_ik()` solves only the Cartesian position condition:
 
-\[
+$$
 p(q)=p_d.
-\]
+$$
 
 It does not currently impose a desired end-effector orientation.
 
