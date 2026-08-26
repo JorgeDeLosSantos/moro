@@ -92,10 +92,13 @@ This equivalence should be used internally to avoid duplicating the complete mat
 For `eul2rot()`, an extrinsic request may therefore be implemented conceptually as
 
 ```python
-_eul2rot_intrinsic(psi, theta, phi, seq[::-1])
+seq = seq[::-1]
+phi, psi = psi, phi
 ```
 
-For a nonsingular `rot2eul()` result, the reversed intrinsic sequence may be solved and every returned angle triple reversed back to the requested public convention while preserving solution order.
+followed by the same intrinsic construction path.
+
+For a nonsingular `rot2eul()` result, the reversed intrinsic sequence is solved and every returned angle triple is reversed back to the requested public convention while preserving solution order.
 
 The singular case requires additional handling because the public singular representative must always set the third angle to zero.
 
@@ -252,16 +255,95 @@ These formulas should be verified by reconstruction tests for every sequence and
 
 The implementation should preserve the distinction between proper Euler and Tait-Bryan mathematics while sharing lower-level helpers.
 
-Recommended internal organization:
+The sequence constants should be organized as:
+
+```python
+_PROPER_EULER_SEQUENCES = (
+    "xyx", "xzx",
+    "yxy", "yzy",
+    "zxz", "zyz",
+)
+
+_TAIT_BRYAN_SEQUENCES = (
+    "xyz", "xzy",
+    "yxz", "yzx",
+    "zxy", "zyx",
+)
+
+_EULER_SEQUENCES = (
+    *_PROPER_EULER_SEQUENCES,
+    *_TAIT_BRYAN_SEQUENCES,
+)
+```
+
+`_normalize_euler_sequence()` should normalize case, reject non-string inputs with `TypeError`, and reject unsupported strings with `ValueError`.
+
+#### Proper Euler configuration
+
+The existing `_PROPER_EULER_CONFIG` structure should be retained rather than redesigned. Each sequence continues to provide:
 
 ```text
-_PROPER_EULER_SEQUENCES
-_TAIT_BRYAN_SEQUENCES
-_EULER_SEQUENCES
+cos_index
+phi
+psi
+singular_positive
+singular_negative
+```
 
-_PROPER_EULER_CONFIG
-_TAIT_BRYAN_CONFIG
+`cos_index` identifies the matrix element equal to `cos(theta)`, while the other entries define the `atan2` pairs required for the general and singular branches.
 
+#### Tait-Bryan configuration
+
+A parallel `_TAIT_BRYAN_CONFIG` should be added. Its sequence entries should provide:
+
+```text
+sin_term
+phi
+psi
+singular_positive
+singular_negative
+singular_positive_sign
+singular_negative_sign
+```
+
+For example, the `xyz` entry has the conceptual structure:
+
+```python
+"xyz": {
+    "sin_term": (1, 0, 2),
+    "phi": ((-1, 1, 2), (1, 2, 2)),
+    "psi": ((-1, 0, 1), (1, 0, 0)),
+    "singular_positive": ((1, 1, 0), (1, 1, 1)),
+    "singular_negative": ((-1, 1, 0), (1, 1, 1)),
+    "singular_positive_sign": +1,
+    "singular_negative_sign": -1,
+}
+```
+
+The singular sign entries encode the observable relation
+
+\[
+\chi = \phi + \sigma\psi,
+\]
+
+with `sigma` equal to `+1` or `-1`. They are used when converting a singular intrinsic result into the requested extrinsic representative while preserving the public `psi=0` rule.
+
+For intrinsic Tait-Bryan sequences, the singular relation signs are:
+
+| `seq` | `theta=+pi/2` | `theta=-pi/2` |
+| --- | ---: | ---: |
+| `xyz` | `+1` | `-1` |
+| `xzy` | `-1` | `+1` |
+| `yxz` | `-1` | `+1` |
+| `yzx` | `+1` | `-1` |
+| `zxy` | `+1` | `-1` |
+| `zyx` | `-1` | `+1` |
+
+#### Shared helpers
+
+The current proper-Euler implementation already contains several helpers that should be reused or generalized:
+
+```text
 _normalize_euler_sequence()
 _validate_euler_tol()
 _classify_trig_value()
@@ -270,12 +352,50 @@ _signed_matrix_element()
 _atan2_from_config()
 _negated_pair()
 _convert_euler_solutions_to_degrees()
-
-_rot2proper_euler()
-_rot2tait_bryan()
+_get_singular_relation_sign()
 ```
 
-`_rot2proper_euler()` and `_rot2tait_bryan()` should remain separate because the two families recover the intermediate angle from different trigonometric quantities:
+`_classify_euler_cos()` should be generalized to `_classify_trig_value()` so that it only knows that a theoretical trigonometric value belongs to `[-1, 1]`. Interpretation of `+1` and `-1` remains the responsibility of the proper-Euler or Tait-Bryan solver.
+
+The generalized classifier should continue to support:
+
+- symbolic simplification;
+- tolerance-aware clipping for floating-point values;
+- rejection of excursions outside `[-1,1]` beyond tolerance;
+- distinction between positive singular, negative singular, general, and symbolically undecidable cases.
+
+`_euler_sqrt_term()` should similarly be generalized to `_sqrt_one_minus_square(value)`, including the current floating-point protection
+
+```python
+max(0.0, 1.0 - value**2)
+```
+
+so that the helper can represent either
+
+```text
+sin(theta) = sqrt(1 - cos(theta)^2)
+```
+
+or
+
+```text
+cos(theta) = sqrt(1 - sin(theta)^2).
+```
+
+The existing `_signed_matrix_element()`, `_atan2_from_config()`, and `_negated_pair()` abstractions remain suitable for both sequence families.
+
+#### Internal inverse solvers
+
+The two mathematical solvers should remain separate:
+
+```python
+_rot2proper_euler(R, seq, tol)
+_rot2tait_bryan(R, seq, tol)
+```
+
+They should always work in radians and in the intrinsic convention.
+
+The separation is intentional because the two families recover the intermediate angle from different quantities:
 
 ```text
 Proper Euler:
@@ -287,15 +407,233 @@ Tait-Bryan:
     cos(theta) = sqrt(1 - sin(theta)^2)
 ```
 
-This separation keeps the mathematics explicit while still avoiding duplicated tolerance, clipping, `atan2`, and sign-handling code.
-
-Internal inverse helpers should also communicate whether the returned result is singular, for example conceptually as
+Both solvers should return a lightweight internal result of the form
 
 ```python
-solutions, singular = _rot2tait_bryan(...)
+solutions, singular_case
 ```
 
-or an equivalent lightweight internal representation. A public result dataclass is not required.
+where:
+
+```python
+singular_case is None
+```
+
+in the general case, and
+
+```python
+singular_case == "positive"
+singular_case == "negative"
+```
+
+for the two singular branches.
+
+A public result dataclass is not required.
+
+The degree conversion should not occur inside these solvers. It should happen once at the public `rot2eul()` boundary.
+
+A small dispatcher should route intrinsic requests:
+
+```python
+def _rot2eul_intrinsic(R, seq, tol):
+    if seq in _PROPER_EULER_SEQUENCES:
+        return _rot2proper_euler(R, seq, tol)
+    return _rot2tait_bryan(R, seq, tol)
+```
+
+#### Extrinsic singularities
+
+For a requested extrinsic sequence `abc`, the internal solver uses the equivalent intrinsic sequence `cba`.
+
+In the nonsingular case, each internal solution
+
+```python
+(alpha, theta, gamma)
+```
+
+is converted to the public extrinsic solution
+
+```python
+(gamma, theta, alpha)
+```
+
+while preserving first/second solution order.
+
+In the singular case, this mechanical reversal is not sufficient because it would place the internally fixed zero in the first public angle. Instead, let the internal singular relation be
+
+\[
+\chi = \alpha + \sigma\gamma.
+\]
+
+The intrinsic solver returns the representative
+
+\[
+(\alpha_{eq},\theta_s,0),
+\]
+
+so that
+
+\[
+\alpha_{eq}=\chi.
+\]
+
+The public extrinsic convention requires the third public angle to be zero, which corresponds to setting the first internal angle to zero. Therefore
+
+\[
+\gamma_{eq}=\sigma\alpha_{eq}.
+\]
+
+The public extrinsic singular result is consequently
+
+\[
+(\sigma\alpha_{eq},\theta_s,0).
+\]
+
+For proper Euler sequences, the singular relation sign is sequence-independent:
+
+```text
+positive singularity (theta=0):   sigma = +1
+negative singularity (theta=pi):  sigma = -1
+```
+
+For Tait-Bryan sequences, the sign comes from `_TAIT_BRYAN_CONFIG` according to the internal reversed sequence and singular branch.
+
+A helper such as
+
+```python
+_get_singular_relation_sign(seq, singular_case)
+```
+
+may encapsulate this rule.
+
+#### Public `rot2eul()` flow
+
+The public function should conceptually follow this order:
+
+```python
+def rot2eul(R, seq="zxz", deg=False, intrinsic=True, tol=1e-9):
+    seq = _normalize_euler_sequence(seq)
+    _validate_euler_tol(tol)
+
+    if not isinstance(intrinsic, bool):
+        raise TypeError("intrinsic must be a bool.")
+
+    R = Matrix(R)
+    _validate_rotation_matrix(R, tol=tol)
+
+    if intrinsic:
+        solutions, singular_case = _rot2eul_intrinsic(R, seq, tol)
+
+    else:
+        internal_seq = seq[::-1]
+        internal_solutions, singular_case = _rot2eul_intrinsic(
+            R,
+            internal_seq,
+            tol,
+        )
+
+        if singular_case is None:
+            solutions = [
+                (psi, theta, phi)
+                for phi, theta, psi in internal_solutions
+            ]
+        else:
+            alpha_eq, theta, _ = internal_solutions[0]
+            sign = _get_singular_relation_sign(
+                internal_seq,
+                singular_case,
+            )
+            solutions = [(sign * alpha_eq, theta, 0)]
+
+    if deg:
+        solutions = _convert_euler_solutions_to_degrees(solutions)
+
+    return solutions
+```
+
+This pseudocode records the intended control flow rather than prescribing exact implementation syntax.
+
+#### Public `eul2rot()` flow
+
+`eul2rot()` does not require separate proper-Euler and Tait-Bryan algorithms. Once the sequence has been validated, the same elementary-rotation construction handles all twelve sequences.
+
+Conceptually:
+
+```python
+def eul2rot(
+    phi,
+    theta,
+    psi,
+    seq="zxz",
+    deg=False,
+    intrinsic=True,
+):
+    seq = _normalize_euler_sequence(seq)
+
+    if not isinstance(intrinsic, bool):
+        raise TypeError("intrinsic must be a bool.")
+
+    if deg:
+        phi, theta, psi = deg2rad(
+            Matrix([phi, theta, psi]),
+            evalf=False,
+        )
+
+    if not intrinsic:
+        seq = seq[::-1]
+        phi, psi = psi, phi
+
+    return (
+        rot(phi, seq[0])
+        * rot(theta, seq[1])
+        * rot(psi, seq[2])
+    )
+```
+
+#### Legacy private wrappers
+
+The current wrappers
+
+```text
+_rot2zxz()
+_rot2zyz()
+_rot2xyx()
+_rot2xzx()
+_rot2yxy()
+_rot2yzy()
+```
+
+only delegate to `_rot2proper_euler()` and should be removed in 0.5.0. Creating corresponding wrappers for all twelve sequences would add unnecessary duplication and obscure the configuration-driven design.
+
+The intended final Euler structure is therefore:
+
+```text
+Public API
+  eul2rot()
+  rot2eul()
+
+Intrinsic mathematical core
+  _rot2proper_euler()
+  _rot2tait_bryan()
+  _rot2eul_intrinsic()
+
+Configuration
+  _PROPER_EULER_SEQUENCES
+  _TAIT_BRYAN_SEQUENCES
+  _EULER_SEQUENCES
+  _PROPER_EULER_CONFIG
+  _TAIT_BRYAN_CONFIG
+
+Shared mechanics
+  sequence normalization
+  tolerance validation
+  trig classification
+  complementary trig term
+  configured atan2 extraction
+  second-solution sign handling
+  singular relation sign handling
+  degree conversion
+```
 
 ### 2.11 Validation contract
 
