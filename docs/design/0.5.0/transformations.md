@@ -8,7 +8,7 @@ The intent is to preserve the compact, functional, SymPy-first and educational c
 
 Design in progress.
 
-The Euler/Tait-Bryan section below reflects decisions already accepted during detailed design. Other sections will be completed incrementally.
+The Euler/Tait-Bryan and validation sections below reflect decisions already accepted during detailed design. Other sections will be completed incrementally.
 
 ## 1. Design principles
 
@@ -721,7 +721,371 @@ At minimum, tests should cover:
 
 ## 3. Rotation-matrix and homogeneous-transform validation
 
-Detailed design pending.
+### 3.1 Public inspection predicates
+
+Moro 0.5.0 will expose:
+
+```python
+is_rotation_matrix(R, *, tol=1e-9)
+is_homogeneous_transform(T, *, tol=1e-9)
+```
+
+These are inspection predicates, not operation preconditions.
+
+For symbolic inputs they use ternary semantics:
+
+```text
+True   -> validity can be established
+False  -> invalidity can be established
+None   -> validity cannot be decided conclusively
+```
+
+A predicate should not raise merely because a matrix is geometrically invalid. Conversion failures for objects that cannot reasonably be interpreted as matrices may still raise `TypeError`.
+
+### 3.2 Shared tolerance policy
+
+A single private helper should validate tolerances across the transformations module:
+
+```python
+_validate_tol(tol)
+```
+
+The accepted tolerance must be:
+
+- scalar;
+- numeric;
+- real;
+- strictly positive.
+
+Examples that should be accepted include ordinary positive floats and exact positive SymPy numbers such as `Rational` values.
+
+Examples that should be rejected include:
+
+```text
+0
+negative values
+symbolic tolerances
+complex values
+```
+
+Invalid types should raise `TypeError`; numeric but non-positive values should raise `ValueError`.
+
+The helper may normalize the accepted tolerance to a Python `float` for subsequent numerical comparisons.
+
+### 3.3 `is_rotation_matrix()` contract
+
+A valid rotation matrix belongs to `SO(3)` and therefore satisfies
+
+\[
+R^T R = I,
+\qquad
+\det(R)=1.
+\]
+
+`is_rotation_matrix()` should also require shape `(3, 3)` and real components for numerical inputs.
+
+The public behavior is:
+
+```text
+not convertible to Matrix -> TypeError
+shape != (3, 3)          -> False
+numerical and non-real    -> False
+numerically valid         -> True
+numerically invalid       -> False
+symbolically valid        -> True
+symbolically invalid      -> False
+symbolically indeterminate-> None
+```
+
+#### Numerical path
+
+A matrix may be classified as numerical when every element has `is_number is True`.
+
+Within that path:
+
+- any element with `is_real is False` makes the matrix invalid;
+- if any element has `is_real is None`, the predicate should avoid assuming reality and should fall back to symbolic/indeterminate reasoning;
+- otherwise values may be evaluated numerically for tolerance checks.
+
+The orthogonality condition should use an element-wise tolerance check on
+
+\[
+E = R^T R-I.
+\]
+
+The matrix is numerically orthogonal when every element satisfies
+
+\[
+|E_{ij}|\le tol.
+\]
+
+The determinant condition should similarly require
+
+\[
+|\det(R)-1|\le tol.
+\]
+
+A separate matrix norm is not required for 0.5.0; the element-wise criterion is explicit and easy to document.
+
+#### Symbolic path
+
+The symbolic path should evaluate
+
+\[
+R^T R-I
+\]
+
+and
+
+\[
+\det(R)-1
+\]
+
+using measured symbolic simplification.
+
+Each required zero condition may be classified through `expr.is_zero` after `simplify()`:
+
+```text
+True  -> condition established
+False -> condition violated
+None  -> condition indeterminate
+```
+
+The aggregate predicate is:
+
+- `False` if any required condition is demonstrably false;
+- `True` if all required conditions are demonstrably true;
+- `None` otherwise.
+
+The predicate should not initially rely on an aggressive chain of symbolic transformations such as repeated `trigsimp`, `factor`, or `cancel`. Additional simplification strategies may be introduced only if tests reveal important Moro-generated matrices that `simplify()` cannot recognize.
+
+Matrices constructed from Moro elementary rotation functions should normally be recognizable as valid, while a fully generic symbolic `3 x 3` matrix may legitimately remain indeterminate.
+
+### 3.4 `_validate_rotation_matrix()`
+
+Operations that require a valid rotation matrix should use:
+
+```python
+_validate_rotation_matrix(R, *, tol=1e-9)
+```
+
+The helper should:
+
+1. validate and normalize `tol`;
+2. convert `R` to a SymPy matrix;
+3. delegate geometric classification to `is_rotation_matrix()`;
+4. return the normalized matrix when validity is established;
+5. raise when the precondition is not satisfied.
+
+Conceptually:
+
+```text
+True  -> return Matrix(R)
+False -> ValueError: R is not a valid rotation matrix
+None  -> ValueError: validity could not be established
+```
+
+The `False` and `None` cases should use distinguishable error messages because a demonstrably invalid matrix and a symbolically indeterminate matrix represent different situations.
+
+This helper should be the canonical precondition path for orientation conversions such as:
+
+```text
+rot2eul()
+rot2axa()
+rot2quat()
+rot2rotvec()
+```
+
+### 3.5 `is_homogeneous_transform()` contract
+
+A valid rigid homogeneous transformation has the form
+
+\[
+T=
+\begin{bmatrix}
+R & p\\
+0 & 1
+\end{bmatrix},
+\]
+
+with
+
+\[
+R\in SO(3).
+\]
+
+`is_homogeneous_transform()` should verify:
+
+- shape `(4, 4)`;
+- validity of the upper-left rotation block through `is_rotation_matrix()`;
+- validity of the homogeneous final row;
+- real components for fully numerical inputs.
+
+The translation vector does not require an additional geometric constraint beyond reality in the numerical case.
+
+The final row should satisfy
+
+\[
+T_{30}=0,\quad
+T_{31}=0,\quad
+T_{32}=0,\quad
+T_{33}=1.
+\]
+
+For numerical matrices, the same `tol` should be used for the final row. Therefore tiny floating-point deviations may be accepted consistently with the rotation-block checks.
+
+For symbolic matrices, each final-row condition should use the same ternary zero-classification strategy as rotation validation.
+
+The complete result should combine component statuses conservatively:
+
+```text
+if any required condition is False -> False
+if all required conditions are True -> True
+otherwise -> None
+```
+
+In particular, a symbolically indeterminate rotation block should be able to make the complete transform predicate return `None` rather than being collapsed to `False`.
+
+### 3.6 `_validate_homogeneous_transform()`
+
+Operations that require a valid rigid pose should use:
+
+```python
+_validate_homogeneous_transform(T, *, tol=1e-9)
+```
+
+Its behavior should mirror `_validate_rotation_matrix()`:
+
+```text
+True  -> return normalized Matrix(T)
+False -> ValueError: T is not a valid homogeneous transformation
+None  -> ValueError: validity could not be established
+```
+
+The helper should delegate geometric classification to `is_homogeneous_transform()` rather than duplicating its rules.
+
+This validator is intended to support operations such as rigid structured inversion and the canonical pose target accepted by full-pose inverse kinematics.
+
+### 3.7 Selective adoption in existing functions
+
+The new validation infrastructure should not cause every helper in `transformations.py` to perform full geometric validation.
+
+Functions should validate only what their mathematics requires.
+
+Full `SO(3)` validation should be used by:
+
+```text
+rot2eul()
+rot2axa()
+rot2quat()
+rot2rotvec()
+```
+
+Full homogeneous-transform validation should be used by:
+
+```text
+invhtm()
+```
+
+because its structured inverse relies on
+
+\[
+R^{-1}=R^T.
+\]
+
+`invhtm()` should therefore evolve to a tolerance-aware signature such as
+
+```python
+invhtm(T, *, tol=1e-9)
+```
+
+and should validate the input before computing `R.T` and `-R.T*p`.
+
+The following existing functions should retain structural validation only:
+
+```text
+rot2htm()
+rt2htm()
+htm2rot()
+htm2tra()
+```
+
+This preserves their role as simple constructors or extractors.
+
+The following functions construct valid transformations by definition and do not require additional geometric validation:
+
+```text
+rot()
+rotx()
+roty()
+rotz()
+htmrot()
+htmtra()
+dh()
+```
+
+This selective policy keeps the module compact and avoids turning simple structural utilities into unnecessarily strict geometric gates.
+
+### 3.8 Compatibility and deprecation of `is_SO3()`
+
+The existing `moro.util.is_SO3()` should not remain as an independent second implementation.
+
+For Moro 0.5.0:
+
+- `is_rotation_matrix()` in `moro.transformations` becomes the canonical public API;
+- `moro.util.is_SO3()` remains temporarily available for import compatibility;
+- `is_SO3()` is deprecated;
+- `is_SO3()` delegates to `is_rotation_matrix()` rather than preserving separate logic;
+- `is_SO3()` preserves its historical boolean contract by collapsing indeterminate symbolic results to `False`.
+
+Conceptually:
+
+```python
+def is_SO3(R, tol=1e-9):
+    warnings.warn(
+        "is_SO3() is deprecated; use "
+        "moro.transformations.is_rotation_matrix() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    from moro.transformations import is_rotation_matrix
+
+    return is_rotation_matrix(R, tol=tol) is True
+```
+
+The import from `moro.transformations` should be local to the wrapper or otherwise arranged so that the current dependency of `transformations.py` on utilities such as `deg2rad()` and `rad2deg()` does not introduce a module-level circular import.
+
+This strategy preserves existing code such as
+
+```python
+from moro.util import is_SO3
+```
+
+while establishing one source of truth for `SO(3)` validation.
+
+Removal of `is_SO3()` may be considered in a later release according to Moro's compatibility policy.
+
+### 3.9 Validation tests
+
+At minimum, validation tests should cover:
+
+- exact numerical rotation matrices;
+- floating-point rotation matrices within tolerance;
+- matrices outside tolerance;
+- orthogonal matrices with determinant `-1`;
+- incorrect shapes;
+- non-real numerical entries;
+- exact symbolic rotations generated by Moro;
+- demonstrably invalid symbolic matrices;
+- generic symbolic matrices that should return `None`;
+- exact and approximate valid homogeneous transforms;
+- invalid homogeneous final rows;
+- homogeneous transforms with invalid rotation blocks;
+- propagation of `None` from an indeterminate rotation block;
+- distinction between predicate behavior and private-validator exceptions;
+- deprecation warning and boolean compatibility of `moro.util.is_SO3()`;
+- `invhtm()` rejection of matrices that are merely `4 x 4` but not valid rigid transforms.
 
 ## 4. Axis-angle refinements
 
