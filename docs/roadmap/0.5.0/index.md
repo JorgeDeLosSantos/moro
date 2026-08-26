@@ -244,6 +244,142 @@ This keeps the package root compact and avoids accumulating every public helper 
 
 SciPy becomes a required dependency in Moro 0.5.0 because numerical simulation is part of the main library rather than an optional extra. This installation-footprint change should be documented in the changelog and release notes.
 
+## Definition of done
+
+A feature increment is not considered complete merely because its main numerical or symbolic operation works. Unless a feature-specific criterion states otherwise, every increment must satisfy the following common completion criteria.
+
+### Common completion criteria
+
+- The accepted public API is implemented with stable naming and documented argument/return conventions.
+- Input validation covers expected misuse and produces clear exceptions rather than obscure downstream failures.
+- Numerical and symbolic behavior matches the scope agreed in the corresponding roadmap document.
+- Public result objects, when present, enforce their intended shape and consistency invariants.
+- New public functions/classes are included in the appropriate module-level exports; root-level exports follow the compatibility policy above.
+- Existing behavior that is intended to remain compatible has regression coverage.
+- Accepted breaking changes and deprecations are explicit, tested where practical, and documented.
+- Unit tests cover nominal cases, boundary/singular cases relevant to the feature, invalid inputs, and representative symbolic-parameter cases.
+- The complete test suite passes after integration of the increment.
+- Public API documentation is updated, including mathematical conventions that affect interpretation.
+- At least one concise educational example demonstrates the main workflow of the increment.
+- The implementation does not introduce functionality explicitly excluded by the roadmap merely as a side effect of convenience.
+
+### Increment-specific completion criteria
+
+#### Transformations and orientation foundations
+
+Consider this increment done when:
+
+- all twelve accepted proper-Euler/Tait-Bryan sequences work in `eul2rot()` and `rot2eul()` without regressing the six existing sequences;
+- quaternion conversion functions use the accepted scalar-first convention consistently;
+- `rot2rotvec()` / `rotvec2rot()` reconstruct rotations robustly in ordinary cases and around the important zero/`pi` regimes;
+- `vex()` is implemented consistently with `skew()`;
+- `is_rotation_matrix()` and `is_homogeneous_transform()` implement the accepted numerical and symbolic ternary semantics;
+- legacy `is_SO3()`, `is_SE3()`, `isrot()`, and `ishtm()` remain Boolean-compatible and emit the accepted deprecation warning;
+- axis-angle degree handling is symmetric where explicitly accepted;
+- round-trip tests emphasize reconstructed rotations rather than equality of non-unique parameterizations;
+- transformation documentation explains conventions, singularities, quaternion ordering, rotation vectors, and validation behavior.
+
+#### Differential kinematics
+
+Consider this increment done when:
+
+- task selection supports the accepted presets and explicit component subsets;
+- `task_jacobian()` works symbolically and numerically as specified;
+- `cartesian_velocity()` reproduces known Jacobian-velocity products;
+- `solve_velocity_ik()` supports both pseudoinverse and DLS;
+- `VelocityIKSolution` exposes internally consistent achieved velocity, residual, rank, and conditioning diagnostics;
+- optional joint-velocity limits behave according to the final detailed-design semantics and their effect is observable in diagnostics;
+- revolute, prismatic, redundant, singular, and near-singular cases are covered;
+- the public documentation makes the geometric-twist ordering and angular-velocity convention explicit.
+
+#### Singularities and manipulability
+
+Consider this increment done when:
+
+- singular values, numerical rank, condition number, and `is_singular()` are derived consistently from the same selected task Jacobian;
+- rank-loss classification matches the accepted `rank < min(m, n)` definition under the chosen numerical tolerance policy;
+- effectively singular condition numbers return `inf` rather than failing;
+- Yoshikawa manipulability matches known reference cases and behaves correctly for dimensionally underactuated tasks;
+- `manipulability()` requires explicit task selection as agreed;
+- no automatic normalization between translational and rotational components is introduced;
+- tests include singular, near-singular, reduced-task, revolute/prismatic, and symbolic-parameter cases.
+
+#### Full-pose inverse kinematics
+
+Consider this increment done when:
+
+- `solve_pose()` accepts and validates the canonical `4 x 4` HTM target;
+- the final SO(3) orientation-error convention is documented and mathematically compatible with the geometric Jacobian/update rule;
+- position and orientation weights and convergence tolerances operate independently as designed;
+- the accepted Jacobian-based methods converge on representative reachable pose targets;
+- CCD remains position-only;
+- `PoseIKSolution` exposes consistent position/orientation diagnostics;
+- joint-limit, initialization, stagnation, and symbolic-parameter behavior reuse existing IK semantics where intended;
+- forward-kinematics round-trip tests verify achieved pose rather than requiring identical joint coordinates;
+- tests explicitly cover zero, small, and approximately `pi` orientation errors.
+
+#### Trajectory generation
+
+Consider this increment done when:
+
+- `joint_trajectory()` and `position_trajectory()` implement linear, cubic, and quintic interpolation with the accepted boundary-condition semantics;
+- time vectors are validated as strictly increasing;
+- endpoint position/velocity/acceleration conditions match the selected polynomial method;
+- unsupported derivative conditions are rejected rather than ignored;
+- `JointTrajectory` and `PositionTrajectory` use the accepted time-major shapes;
+- Cartesian positions remain three-component even for planar trajectories;
+- generated position trajectories can be consumed explicitly by `solve_position_trajectory()`;
+- generated joint trajectories can be consumed by visualization without special reshaping;
+- known polynomial reference cases and invalid-input cases are covered by tests.
+
+#### Numerical dynamics and simulation
+
+Consider this increment done when:
+
+- the accepted dynamic-model API transition is implemented and documented;
+- `dynamic_model()` returns matrix-form dynamics and `euler_lagrange_equations()` provides the former Euler-Lagrange behavior;
+- `dynamic_model_matrix_form()` remains a working deprecated alias;
+- SciPy is present as a required package dependency;
+- `inverse_dynamics()` and `forward_dynamics()` agree numerically on round-trip reference cases;
+- forward dynamics solves the linear system without explicitly forming `M^{-1}`;
+- reusable numerical dynamic callables avoid repeated symbolic substitution inside ODE integration;
+- `state_derivative()` exposes the expected first-order state vector field;
+- `simulate()` supports zero, constant, and callable generalized-force inputs;
+- `DynamicsSolution` uses the accepted time-major shapes and has consistent `q`, `qd`, and `qdd` data;
+- representative free/gravity-driven, constant-input, time-varying-input, and simple feedback simulations are tested;
+- unconstrained joint-limit behavior is clearly documented rather than silently clipped.
+
+#### Workspace sampling
+
+Consider this increment done when:
+
+- `sample_workspace()` requires a finite sampling interval for every joint;
+- robot-defined and explicit limits follow the finalized precedence/validation policy;
+- random sampling is reproducible for a fixed `seed`;
+- revolute, prismatic, and mixed-joint robots are supported;
+- symbolic geometric parameters can be supplied numerically and unresolved parameters fail clearly;
+- repeated workspace evaluation uses an efficient numerical FK path rather than per-sample symbolic substitution;
+- `Workspace.points` uses shape `(N, 3)` and configurations preserve one-to-one correspondence with sampled points;
+- reported Cartesian bounds agree with the sampled data;
+- the selected visualization entry point can display planar/spatial sampled workspaces without coupling plotting behavior to the data object;
+- tests cover reproducibility, finite-limit validation, shapes, FK consistency, parameter substitution, and invalid input.
+
+#### Integration, documentation, and release hardening
+
+Consider Moro 0.5.0 release-ready when:
+
+- all accepted feature increments satisfy their individual definitions of done;
+- public imports and `__all__` declarations are reviewed for consistency;
+- no unintended root-package API expansion has occurred;
+- all accepted deprecations emit appropriate warnings and are documented;
+- the `dynamic_model()` breaking change is prominently documented in the changelog/release notes;
+- SciPy is present in packaging metadata and clean installation is verified;
+- cross-module time-major and Cartesian shape conventions are consistent;
+- examples and user/theory documentation build successfully with Sphinx under warning-as-error mode where practical;
+- the complete automated test suite passes on the supported Python versions;
+- representative 0.4.0 workflows that should remain compatible are regression-tested;
+- CHANGELOG and version/release metadata are ready for the final 0.5.0 release.
+
 ## Scope discipline
 
 The accepted 0.5.0 scope intentionally excludes several natural follow-on capabilities so that the release remains focused. In particular, the release does not aim to introduce general motion planning, collision-aware IK, null-space secondary objectives, pose trajectories, SLERP, screw-theory/SE(3) utilities as a general subsystem, constrained/contact dynamics, controller classes, advanced trajectory profiles, or exact analytical workspace computation.
@@ -252,9 +388,6 @@ If schedule pressure requires prioritization, workspace is the most independent 
 
 ## Planning status
 
-The feature scope, implementation order, and compatibility/deprecation policy are now defined. The next planning steps are:
-
-1. define completion criteria for each feature increment;
-2. begin detailed design and implementation in the agreed sequence.
+The feature scope, implementation order, compatibility/deprecation policy, and completion criteria are now defined. Planning is sufficiently mature to begin detailed design and implementation in the agreed sequence, starting with transformations and orientation foundations.
 
 Detailed numerical tolerances, dataclass invariants, private helper structure, caching strategies, and exact exception messages remain deferred to detailed design.
