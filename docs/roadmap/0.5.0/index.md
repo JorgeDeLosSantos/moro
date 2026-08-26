@@ -125,7 +125,7 @@ This block has few dependencies and can be implemented without changing robot mo
 
 Implement the numerical dynamics layer after reviewing the symbolic dynamics API and its planned naming changes:
 
-1. settle the `dynamic_model()` / `euler_lagrange_equations()` compatibility strategy;
+1. apply the accepted `dynamic_model()` / `euler_lagrange_equations()` API transition;
 2. add SciPy as a required dependency;
 3. implement `inverse_dynamics()`;
 4. implement `forward_dynamics()`;
@@ -177,6 +177,73 @@ Trajectory generation is mostly independent and can then consume already-stable 
 
 Parallel development remains possible where dependencies do not overlap. In particular, trajectory generation and workspace could be implemented independently of most full-pose IK or dynamics work, but the sequence above is preferred for a single main development stream.
 
+## Compatibility and deprecation policy
+
+Moro 0.5.0 is allowed to make a small number of explicit pre-1.0 API corrections, but silent semantic changes should be avoided except where the change is intentional, documented, and judged preferable to carrying a known naming problem forward.
+
+### Dynamic-model API
+
+The accepted 0.5.0 behavior is:
+
+```text
+Robot.euler_lagrange_equations()
+    -> Euler-Lagrange equations
+
+Robot.dynamic_model()
+    -> standard matrix-form dynamic model
+
+Robot.dynamic_model_matrix_form()
+    -> deprecated alias of Robot.dynamic_model()
+```
+
+This means `Robot.dynamic_model()` changes meaning relative to Moro 0.4.x. The change is intentionally accepted as a breaking change for 0.5.0 because retaining or deprecating the same name before reusing it with a different meaning would create a more confusing transition.
+
+Release notes and the changelog must state clearly that users who relied on the 0.4.x behavior of `dynamic_model()` should migrate to `euler_lagrange_equations()`.
+
+### Rotation and homogeneous-transform predicates
+
+The preferred public API becomes:
+
+```python
+is_rotation_matrix(R, *, tol=1e-9)
+is_homogeneous_transform(T, *, tol=1e-9)
+```
+
+These new predicates belong conceptually in `moro.transformations` and use the accepted symbolic ternary semantics `True | False | None`.
+
+The existing names
+
+```text
+is_SO3()
+is_SE3()
+isrot()
+ishtm()
+```
+
+are considered redundant once the descriptive predicates exist. They should be deprecated in 0.5.0 and removed in a later release.
+
+During the deprecation period, legacy wrappers should preserve their historical Boolean contract rather than exposing the new ternary behavior directly. An indeterminate symbolic result should therefore remain `False` through the legacy wrappers.
+
+### Root-package exports
+
+Existing root-level imports should remain compatible where practical, but new feature APIs do not need to be re-exported automatically from `moro`.
+
+Preferred usage for new capabilities is module-oriented, for example:
+
+```python
+from moro.transformations import rot2quat, rot2rotvec
+from moro.inverse_kinematics import solve_pose
+from moro.differential_kinematics import solve_velocity_ik
+from moro.trajectory import joint_trajectory
+from moro.dynamics import simulate
+```
+
+This keeps the package root compact and avoids accumulating every public helper in `moro.__init__`.
+
+### SciPy dependency
+
+SciPy becomes a required dependency in Moro 0.5.0 because numerical simulation is part of the main library rather than an optional extra. This installation-footprint change should be documented in the changelog and release notes.
+
 ## Scope discipline
 
 The accepted 0.5.0 scope intentionally excludes several natural follow-on capabilities so that the release remains focused. In particular, the release does not aim to introduce general motion planning, collision-aware IK, null-space secondary objectives, pose trajectories, SLERP, screw-theory/SE(3) utilities as a general subsystem, constrained/contact dynamics, controller classes, advanced trajectory profiles, or exact analytical workspace computation.
@@ -185,10 +252,9 @@ If schedule pressure requires prioritization, workspace is the most independent 
 
 ## Planning status
 
-The feature scope and preliminary implementation order are now defined. The next planning steps are:
+The feature scope, implementation order, and compatibility/deprecation policy are now defined. The next planning steps are:
 
-1. review cross-cutting compatibility and deprecation changes;
-2. define completion criteria for each feature increment;
-3. begin detailed design and implementation in the agreed sequence.
+1. define completion criteria for each feature increment;
+2. begin detailed design and implementation in the agreed sequence.
 
 Detailed numerical tolerances, dataclass invariants, private helper structure, caching strategies, and exact exception messages remain deferred to detailed design.
