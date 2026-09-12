@@ -8,7 +8,7 @@ The intent is to preserve the compact, functional, SymPy-first and educational c
 
 Design in progress.
 
-The Euler/Tait-Bryan, validation, and axis-angle sections below reflect decisions already accepted during detailed design. Other sections will be completed incrementally.
+The Euler/Tait-Bryan, validation, axis-angle, and quaternion sections below reflect decisions already accepted during detailed design. Other sections will be completed incrementally.
 
 ## 1. Design principles
 
@@ -1405,7 +1405,501 @@ At minimum, tests should cover:
 
 ## 5. Quaternions
 
-Detailed design pending.
+### 5.1 Scope and public API
+
+Moro 0.5.0 will add a compact quaternion conversion API focused on orientation representation rather than general quaternion algebra:
+
+```python
+rot2quat(R, tol=1e-9)
+quat2rot(q, *, tol=1e-9)
+axa2quat(k, theta, deg=False)
+quat2axa(q, deg=False, *, tol=1e-9)
+```
+
+No Moro-specific quaternion class will be introduced in 0.5.0.
+
+Direct Euler/quaternion helpers such as `eul2quat()` and `quat2eul()` are intentionally omitted. Users can compose the existing matrix conversions:
+
+```text
+Euler -> rotation matrix -> quaternion
+quaternion -> rotation matrix -> Euler
+```
+
+SLERP, quaternion interpolation, quaternion trajectories, quaternion integration, and a general quaternion algebra API remain out of scope for 0.5.0.
+
+### 5.2 Public representation and ordering
+
+A quaternion is represented publicly as a four-component SymPy column vector using scalar-first ordering:
+
+\[
+q=
+\begin{bmatrix}
+w\\x\\y\\z
+\end{bmatrix}.
+\]
+
+The scalar-first convention is chosen because it maps directly to the axis-angle relationship
+
+\[
+q=
+\begin{bmatrix}
+\cos(\theta/2)\\
+k\sin(\theta/2)
+\end{bmatrix}.
+\]
+
+Unit quaternions represent orientation, but conversion functions may accept non-unit nonzero inputs and normalize them internally.
+
+### 5.3 Double coverage and canonical sign
+
+Unit quaternions double-cover `SO(3)`:
+
+\[
+q\equiv -q.
+\]
+
+`rot2quat()` should return a canonical representative whenever the sign is decidable by imposing
+
+\[
+w\ge0.
+\]
+
+This convention corresponds to the principal orientation angle
+
+\[
+\theta\in[0,\pi].
+\]
+
+At `w=0`, corresponding to `theta=pi`, no second sign rule will be introduced for the vector part. Both
+
+\[
+[0,k]^T
+\]
+
+and
+
+\[
+[0,-k]^T
+\]
+
+remain acceptable representatives.
+
+For symbolic outputs, canonicalization should be applied only when the sign of `w` can be established without introducing artificial `Piecewise` expressions:
+
+```text
+w provably negative      -> q = -q
+w provably nonnegative   -> keep q
+w sign indeterminate     -> keep symbolic expression
+```
+
+### 5.4 Quaternion shape and normalization
+
+A private helper should centralize quaternion input handling:
+
+```python
+_normalize_quaternion(q, tol)
+```
+
+The helper should:
+
+1. convert the input to a four-component SymPy column vector;
+2. validate `tol` using the shared tolerance policy;
+3. compute
+
+   \[
+   \|q\|^2=q^Tq;
+   \]
+
+4. reject zero or numerically near-zero quaternions;
+5. return
+
+   \[
+   q/\|q\|.
+   \]
+
+For a numerical quaternion, a norm satisfying
+
+\[
+\|q\|\le tol
+\]
+
+should be rejected because normalization would strongly amplify numerical noise.
+
+For symbolic inputs, the policy mirrors the axis normalization rules:
+
+```text
+norm_sq.is_zero is True  -> reject
+norm_sq.is_zero is False -> normalize
+norm_sq.is_zero is None  -> normalize symbolically
+```
+
+No public `is_unit_quaternion()` predicate is required for 0.5.0.
+
+### 5.5 General vector conversion helper
+
+Rather than introducing an independent `_as_4d_vector()` alongside the existing `_as_3d_vector()`, implementation work may generalize the current helper to something like
+
+```python
+_as_vector(v, size, name="vector")
+```
+
+with `_as_3d_vector()` retained as a thin convenience wrapper if that improves readability.
+
+Quaternion normalization can then use conceptually:
+
+```python
+q = _as_vector(q, 4, name="quaternion")
+```
+
+The goal is to avoid duplicating shape-conversion logic merely because quaternions have four components.
+
+### 5.6 `quat2rot()`
+
+`quat2rot()` should normalize the quaternion first and then construct the rotation matrix directly.
+
+For
+
+\[
+q=[w,x,y,z]^T,
+\]
+
+the matrix is
+
+\[
+R=
+\begin{bmatrix}
+1-2(y^2+z^2) & 2(xy-wz) & 2(xz+wy)\\
+2(xy+wz) & 1-2(x^2+z^2) & 2(yz-wx)\\
+2(xz-wy) & 2(yz+wx) & 1-2(x^2+y^2)
+\end{bmatrix}.
+\]
+
+Because the input is normalized internally, no subsequent `SO(3)` validation of the constructed matrix is required.
+
+The function should satisfy explicitly
+
+\[
+\operatorname{quat2rot}(q)=\operatorname{quat2rot}(-q).
+\]
+
+### 5.7 `rot2quat()` numerical algorithm
+
+`rot2quat()` should begin with the shared rotation precondition:
+
+```python
+R = _validate_rotation_matrix(R, tol=tol)
+```
+
+For numerical matrices, the implementation should not rely exclusively on the trace formula
+
+\[
+w=\frac12\sqrt{1+\operatorname{tr}(R)},
+\]
+
+because the subsequent divisions become poorly conditioned when `w` is close to zero.
+
+Instead, Moro should use a dominant-component algorithm based on the quantities
+
+\[
+\begin{aligned}
+s_w &= 1+R_{00}+R_{11}+R_{22},\\
+s_x &= 1+R_{00}-R_{11}-R_{22},\\
+s_y &= 1-R_{00}+R_{11}-R_{22},\\
+s_z &= 1-R_{00}-R_{11}+R_{22},
+\end{aligned}
+\]
+
+which correspond theoretically to
+
+\[
+4w^2,\quad4x^2,\quad4y^2,\quad4z^2.
+\]
+
+The numerically largest candidate should be recovered first, and the remaining components should then be obtained from the appropriate off-diagonal matrix combinations.
+
+For example, when the scalar component dominates,
+
+\[
+w=\frac12\sqrt{s_w},
+\]
+
+followed by
+
+\[
+x=\frac{R_{21}-R_{12}}{4w},\qquad
+y=\frac{R_{02}-R_{20}}{4w},\qquad
+z=\frac{R_{10}-R_{01}}{4w}.
+\]
+
+Equivalent branch formulas should be used when `x`, `y`, or `z` is the dominant component.
+
+The resulting quaternion should be normalized once more to absorb small numerical drift, then canonicalized according to `w >= 0`.
+
+### 5.8 `rot2quat()` symbolic path
+
+Selecting the numerically largest component is not generally meaningful for symbolic matrices.
+
+For symbolic rotation matrices whose `SO(3)` membership can be established, `rot2quat()` should therefore use the axis-angle decomposition as a symbolic fallback:
+
+\[
+(k,\theta)=\operatorname{rot2axa}(R),
+\]
+
+followed by
+
+\[
+q=
+\begin{bmatrix}
+\cos(\theta/2)\\
+k\sin(\theta/2)
+\end{bmatrix}.
+\]
+
+This avoids introducing large symbolic `Piecewise` expressions solely to emulate the dominant-component numerical algorithm.
+
+The result should be normalized if useful for simplification/consistency and sign-canonicalized only when the sign of `w` can be established.
+
+### 5.9 Quaternion sign helper
+
+A small private helper may encapsulate the public sign convention:
+
+```python
+_canonicalize_quaternion_sign(q)
+```
+
+Its intended behavior is:
+
+```text
+w < 0 or provably negative  -> -q
+w > 0 or provably positive  -> q
+w == 0                      -> q
+w symbolically indeterminate-> q
+```
+
+The helper must not attempt a second vector-part sign convention when `w=0`.
+
+### 5.10 `axa2quat()`
+
+`axa2quat()` should directly implement
+
+\[
+q=
+\begin{bmatrix}
+\cos(\theta/2)\\
+k\sin(\theta/2)
+\end{bmatrix}
+\]
+
+after normalizing the axis using the same policy as `axa2rot()`.
+
+A non-unit nonzero axis is accepted and normalized automatically. A demonstrably zero axis is rejected, while a symbolically indeterminate potentially nonzero axis is accepted.
+
+When `deg=True`, `theta` is converted to radians before evaluating the half-angle expressions.
+
+No `tol` argument is required because `axa2quat()` is a constructor rather than a noisy-data classifier.
+
+### 5.11 `quat2axa()`
+
+`quat2axa()` should normalize the quaternion and apply the canonical sign rule before recovering the principal axis-angle representation.
+
+Write
+
+\[
+q=
+\begin{bmatrix}
+w\\v
+\end{bmatrix},
+\qquad
+v=
+\begin{bmatrix}x\\y\\z\end{bmatrix},
+\]
+
+with
+
+\[
+s=\|v\|.
+\]
+
+The angle should be recovered robustly as
+
+\[
+\theta=2\operatorname{atan2}(s,w),
+\]
+
+rather than relying only on `2*acos(w)`.
+
+After canonicalization with `w >= 0`, the principal result satisfies
+
+\[
+\theta\in[0,\pi].
+\]
+
+For the general case `s>0`, the axis is
+
+\[
+k=\frac{v}{s}.
+\]
+
+At the identity quaternion
+
+\[
+q=[1,0,0,0]^T,
+\]
+
+Moro should return the same conventional axis used by `rot2axa()`:
+
+\[
+k=[1,0,0]^T,\qquad\theta=0.
+\]
+
+At `theta=pi`, `w=0` and the vector part itself provides the unit axis. Because no second sign convention is imposed, either equivalent axis sign is acceptable.
+
+`quat2axa()` should convert directly rather than routing through `quat2rot()` and `rot2axa()`.
+
+### 5.12 No direct Euler/quaternion API in 0.5.0
+
+Moro 0.5.0 will not add
+
+```text
+eul2quat()
+quat2eul()
+```
+
+The existing conversion graph is sufficient:
+
+```text
+Euler --eul2rot--> R --rot2quat--> quaternion
+quaternion --quat2rot--> R --rot2eul--> Euler
+```
+
+This keeps Euler sequence, intrinsic/extrinsic, singularity, and degree conventions centralized in the existing Euler API instead of duplicating them inside quaternion-specific functions.
+
+### 5.13 Quaternion test philosophy
+
+Quaternion tests should primarily verify represented orientation rather than raw component equality because
+
+\[
+q\equiv -q.
+\]
+
+For two quaternions, equivalence means
+
+\[
+q_1\sim q_2
+\iff
+q_1=q_2\ \text{or}\ q_1=-q_2,
+\]
+
+with tolerance-aware comparison for numerical tests.
+
+Exact component equality should be required only where the public contract deliberately selects a unique representative, such as the identity quaternion or a numerical `rot2quat()` result with positive scalar part away from `w=0`.
+
+### 5.14 Quaternion normalization and validation tests
+
+Tests should cover:
+
+- already unit quaternions;
+- non-unit quaternions that normalize to the same orientation;
+- list, tuple, and matrix forms of four-component input;
+- incorrect vector shape;
+- exact zero quaternion rejection;
+- numerical near-zero quaternion rejection using `tol`;
+- symbolic demonstrably zero quaternion rejection;
+- symbolic indeterminate potentially nonzero quaternion acceptance.
+
+### 5.15 Matrix/quaternion conversion tests
+
+For `quat2rot()`, tests should include:
+
+- identity quaternion to identity matrix;
+- known quarter-turn/half-turn examples around coordinate axes;
+- general-axis examples;
+- explicit double-coverage check `quat2rot(q) == quat2rot(-q)`;
+- invariance under nonzero scalar multiplication before internal normalization.
+
+For `rot2quat()`, tests should emphasize
+
+```text
+R -> q -> R
+```
+
+reconstruction, numerical canonicalization `w >= 0`, and robustness near `theta=pi`.
+
+Exact rotations by `pi` should be tested about coordinate axes and at least one general axis such as `[1,1,1]`. At `pi`, tests must not require one specific sign for the vector part.
+
+### 5.16 Axis-angle/quaternion conversion tests
+
+`axa2quat()` tests should cover:
+
+- analytical coordinate-axis examples;
+- non-unit input-axis normalization;
+- zero-axis rejection;
+- radian/degree consistency;
+- symbolic half-angle expressions.
+
+`quat2axa()` tests should cover:
+
+- identity representative `[1,0,0,0]^T`;
+- a general orientation;
+- `theta=pi` with either equivalent axis sign;
+- principal output range `[0, pi]`;
+- radian/degree consistency;
+- reconstruction of the represented orientation.
+
+### 5.17 Round-trip and representative tests
+
+Parameterized tests should cover the main conversion cycles:
+
+```text
+R -> q -> R
+q -> R -> q
+(k, theta) -> q -> (k, theta)
+q -> (k, theta) -> q
+```
+
+The comparison metric should depend on the representation:
+
+- matrices are compared as orientations/matrices;
+- quaternions are compared modulo sign unless canonicalization guarantees a representative;
+- axis-angle cycles are compared through reconstructed rotation matrices rather than literal axis equality at singular cases.
+
+Representative numerical angles should include values close to zero, ordinary interior angles, values close to `pi`, and `pi` exactly.
+
+Representative axes should include all coordinate axes and general directions such as `[1,1,1]` and `[1,-2,3]`.
+
+### 5.18 Symbolic quaternion tests
+
+Because Moro is SymPy-first, symbolic tests are required rather than optional.
+
+For example, with real symbolic `theta`,
+
+```python
+q = axa2quat([0, 0, 1], theta)
+```
+
+should produce an expression equivalent to
+
+\[
+[\cos(\theta/2),0,0,\sin(\theta/2)]^T.
+\]
+
+`quat2rot(q)` should reconstruct a symbolic z-axis rotation.
+
+For a symbolic rotation matrix generated by Moro, such as `rotx(theta)`, `rot2quat()` need not be tested against one rigid symbolic component form. Instead, the preferred assertion is reconstruction:
+
+```text
+rot2quat(R) -> quat2rot(q) -> R
+```
+
+with symbolic simplification applied to the matrix difference.
+
+The guiding principle for this block is therefore:
+
+```text
+test the represented orientation, not an arbitrary non-unique representation
+```
+
+except where the public API explicitly promises a canonical representative.
 
 ## 6. Rotation vectors and `SO(3)` logarithmic/exponential maps
 
