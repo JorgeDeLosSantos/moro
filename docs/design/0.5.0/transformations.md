@@ -8,7 +8,7 @@ The intent is to preserve the compact, functional, SymPy-first and educational c
 
 Design in progress.
 
-The Euler/Tait-Bryan and validation sections below reflect decisions already accepted during detailed design. Other sections will be completed incrementally.
+The Euler/Tait-Bryan, validation, and axis-angle sections below reflect decisions already accepted during detailed design. Other sections will be completed incrementally.
 
 ## 1. Design principles
 
@@ -1089,7 +1089,319 @@ At minimum, validation tests should cover:
 
 ## 4. Axis-angle refinements
 
-Detailed design pending.
+### 4.1 Public API
+
+Moro 0.5.0 will retain the existing axis-angle conversion names:
+
+```python
+rot2axa(R, deg=False, tol=1e-9)
+axa2rot(k, theta, deg=False)
+```
+
+`deg=False` is added to `axa2rot()` so that degree handling is symmetric in both conversion directions and consistent with the rest of the transformations API.
+
+`rot2axa()` returns
+
+```python
+(k, theta)
+```
+
+where `k` is a three-component SymPy column vector and `theta` is a scalar angle.
+
+When `deg=True`, only the angular quantity is converted; the axis is unchanged.
+
+### 4.2 Axis normalization and zero-axis policy
+
+`axa2rot()` should continue to accept axes that are not already normalized. The input axis is converted to a three-dimensional vector and normalized internally:
+
+\[
+k \leftarrow \frac{k}{\lVert k\rVert}.
+\]
+
+This preserves the convenient interpretation that any nonzero vector parallel to the desired axis is acceptable.
+
+A demonstrably zero axis is invalid and should raise `ValueError`.
+
+For symbolic axes, however, an indeterminate norm should not be rejected merely because SymPy cannot prove that it is nonzero. The intended policy is:
+
+```text
+norm_sq.is_zero is True  -> reject
+norm_sq.is_zero is False -> accept
+norm_sq.is_zero is None  -> accept symbolically
+```
+
+This allows useful symbolic constructions without requiring Moro to prove a nonzero assumption that may be implicit in the user's model.
+
+### 4.3 `axa2rot()` construction
+
+`axa2rot()` should continue to use Rodrigues' rotation formula. For a normalized axis `k`,
+
+\[
+R = I + \sin\theta\,[k]_\times
+    + (1-\cos\theta)[k]_\times^2.
+\]
+
+When `deg=True`, `theta` should be converted to radians before evaluating the formula.
+
+No `tol` argument is required by `axa2rot()` because it is a constructor and does not classify a noisy matrix.
+
+### 4.4 `rot2axa()` validation and principal angle
+
+`rot2axa()` should delegate rotation-matrix precondition checking to the shared validator:
+
+```python
+R = _validate_rotation_matrix(R, tol=tol)
+```
+
+The current duplicated use of `is_SO3()` and `_is_SO3_numeric_tol()` should therefore be removed once the new validation infrastructure is introduced.
+
+The returned angle should use the principal axis-angle convention
+
+\[
+\theta\in[0,\pi].
+\]
+
+The basic angle quantity is obtained from
+
+\[
+\cos\theta = \frac{\operatorname{tr}(R)-1}{2}.
+\]
+
+Numerical values near the theoretical interval limits should be classified using `tol` and clipped when the deviation is within tolerance rather than failing because of small floating-point errors.
+
+### 4.5 Identity rotation
+
+At
+
+\[
+\theta=0,
+\]
+
+the rotation axis is indeterminate.
+
+Moro will preserve the existing representative convention
+
+\[
+k =
+\begin{bmatrix}
+1\\0\\0
+\end{bmatrix}.
+\]
+
+Thus the identity rotation has one deterministic public representative, but documentation should make clear that this axis is conventional rather than information recovered from the matrix.
+
+### 4.6 General case
+
+For
+
+\[
+0<\theta<\pi,
+\]
+
+the axis can be recovered from the antisymmetric part of the rotation matrix:
+
+\[
+k=
+\frac{1}{2\sin\theta}
+\begin{bmatrix}
+R_{32}-R_{23}\\
+R_{13}-R_{31}\\
+R_{21}-R_{12}
+\end{bmatrix}.
+\]
+
+No additional canonicalization of the axis sign is required in the general case once the principal nonnegative angle has been selected.
+
+### 4.7 Rotation by `pi`
+
+At
+
+\[
+\theta=\pi,
+\]
+
+the antisymmetric recovery formula is singular because `sin(theta)=0`.
+
+Moro should retain the robust special-case strategy based on
+
+\[
+A=\frac{R+I}{2}=kk^T.
+\]
+
+The implementation should reconstruct a unit axis by selecting a numerically suitable dominant diagonal component and recovering the remaining components from the corresponding row or column relationships.
+
+At exactly `theta=pi`, both
+
+\[
+(k,\pi)
+\]
+
+and
+
+\[
+(-k,\pi)
+\]
+
+represent the same orientation. Moro will not impose an additional sign-canonicalization rule such as requiring the first nonzero axis component to be positive.
+
+Tests and downstream code should therefore rely on rotation reconstruction rather than exact axis-sign equality at this singular representation.
+
+### 4.8 Symbolic handling
+
+For symbolic inputs whose `SO(3)` membership can be established, `rot2axa()` should preserve symbolic expressions whenever possible.
+
+If the identity or `pi` case can be established exactly, the corresponding special branch should be used.
+
+If symbolic reasoning cannot prove that the angle is one of those singular values, the general symbolic expression may be retained rather than introducing aggressive case splitting.
+
+The implementation should avoid excessive symbolic manipulation solely to classify an angle branch.
+
+### 4.9 Shared internal helpers for axis-angle and rotation vectors
+
+The difficult matrix decomposition logic should be factored into a small set of private helpers that can be reused by `rot2axa()` and the future `rot2rotvec()` implementation.
+
+The accepted helper set is:
+
+```python
+_rotation_angle_from_matrix(R, tol)
+_axis_from_rotation_matrix(R, theta, angle_case, tol)
+_axis_at_pi(R, tol)
+```
+
+#### `_rotation_angle_from_matrix()`
+
+This helper is responsible for determining how much rotation is represented by `R`.
+
+It should compute
+
+\[
+\cos\theta = \frac{\operatorname{tr}(R)-1}{2}
+\]
+
+and return conceptually
+
+```python
+(theta, angle_case)
+```
+
+where `angle_case` is one of:
+
+```text
+"identity"
+"pi"
+"general"
+```
+
+Its responsibilities include:
+
+- numerical clipping of `cos(theta)` to `[-1, 1]` when deviations are within `tol`;
+- tolerance-aware detection of values near `+1` and `-1`;
+- exact/symbolic recognition of identity and `pi` cases when possible;
+- construction of the principal general angle in `[0, pi]`.
+
+#### `_axis_at_pi()`
+
+This helper should encapsulate only the numerically delicate `theta=pi` recovery using
+
+\[
+(R+I)/2=kk^T.
+\]
+
+It returns one valid unit axis and does not promise a canonical sign.
+
+Keeping this logic separate prevents the special `pi` handling from being duplicated across axis-angle and rotation-vector conversions.
+
+#### `_axis_from_rotation_matrix()`
+
+This helper acts as the small axis-recovery dispatcher.
+
+Conceptually:
+
+```python
+if angle_case == "identity":
+    return Matrix([1, 0, 0])
+
+if angle_case == "pi":
+    return _axis_at_pi(R, tol)
+
+return general_axis_formula(R, theta)
+```
+
+It answers the complementary question to `_rotation_angle_from_matrix()`: the first helper determines how much the orientation rotates, while this helper determines around which axis it rotates.
+
+No public decomposition object or internal dataclass is needed for 0.5.0.
+
+A lower-level helper such as `_skew_vector_from_rotation_matrix()` should not be introduced unless implementation work reveals meaningful reuse beyond a single formula.
+
+### 4.10 Reuse by rotation vectors
+
+The future `rot2rotvec()` implementation should reuse the same matrix decomposition rather than independently reproducing identity, `pi`, clipping, and general-axis logic.
+
+Conceptually, `rot2axa()` becomes:
+
+```python
+R = _validate_rotation_matrix(R, tol=tol)
+theta, angle_case = _rotation_angle_from_matrix(R, tol)
+k = _axis_from_rotation_matrix(R, theta, angle_case, tol)
+
+if deg:
+    theta = rad2deg(theta)
+
+return k, theta
+```
+
+while `rot2rotvec()` can use:
+
+```python
+R = _validate_rotation_matrix(R, tol=tol)
+theta, angle_case = _rotation_angle_from_matrix(R, tol)
+
+if angle_case == "identity":
+    return Matrix.zeros(3, 1)
+
+k = _axis_from_rotation_matrix(R, theta, angle_case, tol)
+return theta * k
+```
+
+The exact rotation-vector public API will be defined in its own design section; this subsection records only the intended internal reuse.
+
+### 4.11 Compatibility with Moro 0.4.0
+
+The following behavior is preserved:
+
+- public names `rot2axa()` and `axa2rot()`;
+- `(k, theta)` return structure from `rot2axa()`;
+- automatic normalization of a nonzero axis in `axa2rot()`;
+- principal angle in `[0, pi]`;
+- conventional x-axis representative for the identity rotation;
+- special handling of rotations by `pi`.
+
+The following behavior is added or regularized:
+
+- `deg=False` support in `axa2rot()`;
+- shared geometric validation through `_validate_rotation_matrix()`;
+- shared tolerance policy through `_validate_tol()`;
+- reusable internal angle/axis decomposition for rotation vectors.
+
+No axis-sign canonicalization is added for the `pi` case.
+
+### 4.12 Axis-angle tests
+
+At minimum, tests should cover:
+
+- reconstruction for representative general rotations;
+- exact identity rotation;
+- exact rotations by `pi` about coordinate and non-coordinate axes;
+- reconstruction when the returned `pi` axis has either equivalent sign;
+- angles close to zero and close to `pi` under numerical tolerance;
+- radian and degree modes in both conversion directions;
+- acceptance and normalization of non-unit input axes;
+- rejection of a demonstrably zero axis;
+- acceptance of symbolically indeterminate but potentially nonzero axes;
+- rejection of invalid rotation matrices by `rot2axa()`;
+- exact symbolic rotations whose `SO(3)` membership can be established;
+- principal output angle constrained to `[0, pi]`;
+- consistency of shared helper behavior with future `rot2rotvec()` reconstruction tests.
 
 ## 5. Quaternions
 
