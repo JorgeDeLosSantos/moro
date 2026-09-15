@@ -6,9 +6,9 @@ The intent is to preserve the compact, functional, SymPy-first and educational c
 
 ## Status
 
-Design in progress.
+Detailed design complete for the accepted Moro 0.5.0 transformations scope.
 
-The Euler/Tait-Bryan, validation, axis-angle, and quaternion sections below reflect decisions already accepted during detailed design. Other sections will be completed incrementally.
+The Euler/Tait-Bryan, validation, axis-angle, quaternion, rotation-vector, `skew()`/`vex()`, compatibility, and test-strategy sections below reflect decisions accepted during detailed design.
 
 ## 1. Design principles
 
@@ -1903,16 +1903,819 @@ except where the public API explicitly promises a canonical representative.
 
 ## 6. Rotation vectors and `SO(3)` logarithmic/exponential maps
 
-Detailed design pending.
+### 6.1 Public API and representation
+
+Moro 0.5.0 will expose rotation vectors through:
+
+```python
+rot2rotvec(R, tol=1e-9)
+rotvec2rot(phi)
+```
+
+A rotation vector is
+
+\[
+\phi=\theta k,
+\]
+
+where `k` is a unit rotation axis and `theta` is the rotation angle. Therefore
+
+\[
+\|\phi\|=\theta.
+\]
+
+The public representation is a three-component SymPy column vector. Rotation vectors are always interpreted in radians; no `deg` option is introduced because the vector simultaneously encodes axis and angular magnitude.
+
+The implementation is based on the geometry of the exponential and logarithmic maps of `SO(3)`, but public `so3_exp()` and `so3_log()` names are intentionally not added in 0.5.0.
+
+### 6.2 Principal logarithm convention
+
+`rot2rotvec()` returns the principal rotation vector with
+
+\[
+\|\phi\|\in[0,\pi].
+\]
+
+For the identity rotation,
+
+\[
+R=I\quad\Rightarrow\quad\phi=0.
+\]
+
+At exactly `theta=pi`, the rotation vectors
+
+\[
+\pi k
+\]
+
+and
+
+\[
+-\pi k
+\]
+
+represent the same orientation. Moro will not impose an additional sign-canonicalization rule for this case, matching the axis-angle convention.
+
+### 6.3 `rotvec2rot()` exponential map
+
+`rotvec2rot()` should implement the exponential map directly rather than routing through the public axis-angle API.
+
+Let
+
+\[
+\theta=\|\phi\|,
+\qquad
+\Phi=[\phi]_\times.
+\]
+
+Then
+
+\[
+R
+=
+I
++
+\frac{\sin\theta}{\theta}\Phi
++
+\frac{1-\cos\theta}{\theta^2}\Phi^2.
+\]
+
+This is Rodrigues' formula written directly in rotation-vector coordinates and corresponds to
+
+\[
+R=\exp([\phi]_\times).
+\]
+
+The implementation should use the existing public `skew()` helper to construct `Phi`.
+
+`rotvec2rot()` accepts any finite rotation-vector magnitude. It must not restrict the input to the principal interval `[0, pi]`; periodicity follows naturally from the trigonometric terms.
+
+### 6.4 Exact zero and small-angle numerical behavior
+
+At
+
+\[
+\phi=0,
+\]
+
+`rotvec2rot()` should return `Matrix.eye(3)` exactly.
+
+For small numerical angles, direct evaluation of
+
+\[
+A(\theta)=\frac{\sin\theta}{\theta},
+\qquad
+B(\theta)=\frac{1-\cos\theta}{\theta^2}
+\]
+
+may lose precision. A small-angle numerical branch should therefore use low-order series such as
+
+\[
+A(\theta)
+\approx
+1-\frac{\theta^2}{6}+\frac{\theta^4}{120},
+\]
+
+and
+
+\[
+B(\theta)
+\approx
+\frac12-\frac{\theta^2}{24}+\frac{\theta^4}{720}.
+\]
+
+The switch between the series and direct formulas is an internal numerical-stability detail. It should use a small private threshold rather than introducing a public `tol` argument to `rotvec2rot()`.
+
+### 6.5 Symbolic `rotvec2rot()` behavior
+
+For a symbolic rotation vector, define
+
+\[
+\theta^2=\phi^T\phi.
+\]
+
+The policy is:
+
+```text
+theta_sq.is_zero is True  -> return identity
+theta_sq.is_zero is False -> use closed-form exponential formula
+theta_sq.is_zero is None  -> use closed-form exponential formula
+```
+
+No automatic `Piecewise` expression should be introduced solely to cover a symbolically indeterminate zero case.
+
+The symbolic path should preserve the explicit Rodrigues/exponential form rather than relying on a generic symbolic matrix exponential such as `exp(skew(phi))`, which may remain unevaluated and would be less useful pedagogically.
+
+### 6.6 `rot2rotvec()` implementation architecture
+
+`rot2rotvec()` should use the same shared matrix decomposition already designed for axis-angle rather than calling `rot2axa()` as a public function or duplicating an independent logarithm implementation.
+
+Conceptually:
+
+```python
+R = _validate_rotation_matrix(R, tol=tol)
+theta, angle_case = _rotation_angle_from_matrix(R, tol)
+
+if angle_case == "identity":
+    return Matrix.zeros(3, 1)
+
+k = _axis_from_rotation_matrix(R, theta, angle_case, tol)
+return theta * k
+```
+
+This ensures that axis-angle and rotation-vector conversions share exactly the same behavior for:
+
+- numerical clipping;
+- identity classification;
+- rotations by `pi`;
+- symbolic branch handling;
+- principal-angle selection.
+
+### 6.7 Near-identity and near-`pi` behavior
+
+For numerical matrices classified as identity within `tol`, `rot2rotvec()` returns the zero vector.
+
+For matrices classified as rotations by `pi` within `tol`, it reuses `_axis_at_pi()` through `_axis_from_rotation_matrix()` and returns
+
+\[
+\phi=\pi k.
+\]
+
+The general formula
+
+\[
+\phi=
+\frac{\theta}{2\sin\theta}
+\operatorname{vex}(R-R^T)
+\]
+
+should not be used as the sole implementation because it becomes ill-conditioned near `theta=pi`.
+
+### 6.8 Symbolic `rot2rotvec()` behavior
+
+For symbolic matrices whose `SO(3)` membership can be established, exact identity and exact `pi` cases should use the corresponding shared branches when they can be proven.
+
+Otherwise, Moro may retain the general symbolic axis/angle expression and return `theta*k` without introducing large case splits or `Piecewise` expressions.
+
+For a symbolic matrix such as `rotx(theta)` with an unconstrained real `theta`, the API should not promise literal output `[theta, 0, 0]^T`, because the principal logarithm depends on the angular branch. Reconstruction is the stronger invariant.
+
+### 6.9 Relationship with `skew()`, `vex()`, and the Lie algebra
+
+The mathematical relationship should be documented explicitly:
+
+\[
+[\phi]_\times=\log(R),
+\qquad
+\phi=\operatorname{vex}(\log R).
+\]
+
+However, `rot2rotvec()` is not required to compute a generic matrix logarithm internally. The shared angle/axis decomposition is preferred for numerical robustness and code reuse.
+
+`rotvec2rot()` should use `skew(phi)` directly. `vex()` remains an independent public `so(3)` vector/matrix utility and may be used internally where natural, but it is not an architectural requirement for `rot2rotvec()`.
+
+### 6.10 Non-uniqueness and periodicity
+
+The exponential map is not injective. For a unit axis `k`, rotation vectors whose magnitudes differ by integer multiples of `2*pi` may represent the same orientation.
+
+Therefore:
+
+```text
+rotvec2rot(phi)
+    accepts non-principal magnitudes
+
+rot2rotvec(R)
+    returns the principal representative
+    with norm in [0, pi]
+```
+
+For example,
+
+\[
+\phi=\frac{3\pi}{2}k
+\]
+
+and
+
+\[
+\phi_p=-\frac{\pi}{2}k
+\]
+
+represent the same rotation, while `rot2rotvec(rotvec2rot(phi))` should return a principal equivalent rather than the original non-principal vector.
+
+### 6.11 Rotation-vector tests
+
+Tests should cover `rotvec2rot()` for:
+
+- zero vector;
+- coordinate-axis rotations;
+- general-axis rotations;
+- very small numerical magnitudes;
+- values close to `pi`;
+- exact `pi`;
+- magnitudes greater than `pi`;
+- periodicity under equivalent `2*pi` changes;
+- symbolic coordinate-axis vectors.
+
+Tests should cover `rot2rotvec()` for:
+
+- reconstruction `R -> phi -> R`;
+- principal norm in `[0, pi]`;
+- identity;
+- near-zero rotations;
+- near-`pi` rotations;
+- exact `pi` around coordinate and non-coordinate axes;
+- invalid rotation-matrix rejection;
+- symbolic Moro-generated rotations.
+
+For the round trip
+
+```text
+phi -> R -> phi_principal
+```
+
+literal vector equality is expected only when the original vector already lies unambiguously in the principal branch. For non-principal vectors, tests should compare reconstructed rotations.
+
+### 6.12 Cross-consistency with axis-angle
+
+For any valid nonzero axis `k` and angle `theta`, tests should verify
+
+\[
+\operatorname{rotvec2rot}(\theta k)
+=
+\operatorname{axa2rot}(k,\theta).
+\]
+
+Similarly, for a valid rotation matrix outside ambiguous cases,
+
+\[
+\operatorname{rot2rotvec}(R)
+=
+\theta k
+\]
+
+should agree with `rot2axa(R)` up to the accepted sign ambiguity at `theta=pi`.
 
 ## 7. `skew()` and `vex()`
 
-Detailed design pending.
+### 7.1 Public API
+
+Moro 0.5.0 retains the existing
+
+```python
+skew(u)
+```
+
+and adds
+
+```python
+vex(S, *, tol=1e-9)
+```
+
+for the standard vector/matrix correspondence of `so(3)`.
+
+For
+
+\[
+u=
+\begin{bmatrix}u_x\\u_y\\u_z\end{bmatrix},
+\]
+
+`skew(u)` returns
+
+\[
+[u]_\times=
+\begin{bmatrix}
+0 & -u_z & u_y\\
+u_z & 0 & -u_x\\
+-u_y & u_x & 0
+\end{bmatrix}.
+\]
+
+Both functions return SymPy matrices.
+
+### 7.2 `skew()` contract
+
+`skew()` accepts any three-component vector convertible to the shared vector representation and returns a `3 x 3` skew-symmetric matrix.
+
+No tolerance or geometric validation is required because `skew()` is a direct linear constructor.
+
+The generalized helper discussed earlier may be reused:
+
+```python
+u = _as_vector(u, 3, name="vector")
+```
+
+### 7.3 `vex()` formula
+
+For a valid skew-symmetric matrix `S`,
+
+\[
+\operatorname{vex}(S)
+=
+\frac12
+\begin{bmatrix}
+S_{32}-S_{23}\\
+S_{13}-S_{31}\\
+S_{21}-S_{12}
+\end{bmatrix}.
+\]
+
+The difference-based formula is preferred to extracting only three entries because it treats both triangular halves symmetrically and behaves sensibly for accepted numerical matrices containing tiny skew-symmetry errors.
+
+### 7.4 `vex()` validation
+
+`vex()` requires a `3 x 3` skew-symmetric input satisfying
+
+\[
+S^T=-S.
+\]
+
+For numerical matrices, the condition should be checked element-wise through
+
+\[
+|S+S^T|\le tol.
+\]
+
+A matrix outside tolerance should raise `ValueError`.
+
+For symbolic matrices, Moro should simplify the entries of
+
+\[
+S+S^T
+\]
+
+and classify them with `.is_zero`:
+
+```text
+all True                -> accept
+any False               -> ValueError
+otherwise indeterminate -> ValueError
+```
+
+The symbolic indeterminate case is rejected because skew symmetry is an operation precondition for `vex()`, not merely an inspection question.
+
+### 7.5 No silent projection and no public skew predicate
+
+Although the extraction formula is equivalent to using the skew part
+
+\[
+\frac12(S-S^T),
+\]
+
+`vex()` must not silently project an arbitrary matrix onto `so(3)`. The input must first satisfy skew symmetry within tolerance.
+
+No public `is_skew_symmetric()` predicate is planned for 0.5.0. A private validation helper should only be introduced if implementation reveals meaningful reuse beyond `vex()`.
+
+### 7.6 `skew()`/`vex()` tests
+
+Tests should verify the round trips
+
+\[
+\operatorname{vex}(\operatorname{skew}(u))=u
+\]
+
+and
+
+\[
+\operatorname{skew}(\operatorname{vex}(S))=S
+\]
+
+for valid exact inputs.
+
+Additional tests should cover:
+
+- numerical matrices within skew-symmetry tolerance;
+- matrices outside tolerance;
+- incorrect shapes;
+- exact symbolic skew matrices;
+- demonstrably non-skew symbolic matrices;
+- symbolically indeterminate matrices;
+- compatibility of `skew(phi)` with `rotvec2rot()`.
 
 ## 8. Compatibility and migration
 
-Detailed design pending completion of the remaining transformation features.
+### 8.1 General policy
+
+The transformations work in Moro 0.5.0 is primarily additive and should avoid unnecessary breaking changes.
+
+Existing conventions, public names, and return structures are preserved wherever possible. Stricter validation is introduced only where the mathematics of the operation requires a valid rotation or rigid transform.
+
+### 8.2 Additive public capabilities
+
+The following are additive changes:
+
+- Tait-Bryan support in `eul2rot()` and `rot2eul()`;
+- explicit `intrinsic=True/False` handling;
+- `deg=False` in `axa2rot()`;
+- quaternion conversion functions;
+- rotation-vector conversion functions;
+- `vex()`;
+- `is_rotation_matrix()`;
+- `is_homogeneous_transform()`.
+
+Existing ordinary calls remain valid because new optional parameters are added without changing the meaning of prior positional arguments.
+
+### 8.3 Stricter orientation preconditions
+
+The inverse orientation conversions
+
+```text
+rot2eul()
+rot2axa()
+rot2quat()
+rot2rotvec()
+```
+
+will require established membership in `SO(3)` through the common validator.
+
+Therefore a matrix that merely has shape `3 x 3` but is not a valid rotation matrix may be rejected in 0.5.0 even if older code previously attempted to process it.
+
+This is an intentional correctness improvement.
+
+For symbolic matrices:
+
+```text
+validity established   -> accept
+invalidity established -> ValueError
+validity indeterminate -> ValueError with a distinct message
+```
+
+### 8.4 Stricter `invhtm()` precondition
+
+`invhtm()` should evolve to
+
+```python
+invhtm(T, *, tol=1e-9)
+```
+
+and require a valid rigid homogeneous transformation before using the structured inverse
+
+\[
+T^{-1}=
+\begin{bmatrix}
+R^T & -R^Tp\\
+0 & 1
+\end{bmatrix}.
+\]
+
+Matrices that are merely `4 x 4` but not members of `SE(3)` are therefore rejected.
+
+This is the other notable intentional behavior tightening in 0.5.0.
+
+### 8.5 Structural helpers remain lightweight
+
+The following functions retain structural rather than full geometric validation:
+
+```text
+rot2htm()
+rt2htm()
+htm2rot()
+htm2tra()
+```
+
+Constructors such as
+
+```text
+rot()
+rotx()
+roty()
+rotz()
+htmrot()
+htmtra()
+dh()
+```
+
+continue to construct valid objects by definition and do not require redundant validation.
+
+### 8.6 `is_SO3()` deprecation
+
+`moro.util.is_SO3()` remains import-compatible in 0.5.0 but is deprecated in favor of
+
+```python
+from moro.transformations import is_rotation_matrix
+```
+
+The compatibility wrapper should:
+
+- emit `DeprecationWarning`;
+- delegate to `is_rotation_matrix()`;
+- preserve the historical strict-boolean contract;
+- collapse a symbolic `None` result to `False`.
+
+Removal of `is_SO3()` is deferred to a later release according to Moro's compatibility policy.
+
+No other existing public transformation function requires deprecation for 0.5.0.
+
+### 8.7 Existing return structures and conventions
+
+Existing return structures remain unchanged:
+
+```text
+rot2eul() -> list of angle tuples
+rot2axa() -> (k, theta)
+skew()    -> SymPy Matrix
+```
+
+New vector-like representations use column matrices:
+
+```text
+rot2quat()    -> Matrix(4, 1)
+rot2rotvec()  -> Matrix(3, 1)
+vex()         -> Matrix(3, 1)
+```
+
+Moro continues to use:
+
+- active rotations;
+- column vectors;
+- radians by default;
+- `seq="zxz"` as the Euler default;
+- the existing intrinsic three-angle multiplication convention.
+
+### 8.8 Migration summary
+
+The expected migration surface is:
+
+| Area | Moro 0.4.x | Moro 0.5.0 |
+| --- | --- | --- |
+| Euler sequences | 6 proper Euler | 12 sequences |
+| intrinsic/extrinsic | intrinsic convention only | explicit `intrinsic` option |
+| `rot2eul()` validation | limited | requires `SO(3)` |
+| axis-angle | existing | preserved + `deg` symmetry |
+| quaternions | unavailable | conversion API added |
+| rotation vectors | unavailable | conversion API added |
+| `skew()` | available | preserved |
+| `vex()` | unavailable | added |
+| `is_SO3()` | current utility | deprecated compatibility wrapper |
+| `is_rotation_matrix()` | unavailable | canonical predicate |
+| homogeneous validation | unavailable | public predicate added |
+| `invhtm()` | mainly structural precondition | requires valid rigid transform |
+
+The release should document the two intentional behavior tightenings clearly: inverse orientation functions require `SO(3)`, and `invhtm()` requires a valid rigid homogeneous transform.
 
 ## 9. Overall test strategy
 
-Detailed design pending completion of the remaining transformation features.
+### 9.1 Testing principles
+
+The 0.5.0 transformations tests should verify both individual conversion families and consistency across equivalent orientation representations.
+
+The primary invariant is:
+
+```text
+equivalent representations must reconstruct the same orientation
+```
+
+Tests should avoid brittle literal equality when a representation is mathematically non-unique.
+
+### 9.2 Public-contract tests
+
+Tests should verify:
+
+- accepted input forms;
+- public signatures and optional-argument semantics;
+- SymPy return shapes/types;
+- expected `TypeError` versus `ValueError` behavior;
+- tolerance validation;
+- compatibility of existing positional calls;
+- deprecation behavior for `is_SO3()`.
+
+Representative return contracts include:
+
+```text
+rot2eul()     -> list[tuple]
+rot2axa()     -> (Matrix(3, 1), scalar)
+rot2quat()    -> Matrix(4, 1)
+rot2rotvec()  -> Matrix(3, 1)
+vex()         -> Matrix(3, 1)
+```
+
+### 9.3 Representation-specific tests
+
+Each representation retains the detailed test requirements defined in its own section:
+
+- all Euler and Tait-Bryan sequences;
+- axis-angle identity/general/`pi` behavior;
+- quaternion normalization and double coverage;
+- rotation-vector principal-log behavior and exponential periodicity;
+- `skew()`/`vex()` round trips;
+- numerical and symbolic rotation/transform validation.
+
+### 9.4 Shared singular and near-singular cases
+
+The suite should deliberately exercise numerical values near important singular structures, including scales such as
+
+```text
+1e-12
+1e-9
+1e-6
+```
+
+where appropriate.
+
+Important regions include:
+
+\[
+\theta\approx0,
+\qquad
+\theta\approx\pi,
+\]
+
+and for Tait-Bryan sequences,
+
+\[
+\theta\approx\pm\pi/2.
+\]
+
+Tests should focus on finite output, correct reconstruction, stable branch handling, and absence of spurious division-by-zero or `nan` behavior rather than requiring arbitrary literal parameter values.
+
+### 9.5 Shared orientation fixtures
+
+A compact reusable orientation set should be used across conversion families. Useful reference cases include:
+
+```text
+identity
+Rx(pi/6)
+Ry(pi/4)
+Rz(pi/2)
+general three-angle rotation
+general arbitrary-axis rotation
+rotation near zero
+rotation near pi
+exact pi about a non-coordinate axis
+```
+
+Euler-specific singular fixtures should be added separately for each relevant sequence family.
+
+Using shared orientation fixtures helps expose convention mismatches between independently implemented conversion paths.
+
+### 9.6 Cross-representation consistency
+
+Starting from a valid rotation matrix `R`, tests should verify reconstruction through every supported orientation representation:
+
+```text
+R -> Euler -> R
+R -> axis-angle -> R
+R -> quaternion -> R
+R -> rotation vector -> R
+```
+
+Cross-representation compositions should also be exercised where useful, for example:
+
+```text
+axis-angle -> quaternion -> R
+axis-angle -> rotation vector -> R
+quaternion -> axis-angle -> R
+rotation vector -> axis-angle -> R
+```
+
+Direct public conversion functions are not required for every conceptual arrow; tests may compose the accepted public API.
+
+### 9.7 Representation-aware equality
+
+Assertions should respect mathematical non-uniqueness:
+
+```text
+Euler:
+    reconstruction preferred over literal angle equality
+
+axis-angle:
+    reconstruction preferred over axis-sign equality at pi
+
+quaternion:
+    q and -q treated as equivalent unless the public contract fixes a sign
+
+rotation vector:
+    reconstruction preferred outside the principal branch and at pi
+```
+
+Literal comparisons remain appropriate where the public API intentionally defines a unique representative, such as the identity quaternion or zero rotation vector.
+
+### 9.8 Numerical test helpers
+
+The test suite may centralize small comparison helpers such as:
+
+```python
+assert_matrix_close(A, B, tol=...)
+assert_quaternion_equivalent(q1, q2, tol=...)
+```
+
+and, if useful,
+
+```python
+assert_rotation_close(R1, R2, tol=...)
+```
+
+These helpers should keep representation-specific equivalence logic out of individual tests.
+
+### 9.9 Symbolic testing strategy
+
+Symbolic tests are a first-class requirement because Moro is SymPy-first.
+
+Representative symbolic objects should be generated with Moro constructors such as:
+
+```text
+rotx(theta)
+roty(theta)
+rotz(theta)
+eul2rot(...)
+axa2rot(...)
+quat2rot(...)
+rotvec2rot(...)
+```
+
+Inverse operations should be tested by reconstruction whenever exact returned parameter forms depend on symbolic branch assumptions.
+
+A preferred assertion pattern is conceptually:
+
+```python
+simplify(R_reconstructed - R) == zeros(3)
+```
+
+or equivalent element-wise zero checking.
+
+Generic symbolic matrices should also verify ternary validation behavior:
+
+```text
+is_rotation_matrix(generic_R) -> None
+```
+
+while operations requiring established membership in `SO(3)` reject that indeterminate input.
+
+### 9.10 Backward-compatibility regression tests
+
+Existing valid 0.4.x behavior should receive explicit regression coverage for at least:
+
+```text
+eul2rot()
+rot2eul()
+rot2axa()
+axa2rot()
+skew()
+invhtm()
+rot2htm()
+rt2htm()
+htm2rot()
+htm2tra()
+```
+
+Historical valid inputs should preserve their geometric results. Tests should separately record the intentional validation tightenings where formerly accepted invalid geometric inputs are now rejected.
+
+`is_SO3()` requires a compatibility test that confirms both `DeprecationWarning` and a strict boolean return value.
+
+### 9.11 Test tooling scope
+
+`pytest` parametrization is sufficient for the accepted 0.5.0 scope. Property-based testing with an additional dependency such as Hypothesis is not required for this release.
+
+Property-based orientation tests may be considered later if the conversion surface grows substantially.
+
+### 9.12 Acceptance criteria
+
+The transformations implementation should be considered ready for Moro 0.5.0 when:
+
+- all supported representations reconstruct orientations consistently;
+- all twelve Euler/Tait-Bryan sequences pass intrinsic/extrinsic tests;
+- numerical behavior is stable around zero, `pi`, and Tait-Bryan singularities;
+- symbolic Moro-generated rotations remain usable under the documented assumptions;
+- invalid and indeterminate geometric preconditions are handled consistently;
+- existing valid 0.4.x transformation workflows retain their expected geometric behavior;
+- the only intentional compatibility changes are documented and regression-tested.
