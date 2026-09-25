@@ -16,6 +16,7 @@ from moro.transformations import (
     rot,
     rot2eul,
     rot2quat,
+    rot2rotvec,
     rot2axa,
     rot2htm,
     rt2htm,
@@ -867,3 +868,180 @@ def test_quaternion_invalid_tolerance(tol):
         rot2quat(sp.eye(3), tol=tol)
     with pytest.raises(ValueError):
         quat2axa([1, 0, 0, 0], tol=tol)
+
+
+
+def test_rotvec2rot_zero_is_exact_identity():
+    R = rotvec2rot([0, 0, 0])
+    assert_matrix_equal(R, sp.eye(3))
+
+
+@pytest.mark.parametrize("axis,index", [
+    ("x", 0),
+    ("y", 1),
+    ("z", 2),
+])
+def test_rotvec2rot_coordinate_axes(axis, index):
+    theta = sp.pi / 3
+    phi = sp.zeros(3, 1)
+    phi[index] = theta
+
+    assert_matrix_equal(rotvec2rot(phi), rot(theta, axis))
+
+
+def test_rotvec2rot_general_axis_matches_axis_angle():
+    axis = sp.Matrix([1, -2, 3])
+    axis = axis / axis.norm()
+    theta = sp.Rational(7, 10)
+
+    R1 = rotvec2rot(theta * axis)
+    R2 = axa2rot(axis, theta)
+
+    assert_matrix_equal(sp.simplify(R1), sp.simplify(R2))
+
+
+def test_rotvec2rot_small_numeric_angle_is_stable():
+    phi = sp.Matrix([1e-10, -2e-10, 3e-10])
+
+    R = rotvec2rot(phi)
+
+    assert is_rotation_matrix(R, tol=1e-9) is True
+    assert_matrix_close(R, sp.eye(3) + skew(phi), tol=1e-9)
+
+
+@pytest.mark.parametrize("angle", [
+    float(sp.pi) - 1e-8,
+    float(sp.pi),
+    1.5 * float(sp.pi),
+])
+def test_rotvec2rot_large_and_near_pi_magnitudes(angle):
+    axis = sp.Matrix([1, 2, -1])
+    axis = axis / axis.norm()
+    phi = angle * axis
+
+    R = rotvec2rot(phi)
+
+    assert is_rotation_matrix(R, tol=1e-8) is True
+
+
+def test_rotvec2rot_periodicity_for_same_axis():
+    axis = sp.Matrix([1, -2, 3])
+    axis = axis / axis.norm()
+
+    R1 = rotvec2rot((sp.pi / 3) * axis)
+    R2 = rotvec2rot((sp.pi / 3 + 2 * sp.pi) * axis)
+
+    assert_matrix_equal(sp.trigsimp(R1), sp.trigsimp(R2))
+
+
+def test_rotvec2rot_symbolic_coordinate_axis():
+    theta = sp.symbols("theta", real=True)
+
+    R = rotvec2rot([0, 0, theta])
+
+    assert_matrix_equal(sp.trigsimp(R), rotz(theta))
+
+
+def test_rot2rotvec_identity_is_zero_vector():
+    phi = rot2rotvec(sp.eye(3))
+    assert_matrix_equal(phi, sp.zeros(3, 1))
+
+
+@pytest.mark.parametrize("axis", [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+    [1, -2, 3],
+])
+@pytest.mark.parametrize("angle", [
+    0.2,
+    1.2,
+    float(sp.pi) - 1e-8,
+    float(sp.pi),
+])
+def test_rotation_vector_round_trip_reconstructs(axis, angle):
+    R = sp.N(axa2rot(axis, angle))
+
+    phi = rot2rotvec(R)
+    R2 = rotvec2rot(phi)
+
+    assert_matrix_close(R2, R, tol=1e-8)
+    assert float(sp.N(phi.norm())) <= float(sp.pi) + 1e-8
+
+
+def test_rot2rotvec_near_identity_returns_zero_with_tolerance():
+    R = sp.N(axa2rot([1, 0, 0], 1e-10))
+
+    phi = rot2rotvec(R, tol=1e-9)
+
+    assert_matrix_equal(phi, sp.zeros(3, 1))
+
+
+def test_rot2rotvec_nonprincipal_input_returns_principal_equivalent():
+    axis = sp.Matrix([0, 0, 1])
+    original = 3 * sp.pi / 2 * axis
+
+    R = rotvec2rot(original)
+    principal = rot2rotvec(R)
+
+    assert float(sp.N(principal.norm())) <= float(sp.pi) + 1e-12
+    assert_matrix_equal(
+        sp.trigsimp(rotvec2rot(principal)),
+        sp.trigsimp(R),
+    )
+
+
+@pytest.mark.parametrize("axis", [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+])
+def test_rot2rotvec_exact_pi_reconstructs(axis):
+    R = axa2rot(axis, sp.pi)
+
+    phi = rot2rotvec(R)
+
+    assert sp.simplify(phi.norm() - sp.pi) == 0
+    assert_matrix_close(rotvec2rot(phi), R, tol=1e-9)
+
+
+def test_rotation_vector_cross_consistency_with_axis_angle():
+    axis = sp.Matrix([1, -2, 3])
+    axis = axis / axis.norm()
+    theta = sp.Rational(4, 5)
+    R = axa2rot(axis, theta)
+
+    recovered_axis, recovered_theta = rot2axa(R)
+    phi = rot2rotvec(R)
+
+    assert_matrix_equal(
+        sp.simplify(phi),
+        sp.simplify(recovered_theta * recovered_axis),
+    )
+
+
+def test_rot2rotvec_symbolic_rotation_reconstructs():
+    theta = sp.symbols("theta", real=True)
+    R = roty(theta)
+
+    phi = rot2rotvec(R)
+    R2 = rotvec2rot(phi)
+
+    assert_matrix_equal(sp.trigsimp(R2), R)
+
+
+def test_rot2rotvec_rejects_invalid_rotation_matrix():
+    with pytest.raises(ValueError, match="rotation matrix"):
+        rot2rotvec(sp.diag(1, 1, -1))
+
+
+@pytest.mark.parametrize("phi", [
+    [sp.oo, 0, 0],
+    [sp.nan, 0, 0],
+    [sp.I, 0, 0],
+])
+def test_rotvec2rot_rejects_nonfinite_or_nonreal_numeric_inputs(phi):
+    with pytest.raises(ValueError, match="finite real"):
+        rotvec2rot(phi)
