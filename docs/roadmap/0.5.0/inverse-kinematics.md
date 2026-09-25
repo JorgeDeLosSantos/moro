@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted as a candidate feature for Moro 0.5.0.
+Accepted for Moro 0.5.0. Detailed design complete.
 
 ## Objective
 
@@ -18,10 +18,10 @@ T_d=\begin{bmatrix}R_d&p_d\\0&1\end{bmatrix}.
 
 Euler angles, quaternions, and axis-angle are not primary target formats in the initial API; users may convert them explicitly through transformation utilities.
 
-## Preliminary API
+## Public API direction
 
 ```python
-solve_pose(
+solve_pose_ik(
     robot,
     target,
     q0=None,
@@ -136,6 +136,10 @@ Emphasize forward-kinematics round trips, position-only versus pose IK, nontrivi
 - orientation interpolation / SLERP;
 - closed-chain IK.
 
-## Deferred detailed-design decisions
+## Detailed design
 
-Exact SO(3) error convention, numerical algorithms near zero/`pi`, tolerance defaults, weight validation, compatibility with existing solver keywords, exact result fields, supported method names, shared helpers, caching/compilation, and projection policy remain deferred.
+The implementation-level contract for this feature is finalized in:
+
+[`docs/design/0.5.0/inverse-kinematics.md`](../../design/0.5.0/inverse-kinematics.md)
+
+That document is the normative source for detailed API semantics, validation, numerical policy, result invariants, tests, and implementation guidance. If implementation evidence requires a contract change, update the detailed design explicitly rather than changing behavior silently.
