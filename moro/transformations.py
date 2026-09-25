@@ -10,6 +10,7 @@ from sympy.matrices import Matrix, MatrixBase
 from moro.util import deg2rad, is_SO3, rad2deg
 
 __all__ = [
+    "axa2quat",
     "axa2rot",
     "dh",
     "eul2rot",
@@ -19,7 +20,10 @@ __all__ = [
     "htm2tra",
     "invhtm",
     "is_rotation_matrix",
+    "quat2axa",
+    "quat2rot",
     "rot2eul",
+    "rot2quat",
     "rot2axa",
     "rot2htm",
     "rot",
@@ -44,26 +48,29 @@ def _normalize_axis(axis):
     return axis
 
 
-def _as_3d_vector(v, name="vector"):
-    """
-    Convert supported 3D vector inputs to a SymPy column matrix.
-    """
+def _as_vector(v, size, name="vector"):
+    """Convert a supported vector input to a SymPy column matrix."""
     try:
         vector = Matrix(v)
     except (TypeError, ValueError) as exc:
         raise TypeError(
-            f"{name} must be a 3D vector given as a list, tuple, column matrix (3, 1) "
-            "or row matrix (1, 3)."
+            f"{name} must be a {size}D vector given as a list, tuple, "
+            f"column matrix ({size}, 1) or row matrix (1, {size})."
         ) from exc
 
-    if vector.shape == (3, 1):
+    if vector.shape == (size, 1):
         return vector
-    if vector.shape == (1, 3):
+    if vector.shape == (1, size):
         return vector.T
 
     raise ValueError(
-        f"{name} must be a 3D vector with shape (3, 1) or (1, 3); got shape {vector.shape}."
+        f"{name} must be a {size}D vector with shape ({size}, 1) or "
+        f"(1, {size}); got shape {vector.shape}."
     )
+
+
+def _as_3d_vector(v, name="vector"):
+    return _as_vector(v, 3, name=name)
 
 
 def rot(theta, axis="z", deg=False):
@@ -426,13 +433,24 @@ _TAIT_BRYAN_CONFIG = {
 }
 
 
-def _validate_euler_tol(tol):
+def _validate_tol(tol):
     if isinstance(tol, bool) or not isinstance(tol, (int, float, sp.Number)):
         raise TypeError("tol must be a positive real number.")
-    if sp.sympify(tol).is_real is not True:
+
+    tol = sp.sympify(tol)
+    if tol.is_number is not True:
+        raise TypeError("tol must be a positive real number.")
+    if tol.is_real is not True:
         raise ValueError("tol must be a positive real number.")
-    if float(tol) <= 0:
+
+    tol_value = float(tol)
+    if tol_value <= 0:
         raise ValueError("tol must be greater than 0.")
+    return tol_value
+
+
+def _validate_euler_tol(tol):
+    return _validate_tol(tol)
 
 
 def _is_numeric_real(value):
@@ -459,7 +477,7 @@ def _matrix_zero_status(M):
 
 def is_rotation_matrix(R, *, tol=1e-9):
     """Return True, False, or None according to membership in SO(3)."""
-    _validate_euler_tol(tol)
+    tol = _validate_tol(tol)
     try:
         R = Matrix(R)
     except (TypeError, ValueError):
@@ -938,6 +956,186 @@ def invhtm(T):
     R_inv = R.T
     p_inv = -R_inv * p
     return rt2htm(R_inv, p_inv)
+
+def _normalize_quaternion(q, tol=1e-9):
+    """Return a normalized scalar-first quaternion as a SymPy column vector."""
+    tol = _validate_tol(tol)
+    q = _as_vector(q, 4, name="quaternion")
+
+    entries = [sp.sympify(value) for value in q]
+    fully_numeric = all(value.is_number is True for value in entries)
+    if fully_numeric:
+        if any(value.is_real is not True for value in entries):
+            raise ValueError("quaternion components must be real.")
+        norm_value = float(sp.N(sp.sqrt(sp.simplify(q.dot(q)))))
+        if norm_value <= tol:
+            raise ValueError("The quaternion norm must be greater than tol.")
+    else:
+        norm_sq = sp.simplify(q.dot(q))
+        if norm_sq.is_zero is True:
+            raise ValueError("The quaternion cannot be the zero vector.")
+
+    norm = sp.sqrt(sp.simplify(q.dot(q)))
+    return sp.simplify(q / norm)
+
+
+def _canonicalize_quaternion_sign(q):
+    """Prefer a scalar-first quaternion with nonnegative scalar component."""
+    q = Matrix(q)
+    w = sp.simplify(q[0])
+
+    if _is_numeric_real(w):
+        if float(sp.N(w)) < 0:
+            return -q
+        return q
+
+    if w.is_negative is True:
+        return -q
+    return q
+
+
+def quat2rot(q, *, tol=1e-9):
+    """Convert a scalar-first quaternion [w, x, y, z] to a rotation matrix."""
+    q = _normalize_quaternion(q, tol=tol)
+    w, x, y, z = q
+
+    return sp.simplify(Matrix([
+        [
+            1 - 2 * (y**2 + z**2),
+            2 * (x*y - w*z),
+            2 * (x*z + w*y),
+        ],
+        [
+            2 * (x*y + w*z),
+            1 - 2 * (x**2 + z**2),
+            2 * (y*z - w*x),
+        ],
+        [
+            2 * (x*z - w*y),
+            2 * (y*z + w*x),
+            1 - 2 * (x**2 + y**2),
+        ],
+    ]))
+
+
+def _rot2quat_numeric(R, tol):
+    candidates = [
+        1 + R[0, 0] + R[1, 1] + R[2, 2],
+        1 + R[0, 0] - R[1, 1] - R[2, 2],
+        1 - R[0, 0] + R[1, 1] - R[2, 2],
+        1 - R[0, 0] - R[1, 1] + R[2, 2],
+    ]
+    values = [float(sp.N(value)) for value in candidates]
+    index = max(range(4), key=values.__getitem__)
+
+    dominant_sq = values[index]
+    if dominant_sq < -tol:
+        raise ValueError(
+            "Rotation matrix produced an invalid quaternion component."
+        )
+    dominant = sp.Float(0.5) * sp.sqrt(
+        sp.Float(max(0.0, dominant_sq))
+    )
+    denominator = 4 * dominant
+
+    if abs(float(sp.N(denominator))) <= tol:
+        raise ValueError(
+            "Rotation matrix could not be converted to a stable quaternion."
+        )
+
+    if index == 0:
+        w = dominant
+        x = (R[2, 1] - R[1, 2]) / denominator
+        y = (R[0, 2] - R[2, 0]) / denominator
+        z = (R[1, 0] - R[0, 1]) / denominator
+    elif index == 1:
+        x = dominant
+        w = (R[2, 1] - R[1, 2]) / denominator
+        y = (R[0, 1] + R[1, 0]) / denominator
+        z = (R[0, 2] + R[2, 0]) / denominator
+    elif index == 2:
+        y = dominant
+        w = (R[0, 2] - R[2, 0]) / denominator
+        x = (R[0, 1] + R[1, 0]) / denominator
+        z = (R[1, 2] + R[2, 1]) / denominator
+    else:
+        z = dominant
+        w = (R[1, 0] - R[0, 1]) / denominator
+        x = (R[0, 2] + R[2, 0]) / denominator
+        y = (R[1, 2] + R[2, 1]) / denominator
+
+    q = _normalize_quaternion(Matrix([w, x, y, z]), tol=tol)
+    return _canonicalize_quaternion_sign(q)
+
+
+def rot2quat(R, tol=1e-9):
+    """Convert a rotation matrix to a scalar-first unit quaternion."""
+    tol = _validate_tol(tol)
+    R = _validate_rotation_matrix(R, tol=tol)
+
+    if all(_is_numeric_real(value) for value in R):
+        return _rot2quat_numeric(R, tol)
+
+    axis, angle = rot2axa(R, tol=tol)
+    q = Matrix([
+        sp.cos(angle / 2),
+        axis[0] * sp.sin(angle / 2),
+        axis[1] * sp.sin(angle / 2),
+        axis[2] * sp.sin(angle / 2),
+    ])
+    q = _normalize_quaternion(q, tol=tol)
+    return _canonicalize_quaternion_sign(q)
+
+
+def axa2quat(k, theta, deg=False):
+    """Convert an axis-angle orientation to a scalar-first unit quaternion."""
+    k = _as_3d_vector(k, name="k")
+    norm_sq = sp.simplify(k.dot(k))
+    if norm_sq.is_zero is True:
+        raise ValueError("The rotation axis cannot be the zero vector.")
+
+    if deg:
+        theta = deg2rad(theta, evalf=False)
+
+    k = sp.simplify(k / k.norm())
+    half = theta / 2
+    return sp.simplify(Matrix([
+        sp.cos(half),
+        k[0] * sp.sin(half),
+        k[1] * sp.sin(half),
+        k[2] * sp.sin(half),
+    ]))
+
+
+def quat2axa(q, deg=False, *, tol=1e-9):
+    """Convert a scalar-first quaternion to principal axis-angle form."""
+    tol = _validate_tol(tol)
+    q = _canonicalize_quaternion_sign(
+        _normalize_quaternion(q, tol=tol)
+    )
+
+    w = sp.simplify(q[0])
+    v = Matrix(q[1:4, 0])
+    s = sp.sqrt(sp.simplify(v.dot(v)))
+
+    if _is_numeric_real(s):
+        if float(sp.N(s)) <= tol:
+            axis = Matrix([1, 0, 0])
+            angle = sp.S(0)
+        else:
+            axis = sp.simplify(v / s)
+            angle = sp.simplify(2 * atan2(s, w))
+    elif sp.simplify(s).is_zero is True:
+        axis = Matrix([1, 0, 0])
+        angle = sp.S(0)
+    else:
+        axis = sp.simplify(v / s)
+        angle = sp.simplify(2 * atan2(s, w))
+
+    if deg:
+        angle = sp.simplify(rad2deg(angle, evalf=False))
+    return axis, angle
+
 
 def rot2axa(R, deg=False, tol=1e-9):
     """
