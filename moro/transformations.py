@@ -18,6 +18,7 @@ __all__ = [
     "htm2rot",
     "htm2tra",
     "invhtm",
+    "is_rotation_matrix",
     "rot2eul",
     "rot2axa",
     "rot2htm",
@@ -295,30 +296,30 @@ def dh(a,alpha,d,theta):
     
 
 _PROPER_EULER_SEQUENCES = (
-    "xyx",
-    "xzx",
-    "yxy",
-    "yzy",
-    "zxz",
-    "zyz",
+    "xyx", "xzx", "yxy", "yzy", "zxz", "zyz",
 )
+_TAIT_BRYAN_SEQUENCES = (
+    "xyz", "xzy", "yxz", "yzx", "zxy", "zyx",
+)
+_EULER_SEQUENCES = _PROPER_EULER_SEQUENCES + _TAIT_BRYAN_SEQUENCES
 
 
 def _normalize_euler_sequence(seq):
-    valid_sequences = "'xyx', 'xzx', 'yxy', 'yzy', 'zxz', 'zyz'"
+    valid_sequences = ", ".join(repr(value) for value in _EULER_SEQUENCES)
     if not isinstance(seq, str):
-        raise ValueError(f"seq must be one of: {valid_sequences}.")
+        raise TypeError(f"seq must be a string; expected one of: {valid_sequences}.")
 
     seq = seq.lower()
-    if seq not in _PROPER_EULER_SEQUENCES:
+    if seq not in _EULER_SEQUENCES:
         raise ValueError(f"seq must be one of: {valid_sequences}.")
 
     return seq
 
 
-# Configuration for proper Euler sequences under the convention
-# R = R_a(phi) @ R_b(theta) @ R_a(psi), with active rotations and column vectors.
-# Each atan2 pair is encoded as ((sin_sign, sin_i, sin_j), (cos_sign, cos_i, cos_j)).
+# Configuration for intrinsic proper Euler sequences under:
+# R = R_a(phi) @ R_b(theta) @ R_a(psi).
+# atan2 pairs are encoded as
+# ((sin_sign, sin_i, sin_j), (cos_sign, cos_i, cos_j)).
 _PROPER_EULER_CONFIG = {
     "xyx": {
         "cos_index": (0, 0),
@@ -365,53 +366,72 @@ _PROPER_EULER_CONFIG = {
 }
 
 
-def rot2eul(R, seq="zxz", deg=False, tol=1e-9):
-    """
-    Calculate proper Euler angles from a rotation matrix.
+# Configuration for intrinsic Tait-Bryan sequences under:
+# R = R_a(phi) @ R_b(theta) @ R_c(psi), a != b != c.
+_TAIT_BRYAN_CONFIG = {
+    "xyz": {
+        "sin_term": (1, 0, 2),
+        "phi": ((-1, 1, 2), (1, 2, 2)),
+        "psi": ((-1, 0, 1), (1, 0, 0)),
+        "singular_positive": ((1, 1, 0), (1, 1, 1)),
+        "singular_negative": ((-1, 1, 0), (1, 1, 1)),
+        "singular_positive_sign": +1,
+        "singular_negative_sign": -1,
+    },
+    "xzy": {
+        "sin_term": (-1, 0, 1),
+        "phi": ((1, 2, 1), (1, 1, 1)),
+        "psi": ((1, 0, 2), (1, 0, 0)),
+        "singular_positive": ((1, 2, 1), (1, 2, 2)),
+        "singular_negative": ((-1, 2, 1), (1, 2, 2)),
+        "singular_positive_sign": -1,
+        "singular_negative_sign": +1,
+    },
+    "yxz": {
+        "sin_term": (-1, 1, 2),
+        "phi": ((1, 0, 2), (1, 2, 2)),
+        "psi": ((1, 1, 0), (1, 1, 1)),
+        "singular_positive": ((1, 0, 1), (1, 0, 0)),
+        "singular_negative": ((-1, 0, 1), (1, 0, 0)),
+        "singular_positive_sign": -1,
+        "singular_negative_sign": +1,
+    },
+    "yzx": {
+        "sin_term": (1, 1, 0),
+        "phi": ((-1, 2, 0), (1, 0, 0)),
+        "psi": ((-1, 1, 2), (1, 1, 1)),
+        "singular_positive": ((1, 0, 2), (1, 2, 2)),
+        "singular_negative": ((1, 0, 2), (1, 2, 2)),
+        "singular_positive_sign": +1,
+        "singular_negative_sign": -1,
+    },
+    "zxy": {
+        "sin_term": (1, 2, 1),
+        "phi": ((-1, 0, 1), (1, 1, 1)),
+        "psi": ((-1, 2, 0), (1, 2, 2)),
+        "singular_positive": ((1, 1, 0), (1, 0, 0)),
+        "singular_negative": ((1, 1, 0), (1, 0, 0)),
+        "singular_positive_sign": +1,
+        "singular_negative_sign": -1,
+    },
+    "zyx": {
+        "sin_term": (-1, 2, 0),
+        "phi": ((1, 1, 0), (1, 0, 0)),
+        "psi": ((1, 2, 1), (1, 2, 2)),
+        "singular_positive": ((1, 1, 2), (1, 1, 1)),
+        "singular_negative": ((-1, 1, 2), (1, 1, 1)),
+        "singular_positive_sign": -1,
+        "singular_negative_sign": +1,
+    },
+}
 
-    Parameters
-    ----------
-    R : matrix-like, shape (3, 3)
-        Rotation matrix. The function validates only that the input has shape
-        ``(3, 3)``; it does not yet perform a full SO(3) membership check.
-    seq : str, optional
-        Proper Euler sequence. Supported sequences are ``"xyx"``, ``"xzx"``,
-        ``"yxy"``, ``"yzy"``, ``"zxz"`` and ``"zyz"``. Matching is
-        case-insensitive.
-    deg : bool, optional
-        If True, returned angles are converted from radians to degrees.
-    tol : float, optional
-        Positive numerical tolerance used only for floating-point classification
-        near the singularities ``theta = 0`` and ``theta = pi`` and for clipping
-        small numerical excursions of ``cos(theta)`` outside ``[-1, 1]``.
-
-    Returns
-    -------
-    list of tuple
-        In the general case, returns two equivalent solutions
-        ``[(phi1, theta1, psi1), (phi2, theta2, psi2)]``. In singular cases,
-        returns a single representative solution with ``psi = 0``.
-
-    Notes
-    -----
-    The convention matches :func:`eul2rot`: column vectors, active rotations and
-    ``R = R_a(phi) @ R_b(theta) @ R_a(psi)`` for ``seq="aba"``. Euler angle
-    representations are not unique; both general-case solutions reconstruct the
-    same matrix, the second solution may contain a negative intermediate angle,
-    and no additional range normalization is applied. At singularities, ``phi``
-    and ``psi`` are not independently determined; setting ``psi = 0`` is only a
-    representative convention.
-    """
-    _validate_euler_tol(tol)
-    seq = _normalize_euler_sequence(seq)
-    R = Matrix(R)
-    if R.shape != (3, 3):
-        raise ValueError("R must be a 3x3 matrix.")
-
-    return _rot2proper_euler(R, seq, deg, tol)
 
 def _validate_euler_tol(tol):
-    if tol <= 0:
+    if isinstance(tol, bool) or not isinstance(tol, (int, float, sp.Number)):
+        raise TypeError("tol must be a positive real number.")
+    if sp.sympify(tol).is_real is not True:
+        raise ValueError("tol must be a positive real number.")
+    if float(tol) <= 0:
         raise ValueError("tol must be greater than 0.")
 
 
@@ -425,57 +445,98 @@ def _has_float(value):
     return bool(sp.sympify(value).atoms(sp.Float))
 
 
-def _is_SO3_numeric_tol(R, tol):
-    R = Matrix(R)
+def _matrix_zero_status(M):
+    statuses = []
+    for value in Matrix(M):
+        zero = sp.trigsimp(sp.simplify(value)).is_zero
+        statuses.append(zero)
+    if all(status is True for status in statuses):
+        return True
+    if any(status is False for status in statuses):
+        return False
+    return None
+
+
+def is_rotation_matrix(R, *, tol=1e-9):
+    """Return True, False, or None according to membership in SO(3)."""
+    _validate_euler_tol(tol)
+    try:
+        R = Matrix(R)
+    except (TypeError, ValueError):
+        return False
+
     if R.shape != (3, 3):
         return False
-    if not all(_is_numeric_real(value) for value in R):
+
+    if all(_is_numeric_real(value) for value in R):
+        orthogonality_error = R.T * R - sp.eye(3)
+        if any(abs(float(sp.N(value))) > float(tol) for value in orthogonality_error):
+            return False
+        determinant_error = sp.det(R) - 1
+        return abs(float(sp.N(determinant_error))) <= float(tol)
+
+    orthogonality = _matrix_zero_status(R.T * R - sp.eye(3))
+    determinant = sp.trigsimp(sp.simplify(sp.det(R) - 1)).is_zero
+
+    if orthogonality is True and determinant is True:
+        return True
+    if orthogonality is False or determinant is False:
         return False
-
-    orthogonality_error = R.T * R - sp.eye(3)
-    if any(abs(float(sp.N(value))) > tol for value in orthogonality_error):
-        return False
-
-    determinant_error = sp.det(R) - 1
-    return abs(float(sp.N(determinant_error))) <= tol
+    return None
 
 
-def _classify_euler_cos(value, tol):
+def _validate_rotation_matrix(R, *, tol=1e-9):
+    try:
+        R = Matrix(R)
+    except (TypeError, ValueError) as exc:
+        raise TypeError("R must be convertible to a 3x3 matrix.") from exc
+
+    if R.shape != (3, 3):
+        raise ValueError("R must be a 3x3 matrix.")
+
+    status = is_rotation_matrix(R, tol=tol)
+    if status is not True:
+        if status is None:
+            raise ValueError("R must be a rotation matrix; symbolic SO(3) membership is indeterminate.")
+        raise ValueError("R must be a valid rotation matrix in SO(3).")
+    return R
+
+
+def _classify_trig_value(value, tol):
     value_simplified = sp.simplify(value)
 
     if _has_float(value_simplified) and _is_numeric_real(value_simplified):
         numeric_value = float(sp.N(value_simplified))
         if numeric_value > 1.0 + tol or numeric_value < -1.0 - tol:
-            raise ValueError("cos(theta) is outside the valid range [-1, 1] beyond tolerance.")
+            raise ValueError(
+                "Trigonometric value is outside the valid range [-1, 1] beyond tolerance."
+            )
         numeric_value = max(-1.0, min(1.0, numeric_value))
 
         if abs(numeric_value - 1.0) <= tol:
-            return "positive_singularity", sp.S(1)
+            return "positive", sp.S(1)
         if abs(numeric_value + 1.0) <= tol:
-            return "negative_singularity", sp.S(-1)
+            return "negative", sp.S(-1)
         return "general", sp.Float(numeric_value)
 
-    is_positive_singularity = sp.simplify(value_simplified - 1).is_zero
-    is_negative_singularity = sp.simplify(value_simplified + 1).is_zero
+    positive = sp.simplify(value_simplified - 1).is_zero
+    negative = sp.simplify(value_simplified + 1).is_zero
 
-    if is_positive_singularity is True:
-        return "positive_singularity", sp.S(1)
-    if is_negative_singularity is True:
-        return "negative_singularity", sp.S(-1)
-    if is_positive_singularity is False and is_negative_singularity is False:
+    if positive is True:
+        return "positive", sp.S(1)
+    if negative is True:
+        return "negative", sp.S(-1)
+    if positive is False and negative is False:
         return "general", value_simplified
 
-    # Completely symbolic matrices without enough assumptions are processed
-    # through the general branch to avoid undecidable boolean comparisons.
     return "symbolic", value_simplified
 
 
-def _euler_sqrt_term(cos_theta):
-    if _has_float(cos_theta) and _is_numeric_real(cos_theta):
-        value = float(sp.N(cos_theta))
-        radicand = max(0.0, 1.0 - value**2)
-        return sqrt(sp.Float(radicand))
-    return sqrt(sp.simplify(1 - cos_theta**2))
+def _sqrt_one_minus_square(value):
+    if _has_float(value) and _is_numeric_real(value):
+        numeric = float(sp.N(value))
+        return sqrt(sp.Float(max(0.0, 1.0 - numeric**2)))
+    return sqrt(sp.simplify(1 - value**2))
 
 
 def _signed_matrix_element(R, term):
@@ -485,161 +546,150 @@ def _signed_matrix_element(R, term):
 
 def _atan2_from_config(R, pair):
     sin_term, cos_term = pair
-    return atan2(_signed_matrix_element(R, sin_term), _signed_matrix_element(R, cos_term))
+    return atan2(
+        _signed_matrix_element(R, sin_term),
+        _signed_matrix_element(R, cos_term),
+    )
 
 
 def _negated_pair(pair):
     sin_term, cos_term = pair
-    return ((-sin_term[0], sin_term[1], sin_term[2]), (-cos_term[0], cos_term[1], cos_term[2]))
+    return (
+        (-sin_term[0], sin_term[1], sin_term[2]),
+        (-cos_term[0], cos_term[1], cos_term[2]),
+    )
 
 
-def _convert_euler_solutions_to_degrees(solution):
-    return [(rad2deg(a), rad2deg(b), rad2deg(c)) for a,b,c in solution]
+def _convert_euler_solutions_to_degrees(solutions):
+    return [
+        (rad2deg(phi), rad2deg(theta), rad2deg(psi))
+        for phi, theta, psi in solutions
+    ]
 
 
-def _rot2proper_euler(R, seq, deg=False, tol=1e-9):
+def _rot2proper_euler(R, seq, tol):
     config = _PROPER_EULER_CONFIG[seq]
     i, j = config["cos_index"]
-    cos_theta = R[i, j]
-    theta_case, cos_theta = _classify_euler_cos(cos_theta, tol)
+    case, cos_theta = _classify_trig_value(R[i, j], tol)
 
-    if theta_case in ("general", "symbolic"):
-        sqrt_term = _euler_sqrt_term(cos_theta)
-        theta1 = atan2(sqrt_term, cos_theta)
+    if case in ("general", "symbolic"):
+        sin_theta = _sqrt_one_minus_square(cos_theta)
+        theta1 = atan2(sin_theta, cos_theta)
+        theta2 = atan2(-sin_theta, cos_theta)
+
         phi1 = _atan2_from_config(R, config["phi"])
         psi1 = _atan2_from_config(R, config["psi"])
-        theta2 = atan2(-sqrt_term, cos_theta)
         phi2 = _atan2_from_config(R, _negated_pair(config["phi"]))
         psi2 = _atan2_from_config(R, _negated_pair(config["psi"]))
-        solution = [(phi1,theta1,psi1), (phi2,theta2,psi2)]
-    elif theta_case == "positive_singularity":
-        theta = 0
-        psi = 0
+        return [(phi1, theta1, psi1), (phi2, theta2, psi2)], None
+
+    if case == "positive":
         phi = _atan2_from_config(R, config["singular_positive"])
-        solution = [(phi,theta,psi)]
-    elif theta_case == "negative_singularity":
-        theta = pi
-        psi = 0
-        phi = _atan2_from_config(R, config["singular_negative"])
-        solution = [(phi,theta,psi)]
+        return [(phi, sp.S(0), sp.S(0))], "positive"
+
+    phi = _atan2_from_config(R, config["singular_negative"])
+    return [(phi, pi, sp.S(0))], "negative"
+
+
+def _rot2tait_bryan(R, seq, tol):
+    config = _TAIT_BRYAN_CONFIG[seq]
+    sin_theta_raw = _signed_matrix_element(R, config["sin_term"])
+    case, sin_theta = _classify_trig_value(sin_theta_raw, tol)
+
+    if case in ("general", "symbolic"):
+        cos_theta = _sqrt_one_minus_square(sin_theta)
+        theta1 = atan2(sin_theta, cos_theta)
+        theta2 = atan2(sin_theta, -cos_theta)
+
+        phi1 = _atan2_from_config(R, config["phi"])
+        psi1 = _atan2_from_config(R, config["psi"])
+        phi2 = _atan2_from_config(R, _negated_pair(config["phi"]))
+        psi2 = _atan2_from_config(R, _negated_pair(config["psi"]))
+        return [(phi1, theta1, psi1), (phi2, theta2, psi2)], None
+
+    if case == "positive":
+        phi = _atan2_from_config(R, config["singular_positive"])
+        return [(phi, pi / 2, sp.S(0))], "positive"
+
+    phi = _atan2_from_config(R, config["singular_negative"])
+    return [(phi, -pi / 2, sp.S(0))], "negative"
+
+
+def _rot2eul_intrinsic(R, seq, tol):
+    if seq in _PROPER_EULER_SEQUENCES:
+        return _rot2proper_euler(R, seq, tol)
+    return _rot2tait_bryan(R, seq, tol)
+
+
+def _get_singular_relation_sign(seq, singular_case):
+    if seq in _PROPER_EULER_SEQUENCES:
+        return +1 if singular_case == "positive" else -1
+
+    config = _TAIT_BRYAN_CONFIG[seq]
+    return config[f"singular_{singular_case}_sign"]
+
+
+def rot2eul(R, seq="zxz", deg=False, intrinsic=True, tol=1e-9):
+    """Return Euler/Tait-Bryan angles that reconstruct a rotation matrix."""
+    _validate_euler_tol(tol)
+    seq = _normalize_euler_sequence(seq)
+    if not isinstance(intrinsic, bool):
+        raise TypeError("intrinsic must be a bool.")
+
+    R = _validate_rotation_matrix(R, tol=tol)
+
+    if intrinsic:
+        solutions, singular_case = _rot2eul_intrinsic(R, seq, tol)
+    else:
+        internal_seq = seq[::-1]
+        internal_solutions, singular_case = _rot2eul_intrinsic(
+            R, internal_seq, tol
+        )
+
+        if singular_case is None:
+            solutions = [
+                (psi, theta, phi)
+                for phi, theta, psi in internal_solutions
+            ]
+        else:
+            alpha_eq, theta, _ = internal_solutions[0]
+            sign = _get_singular_relation_sign(internal_seq, singular_case)
+            solutions = [(sign * alpha_eq, theta, sp.S(0))]
 
     if deg:
-        solution = _convert_euler_solutions_to_degrees(solution)
-
-    return solution
-
-
-def _rot2zxz(R, deg=False, tol=1e-9):
-    """
-    Calculates ZXZ Euler angles from a rotation matrix.
-    """
-    return _rot2proper_euler(R, "zxz", deg, tol)
+        return _convert_euler_solutions_to_degrees(solutions)
+    return solutions
 
 
-def _rot2zyz(R, deg=False, tol=1e-9):
-    """
-    Calculates ZYZ Euler angles from a rotation matrix.
-    """
-    return _rot2proper_euler(R, "zyz", deg, tol)
-
-
-def _rot2xyx(R, deg=False, tol=1e-9):
-    """
-    Calculates XYX Euler angles from a rotation matrix.
-    """
-    return _rot2proper_euler(R, "xyx", deg, tol)
-
-
-def _rot2xzx(R, deg=False, tol=1e-9):
-    """
-    Calculates XZX Euler angles from a rotation matrix.
-    """
-    return _rot2proper_euler(R, "xzx", deg, tol)
-
-
-def _rot2yxy(R, deg=False, tol=1e-9):
-    """
-    Calculates YXY Euler angles from a rotation matrix.
-    """
-    return _rot2proper_euler(R, "yxy", deg, tol)
-
-
-def _rot2yzy(R, deg=False, tol=1e-9):
-    """
-    Calculates YZY Euler angles from a rotation matrix.
-    """
-    return _rot2proper_euler(R, "yzy", deg, tol)
-
-def eul2rot(phi,theta,psi,seq="zxz",deg=False):
-    """
-    Build a rotation matrix from proper Euler angles.
-
-    Parameters
-    ----------
-    phi : int, float or symbolic
-        First Euler angle.
-    theta : int, float or symbolic
-        Intermediate Euler angle.
-    psi : int, float or symbolic
-        Third Euler angle.
-    seq : str, optional
-        Proper Euler sequence. Supported sequences are ``"xyx"``, ``"xzx"``,
-        ``"yxy"``, ``"yzy"``, ``"zxz"`` and ``"zyz"``. Matching is
-        case-insensitive. Tait-Bryan sequences such as ``"xyz"`` are not
-        supported here.
-    deg : bool, optional
-        If True, the input angles are interpreted as degrees and converted to
-        radians before constructing the matrix.
-
-    Returns
-    -------
-    sympy.matrices.dense.MutableDenseMatrix
-        Rotation matrix.
-
-    Notes
-    -----
-    This function uses column vectors and active rotations. For a sequence
-    ``seq="abc"``, the convention is defined by the matrix product
-    ``R = R_a(phi) @ R_b(theta) @ R_c(psi)``, where each elementary rotation is
-    produced by :func:`rot`. For proper Euler sequences, ``a == c``.
-
-    Examples
-    --------
-    >>> eul2rot(pi/2, pi/3, pi/4, seq="zxz")
-    ⎡-√2   -√6         ⎤
-    ⎢────  ────   √3/2 ⎥
-    ⎢ 4     4          ⎥
-    ⎢                  ⎥
-    ⎢-√2    √6         ⎥
-    ⎢────   ──   -1/2  ⎥
-    ⎢ 4     4          ⎥
-    ⎢                  ⎥
-    ⎢ √6    √2         ⎥
-    ⎢ ──    ──    1/2  ⎥
-    ⎣ 4     4          ⎦
-
-    >>> eul2rot(pi/6, pi/4, pi/3, seq="xyx")
-    ⎡√2              √2        ⎤
-    ⎢──      √6/4    ──        ⎥
-    ⎢2               4         ⎥
-    ⎢                          ⎥
-    ⎢√2    3/8 + √3  1   3⋅√3 ⎥
-    ⎢──    ────────  ─ - ──── ⎥
-    ⎢4        4      8    8   ⎥
-    ⎢                          ⎥
-    ⎢-√6   1   3⋅√3  √3   3/8⎥
-    ⎢────  ─ + ────  ── - ───⎥
-    ⎣ 4    8    8    4     4 ⎦
-    """
-    if deg: # If angles are given in degrees -> convert to radians
-        phi,theta,psi = deg2rad(Matrix([phi,theta,psi]), evalf=False)
+def eul2rot(
+    phi,
+    theta,
+    psi,
+    seq="zxz",
+    deg=False,
+    intrinsic=True,
+):
+    """Build a rotation matrix from Euler or Tait-Bryan angles."""
     seq = _normalize_euler_sequence(seq)
+    if not isinstance(intrinsic, bool):
+        raise TypeError("intrinsic must be a bool.")
 
-    axis1 = seq[0]
-    axis2 = seq[1]
-    axis3 = seq[2]
-    R = rot(phi,axis1) * rot(theta,axis2) * rot(psi,axis3)
-    return R
+    if deg:
+        phi, theta, psi = deg2rad(
+            Matrix([phi, theta, psi]),
+            evalf=False,
+        )
+
+    if not intrinsic:
+        seq = seq[::-1]
+        phi, psi = psi, phi
+
+    return (
+        rot(phi, seq[0])
+        * rot(theta, seq[1])
+        * rot(psi, seq[2])
+    )
+
 
 def htmtra(x=0, y=0, z=0):
     """
