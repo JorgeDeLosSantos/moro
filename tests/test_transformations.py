@@ -2,6 +2,7 @@ import sympy as sp
 import pytest
 
 from moro.transformations import (
+    axa2quat,
     axa2rot,
     eul2rot,
     htm2rot,
@@ -10,8 +11,11 @@ from moro.transformations import (
     htmtra,
     invhtm,
     is_rotation_matrix,
+    quat2axa,
+    quat2rot,
     rot,
     rot2eul,
+    rot2quat,
     rot2axa,
     rot2htm,
     rt2htm,
@@ -666,3 +670,200 @@ def test_rot2eul_rejects_symbolically_indeterminate_matrix():
 
     with pytest.raises(ValueError, match="indeterminate"):
         rot2eul(generic)
+
+
+
+def assert_quaternion_equivalent(q1, q2, tol=1e-9):
+    q1 = sp.Matrix(q1)
+    q2 = sp.Matrix(q2)
+    try:
+        assert_matrix_close(q1, q2, tol=tol)
+        return
+    except AssertionError:
+        pass
+    assert_matrix_close(q1, -q2, tol=tol)
+
+
+@pytest.mark.parametrize("q", [
+    [1, 0, 0, 0],
+    (1, 0, 0, 0),
+    sp.Matrix([1, 0, 0, 0]),
+    sp.Matrix([[1, 0, 0, 0]]),
+])
+def test_quat2rot_accepts_supported_vector_formats(q):
+    assert_matrix_equal(quat2rot(q), sp.eye(3))
+
+
+@pytest.mark.parametrize("q", [
+    [],
+    [1, 0, 0],
+    [1, 0, 0, 0, 0],
+    sp.eye(2),
+])
+def test_quaternion_rejects_invalid_shapes(q):
+    with pytest.raises(ValueError, match="4D vector"):
+        quat2rot(q)
+
+
+def test_quat2rot_normalizes_non_unit_input_and_double_coverage():
+    q = sp.Matrix([2, 2, 0, 0])
+
+    R1 = quat2rot(q)
+    R2 = quat2rot(-3*q)
+
+    assert_matrix_equal(sp.simplify(R1), sp.simplify(R2))
+    assert_matrix_equal(R1, rotx(sp.pi/2))
+
+
+@pytest.mark.parametrize("q", [
+    [0, 0, 0, 0],
+    [1e-12, 0, 0, 0],
+])
+def test_quaternion_rejects_zero_or_near_zero_numeric_norm(q):
+    with pytest.raises(ValueError):
+        quat2rot(q, tol=1e-9)
+
+
+def test_axa2quat_identity_and_coordinate_axis():
+    assert_matrix_equal(
+        axa2quat([1, 0, 0], 0),
+        sp.Matrix([1, 0, 0, 0]),
+    )
+
+    q = axa2quat([0, 0, 1], sp.pi/2)
+    expected = sp.Matrix([
+        sp.sqrt(2)/2,
+        0,
+        0,
+        sp.sqrt(2)/2,
+    ])
+    assert_matrix_equal(q, expected)
+
+
+def test_axa2quat_normalizes_axis_and_supports_degrees():
+    q1 = axa2quat([0, 0, 5], 90, deg=True)
+    q2 = axa2quat([0, 0, 1], sp.pi/2)
+    assert_matrix_equal(q1, q2)
+
+
+def test_axa2quat_rejects_zero_axis():
+    with pytest.raises(ValueError, match="zero vector"):
+        axa2quat([0, 0, 0], 1.0)
+
+
+def test_quat2axa_identity_uses_conventional_x_axis():
+    axis, angle = quat2axa([1, 0, 0, 0])
+    assert_matrix_equal(axis, sp.Matrix([1, 0, 0]))
+    assert sp.simplify(angle) == 0
+
+
+def test_quat2axa_general_round_trip():
+    q = axa2quat([1, -2, 3], 0.9)
+
+    axis, angle = quat2axa(q)
+
+    R1 = quat2rot(q)
+    R2 = axa2rot(axis, angle)
+    assert_matrix_close(R1, R2, tol=1e-9)
+
+
+def test_quat2axa_degree_output():
+    q = axa2quat([0, 1, 0], 60, deg=True)
+
+    axis, angle = quat2axa(q, deg=True)
+
+    assert_matrix_equal(axis, sp.Matrix([0, 1, 0]))
+    assert sp.simplify(angle - 60) == 0
+
+
+@pytest.mark.parametrize("axis", [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+    [1, -2, 3],
+])
+@pytest.mark.parametrize("angle", [0.2, 1.1, float(sp.pi)-1e-8, float(sp.pi)])
+def test_rotation_quaternion_round_trip_numeric(axis, angle):
+    R = sp.N(axa2rot(axis, angle))
+
+    q = rot2quat(R)
+    R2 = quat2rot(q)
+
+    assert_matrix_close(R2, R, tol=1e-8)
+    assert float(sp.N(q[0])) >= -1e-12
+
+
+@pytest.mark.parametrize("axis", [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+])
+def test_rot2quat_exact_pi_reconstructs(axis):
+    R = axa2rot(axis, sp.pi)
+
+    q = rot2quat(R)
+
+    assert_matrix_close(quat2rot(q), R, tol=1e-9)
+
+
+def test_rot2quat_identity_is_canonical():
+    q = rot2quat(sp.eye(3))
+    assert_matrix_close(q, sp.Matrix([1, 0, 0, 0]), tol=1e-12)
+
+
+def test_quaternion_matrix_round_trip_from_negative_scalar_input():
+    q = sp.Matrix([-sp.sqrt(2)/2, 0, 0, -sp.sqrt(2)/2])
+
+    R = quat2rot(q)
+    q2 = rot2quat(R)
+
+    assert_quaternion_equivalent(q, q2)
+    assert float(sp.N(q2[0])) >= 0
+
+
+def test_symbolic_axa2quat_and_quat2rot():
+    theta = sp.symbols("theta", real=True)
+    q = axa2quat([0, 0, 1], theta)
+
+    expected = sp.Matrix([
+        sp.cos(theta/2),
+        0,
+        0,
+        sp.sin(theta/2),
+    ])
+    assert_matrix_equal(q, expected)
+
+    R = quat2rot(q)
+    assert_matrix_equal(sp.trigsimp(R), rotz(theta))
+
+
+def test_symbolic_rot2quat_reconstructs_rotation():
+    theta = sp.symbols("theta", real=True)
+    R = rotx(theta)
+
+    q = rot2quat(R)
+    R2 = quat2rot(q)
+
+    assert_matrix_equal(sp.trigsimp(R2), R)
+
+
+def test_symbolic_quaternion_with_indeterminate_norm_is_accepted():
+    w, x, y, z = sp.symbols("w x y z", real=True)
+    q = sp.Matrix([w, x, y, z])
+
+    R = quat2rot(q)
+
+    assert R.shape == (3, 3)
+    assert R.has(w, x, y, z)
+
+
+@pytest.mark.parametrize("tol", [0, -1e-9])
+def test_quaternion_invalid_tolerance(tol):
+    with pytest.raises(ValueError):
+        quat2rot([1, 0, 0, 0], tol=tol)
+    with pytest.raises(ValueError):
+        rot2quat(sp.eye(3), tol=tol)
+    with pytest.raises(ValueError):
+        quat2axa([1, 0, 0, 0], tol=tol)
