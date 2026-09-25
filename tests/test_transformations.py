@@ -21,6 +21,7 @@ from moro.transformations import (
     rot2htm,
     rt2htm,
     skew,
+    vex,
 )
 
 
@@ -1055,3 +1056,77 @@ def test_rot2rotvec_rejects_invalid_rotation_matrix():
 def test_rotvec2rot_rejects_nonfinite_or_nonreal_numeric_inputs(phi):
     with pytest.raises(ValueError, match="finite real"):
         rotvec2rot(phi)
+
+
+
+@pytest.mark.parametrize("u", [
+    [1, 2, 3],
+    sp.Matrix([1, -2, 3]),
+    sp.Matrix(sp.symbols("ux uy uz")),
+])
+def test_vex_skew_round_trip(u):
+    u = sp.Matrix(u)
+
+    recovered = vex(skew(u))
+
+    assert_matrix_equal(recovered, u)
+
+
+def test_skew_vex_round_trip():
+    S = sp.Matrix([
+        [0, -3, 2],
+        [3, 0, -1],
+        [-2, 1, 0],
+    ])
+
+    assert_matrix_equal(skew(vex(S)), S)
+
+
+def test_vex_accepts_small_numeric_skew_symmetry_error_within_tolerance():
+    S = sp.Matrix([
+        [0, -3.0, 2.0],
+        [3.0 + 1e-11, 0, -1.0],
+        [-2.0, 1.0, 0],
+    ])
+
+    u = vex(S, tol=1e-9)
+
+    assert_matrix_close(
+        u,
+        sp.Matrix([1.0, 2.0, 3.000000000005]),
+        tol=1e-9,
+    )
+
+
+def test_vex_rejects_numeric_matrix_outside_skew_tolerance():
+    S = sp.Matrix([
+        [0, -3.0, 2.0],
+        [3.1, 0, -1.0],
+        [-2.0, 1.0, 0],
+    ])
+
+    with pytest.raises(ValueError, match="skew-symmetric"):
+        vex(S, tol=1e-9)
+
+
+def test_vex_rejects_wrong_shape():
+    with pytest.raises(ValueError, match="3x3"):
+        vex(sp.eye(2))
+
+
+def test_vex_rejects_symbolically_indeterminate_skew_symmetry():
+    a, b, c = sp.symbols("a b c")
+    S = sp.Matrix([
+        [0, a, 0],
+        [b, 0, c],
+        [0, -c, 0],
+    ])
+
+    with pytest.raises(ValueError, match="could not be established"):
+        vex(S)
+
+
+@pytest.mark.parametrize("tol", [0, -1e-9])
+def test_vex_invalid_tolerance(tol):
+    with pytest.raises(ValueError):
+        vex(sp.zeros(3), tol=tol)
