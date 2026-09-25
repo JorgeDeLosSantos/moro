@@ -1,11 +1,11 @@
 """
-import warnings
 Numython R&D, (c) 2026
 Moro is a Python library for kinematic and dynamic modeling of serial robots. 
 This library has been designed, mainly, for academic and research purposes, 
 using SymPy as base library. 
 """
 
+import warnings
 from sympy import pi
 from sympy.matrices import Matrix
 import sympy as sp
