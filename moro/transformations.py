@@ -1162,11 +1162,8 @@ def rot2axa(R, deg=False, tol=1e-9):
     theta : float, int or symbolic
         Rotation angle in radians by default, or in degrees when ``deg=True``.
     """
-    if tol <= 0:
-        raise ValueError("tol must be greater than 0.")
-
-    if not(is_SO3(R)) and not _is_SO3_numeric_tol(R, tol):
-        raise ValueError("R must be a rotation matrix.")
+    tol = _validate_tol(tol)
+    R = _validate_rotation_matrix(R, tol=tol)
 
     def _result(axis, angle):
         axis = sp.simplify(axis / axis.norm())
