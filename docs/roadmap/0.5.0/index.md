@@ -1,6 +1,6 @@
 # Moro 0.5.0 roadmap
 
-This directory records the accepted preliminary scope and design decisions for Moro 0.5.0. The documents define what belongs in the release and the main public-API direction; implementation-level details remain intentionally deferred to later design work.
+This directory records the accepted scope, implementation order, compatibility policy, and completion criteria for Moro 0.5.0. Detailed implementation contracts are now complete in [`docs/design/0.5.0/`](../../design/0.5.0/index.md).
 
 ## Release direction
 
@@ -61,6 +61,20 @@ Some relationships are deliberately weaker:
 
 ## Recommended implementation sequence
 
+The implementation increments are identified as:
+
+```text
+0.5-A  transformations and orientation foundations
+0.5-B  differential kinematics
+0.5-C  singularities and manipulability
+0.5-D  full-pose inverse kinematics
+0.5-E  trajectory generation
+0.5-F  numerical dynamics and simulation
+0.5-G  workspace sampling
+0.5-H  integration, documentation, and release hardening
+```
+
+
 The preferred implementation order for Moro 0.5.0 is the following.
 
 ### 1. Transformations and orientation foundations
@@ -103,7 +117,7 @@ Keeping this immediately after differential kinematics minimizes duplicated nume
 
 ### 4. Full-pose inverse kinematics
 
-Extend `inverse_kinematics.py` with `solve_pose()` and `PoseIKSolution` after the rotation-vector and HTM-validation primitives are stable.
+Extend `inverse_kinematics.py` with `solve_pose_ik()` and `PoseIKSolution` after the rotation-vector and HTM-validation primitives are stable.
 
 The main integration point to verify is mathematical compatibility between the chosen orientation-error convention and the geometric Jacobian used by the solver.
 
@@ -308,7 +322,7 @@ Consider this increment done when:
 
 Consider this increment done when:
 
-- `solve_pose()` accepts and validates the canonical `4 x 4` HTM target;
+- `solve_pose_ik()` accepts and validates the canonical `4 x 4` HTM target;
 - the final SO(3) orientation-error convention is documented and mathematically compatible with the geometric Jacobian/update rule;
 - position and orientation weights and convergence tolerances operate independently as designed;
 - the accepted Jacobian-based methods converge on representative reachable pose targets;
@@ -384,10 +398,23 @@ Consider Moro 0.5.0 release-ready when:
 
 The accepted 0.5.0 scope intentionally excludes several natural follow-on capabilities so that the release remains focused. In particular, the release does not aim to introduce general motion planning, collision-aware IK, null-space secondary objectives, pose trajectories, SLERP, screw-theory/SE(3) utilities as a general subsystem, constrained/contact dynamics, controller classes, advanced trajectory profiles, or exact analytical workspace computation.
 
-If schedule pressure requires prioritization, workspace is the most independent feature and could be deferred without disrupting the central kinematics/dynamics narrative. Without a fixed release deadline, it remains part of the accepted candidate scope.
+Workspace remains the most independent feature and could still be deferred if future implementation evidence or schedule pressure requires scope reduction. At the close of detailed design it remains part of the accepted 0.5.0 scope.
 
 ## Planning status
 
-The feature scope, implementation order, compatibility/deprecation policy, and completion criteria are now defined. Planning is sufficiently mature to begin detailed design and implementation in the agreed sequence, starting with transformations and orientation foundations.
+The Moro 0.5.0 functional design phase is complete.
 
-Detailed numerical tolerances, dataclass invariants, private helper structure, caching strategies, and exact exception messages remain deferred to detailed design.
+All seven accepted functional areas now have implementation-level contracts in:
+
+[`docs/design/0.5.0/`](../../design/0.5.0/index.md)
+
+The next phase is implementation in the accepted sequence:
+
+```text
+0.5-A -> 0.5-B -> 0.5-C -> 0.5-D
+      -> 0.5-E -> 0.5-F -> 0.5-G -> 0.5-H
+```
+
+Implementation begins with **0.5-A: transformations and orientation foundations**.
+
+Detailed-design documents are the normative source for numerical tolerances, dataclass invariants, validation semantics, private-helper direction, caching/compilation policy, and exact result contracts. Any implementation-driven contract revision should first be recorded there rather than introduced silently.
