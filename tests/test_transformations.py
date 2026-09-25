@@ -1182,9 +1182,9 @@ def test_is_homogeneous_transform_symbolic_valid():
 
 
 def test_is_homogeneous_transform_symbolic_invalid():
-    a = sp.symbols("a", real=True)
+    a = sp.symbols("a", positive=True)
     T = sp.eye(4)
-    T[3, 0] = a + 1
+    T[3, 0] = a
 
     assert is_homogeneous_transform(T) is False
 
