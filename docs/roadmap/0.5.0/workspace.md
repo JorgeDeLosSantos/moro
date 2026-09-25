@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted as a candidate feature for Moro 0.5.0.
+Accepted for Moro 0.5.0. Detailed design complete.
 
 ## Objective
 
@@ -22,7 +22,7 @@ Initial 0.5.0 support is uniform random sampling in joint space only. A `seed` a
 
 Revolute, prismatic, and mixed-joint robots should be supported.
 
-## Preliminary public API
+## Public API direction
 
 ```python
 sample_workspace(
@@ -85,6 +85,10 @@ Cover planar and spatial robots, revolute/prismatic joints, explicit/model-defin
 - automatic manipulability or singularity maps;
 - arbitrary intermediate-link workspace sampling.
 
-## Deferred detailed-design decisions
+## Detailed design
 
-Exact dataclass invariants, validation/messages, precedence of explicit versus robot limits, numerical array types beyond agreed shapes, sampling helpers, numerical evaluation/caching, visualization API, and planar-display thresholds remain deferred.
+The implementation-level contract for this feature is finalized in:
+
+[`docs/design/0.5.0/workspace.md`](../../design/0.5.0/workspace.md)
+
+That document is the normative source for detailed API semantics, validation, numerical policy, result invariants, tests, and implementation guidance. If implementation evidence requires a contract change, update the detailed design explicitly rather than changing behavior silently.
