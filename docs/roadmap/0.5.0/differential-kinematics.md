@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted as a candidate feature for Moro 0.5.0.
+Accepted for Moro 0.5.0. Detailed design complete.
 
 ## Objective
 
@@ -37,7 +37,7 @@ Convenience presets:
 
 Explicit subsets such as `("vx", "vy")` and `("vx", "vy", "wz")` are supported. Task dimensionality must not be inferred from velocity-vector length, and roll/pitch/yaw terminology must not be used for geometric-Jacobian angular rows.
 
-## Preliminary public API
+## Public API direction
 
 ```python
 task_jacobian(robot, q=None, *, task="twist", parameters=None)
@@ -118,6 +118,10 @@ Tests should cover task selection, dimensions, both methods, singular/near-singu
 - `Jdot`;
 - dynamic control.
 
-## Deferred detailed-design decisions
+## Detailed design
 
-Exact validation and error messages, numerical tolerances, result invariants, saturation semantics, damping validation, rank/conditioning policy, and caching/internal helper structure remain deferred.
+The implementation-level contract for this feature is finalized in:
+
+[`docs/design/0.5.0/differential-kinematics.md`](../../design/0.5.0/differential-kinematics.md)
+
+That document is the normative source for detailed API semantics, validation, numerical policy, result invariants, tests, and implementation guidance. If implementation evidence requires a contract change, update the detailed design explicitly rather than changing behavior silently.
