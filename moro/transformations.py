@@ -33,7 +33,8 @@ __all__ = [
     "rotz",
     "rotvec2rot",
     "rt2htm",
-    "skew"
+    "skew",
+    "vex"
 ]
     
 # ~ ==========================================
@@ -1318,6 +1319,42 @@ def axa2rot(k,theta):
     K = skew(k)
     return sp.eye(3) + sp.sin(theta) * K + (1 - sp.cos(theta)) * K**2
     
+
+def vex(S, *, tol=1e-9):
+    """Return the vector associated with a 3x3 skew-symmetric matrix."""
+    tol = _validate_tol(tol)
+
+    try:
+        S = Matrix(S)
+    except (TypeError, ValueError) as exc:
+        raise TypeError("S must be convertible to a 3x3 matrix.") from exc
+
+    if S.shape != (3, 3):
+        raise ValueError("S must be a 3x3 matrix.")
+
+    residual = sp.simplify(S + S.T)
+    entries = [sp.sympify(value) for value in residual]
+
+    if all(value.is_number is True for value in entries):
+        if any(value.is_real is not True for value in entries):
+            raise ValueError("S must be a real skew-symmetric matrix.")
+        if any(abs(float(sp.N(value))) > tol for value in entries):
+            raise ValueError("S must be skew-symmetric within tolerance.")
+    else:
+        statuses = [sp.simplify(value).is_zero for value in entries]
+        if any(status is False for status in statuses):
+            raise ValueError("S must be skew-symmetric.")
+        if not all(status is True for status in statuses):
+            raise ValueError(
+                "Skew symmetry of S could not be established symbolically."
+            )
+
+    return sp.simplify(Matrix([
+        (S[2, 1] - S[1, 2]) / 2,
+        (S[0, 2] - S[2, 0]) / 2,
+        (S[1, 0] - S[0, 1]) / 2,
+    ]))
+
 
 def skew(u):
     """
