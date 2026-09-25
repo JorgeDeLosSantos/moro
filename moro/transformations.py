@@ -19,6 +19,7 @@ __all__ = [
     "htm2rot",
     "htm2tra",
     "invhtm",
+    "is_homogeneous_transform",
     "is_rotation_matrix",
     "quat2axa",
     "quat2rot",
@@ -523,6 +524,80 @@ def _validate_rotation_matrix(R, *, tol=1e-9):
     return R
 
 
+
+def _symbolic_zero_condition(value):
+    """Classify whether a symbolic expression is provably zero."""
+    return sp.simplify(value).is_zero
+
+
+def is_homogeneous_transform(T, *, tol=1e-9):
+    """Return True, False, or None according to membership in SE(3)."""
+    tol = _validate_tol(tol)
+
+    try:
+        T = Matrix(T)
+    except (TypeError, ValueError) as exc:
+        raise TypeError("T must be convertible to a 4x4 matrix.") from exc
+
+    if T.shape != (4, 4):
+        return False
+
+    entries = [sp.sympify(value) for value in T]
+    fully_numeric = all(value.is_number is True for value in entries)
+
+    if fully_numeric:
+        if any(value.is_real is not True for value in entries):
+            return False
+
+        rotation_status = is_rotation_matrix(T[:3, :3], tol=tol)
+        if rotation_status is not True:
+            return False
+
+        target_row = (0.0, 0.0, 0.0, 1.0)
+        return all(
+            abs(float(sp.N(T[3, j])) - target_row[j]) <= tol
+            for j in range(4)
+        )
+
+    rotation_status = is_rotation_matrix(T[:3, :3], tol=tol)
+    row_statuses = [
+        _symbolic_zero_condition(T[3, 0]),
+        _symbolic_zero_condition(T[3, 1]),
+        _symbolic_zero_condition(T[3, 2]),
+        _symbolic_zero_condition(T[3, 3] - 1),
+    ]
+
+    statuses = [rotation_status, *row_statuses]
+    if any(status is False for status in statuses):
+        return False
+    if all(status is True for status in statuses):
+        return True
+    return None
+
+
+def _validate_homogeneous_transform(T, *, tol=1e-9):
+    """Validate and normalize a rigid homogeneous transformation."""
+    tol = _validate_tol(tol)
+
+    try:
+        T = Matrix(T)
+    except (TypeError, ValueError) as exc:
+        raise TypeError("T must be convertible to a 4x4 matrix.") from exc
+
+    if T.shape != (4, 4):
+        raise ValueError("T must be a 4x4 matrix.")
+
+    status = is_homogeneous_transform(T, tol=tol)
+    if status is True:
+        return T
+    if status is None:
+        raise ValueError(
+            "T must be a homogeneous transformation; symbolic SE(3) "
+            "membership is indeterminate."
+        )
+    raise ValueError("T must be a valid homogeneous transformation in SE(3).")
+
+
 def _classify_trig_value(value, tol):
     value_simplified = sp.simplify(value)
 
@@ -933,32 +1008,29 @@ def htm2tra(T):
     return T[:3, 3]
 
 
-def invhtm(T):
-    """
-    Compute the structured inverse of a homogeneous transformation matrix.
+def invhtm(T, *, tol=1e-9):
+    """Compute the structured inverse of a rigid homogeneous transform.
 
     Parameters
     ----------
-    T : array-like or sympy Matrix
-        Homogeneous transformation matrix. It is converted with ``Matrix(T)``
-        and must have shape (4, 4). No full SE(3) membership validation is
-        performed.
+    T : matrix-like, shape (4, 4)
+        Homogeneous transformation in SE(3).
+    tol : positive real, optional
+        Numerical tolerance used for SE(3) validation.
 
     Returns
     -------
     sympy.matrices.dense.MutableDenseMatrix
-        Inverse homogeneous transformation matrix computed from the rigid-body
-        structure, using ``R.T`` and ``-R.T*p`` instead of a general matrix
-        inverse.
+        Structured rigid-body inverse.
     """
-    T = Matrix(T)
-    if T.shape != (4, 4):
-        raise ValueError(f"T must be a 4x4 matrix; got shape {T.shape}.")
-    R = htm2rot(T)
-    p = htm2tra(T)
+    T = _validate_homogeneous_transform(T, tol=tol)
+    R = T[:3, :3]
+    p = T[:3, 3]
+
     R_inv = R.T
     p_inv = -R_inv * p
     return rt2htm(R_inv, p_inv)
+
 
 def _normalize_quaternion(q, tol=1e-9):
     """Return a normalized scalar-first quaternion as a SymPy column vector."""
