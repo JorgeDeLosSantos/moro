@@ -453,10 +453,6 @@ def _validate_tol(tol):
     return tol_value
 
 
-def _validate_euler_tol(tol):
-    return _validate_tol(tol)
-
-
 def _is_numeric_real(value):
     value = sp.simplify(value)
     numeric_value = sp.N(value)
@@ -727,7 +723,7 @@ def _get_singular_relation_sign(seq, singular_case):
 
 def rot2eul(R, seq="zxz", deg=False, intrinsic=True, tol=1e-9):
     """Return Euler/Tait-Bryan angles that reconstruct a rotation matrix."""
-    _validate_euler_tol(tol)
+    tol = _validate_tol(tol)
     seq = _normalize_euler_sequence(seq)
     if not isinstance(intrinsic, bool):
         raise TypeError("intrinsic must be a bool.")
