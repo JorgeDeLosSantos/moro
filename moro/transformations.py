@@ -7,7 +7,7 @@ using SymPy as base library.
 import sympy as sp
 from sympy import sin, cos, atan2, sqrt, pi
 from sympy.matrices import Matrix, MatrixBase
-from moro.util import deg2rad, is_SO3, rad2deg
+from moro.util import deg2rad, rad2deg
 
 __all__ = [
     "axa2quat",
@@ -1363,7 +1363,7 @@ def rot2rotvec(R, tol=1e-9):
     return sp.simplify(angle * axis)
 
 
-def axa2rot(k,theta):
+def axa2rot(k, theta, deg=False):
     """
     Build a rotation matrix from an axis-angle representation.
 
@@ -1375,7 +1375,9 @@ def axa2rot(k,theta):
         vector is normalized internally to a column matrix. The zero vector is
         rejected because it does not define a rotation axis.
     theta : float, int or symbolic
-        Rotation angle in radians.
+        Rotation angle in radians by default.
+    deg : bool, optional
+        If True, theta is interpreted in degrees. Default is False.
 
     Returns
     -------
@@ -1386,6 +1388,9 @@ def axa2rot(k,theta):
     norm_sq = sp.simplify(k.dot(k))
     if norm_sq.is_zero is True:
         raise ValueError("The rotation axis cannot be the zero vector.")
+
+    if deg:
+        theta = deg2rad(theta, evalf=False)
 
     k = k / k.norm()
     K = skew(k)
