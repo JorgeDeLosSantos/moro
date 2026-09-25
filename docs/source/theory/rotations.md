@@ -391,7 +391,7 @@ $$
 A sequence name such as `XYZ` or `ZXZ` is ambiguous unless it is also specified whether the rotations are intrinsic or extrinsic.
 ```
 
-Moro currently interprets Euler-angle sequences as **intrinsic rotations**.
+Moro supports both **intrinsic** and **extrinsic** interpretations. The public conversion functions use `intrinsic=True` by default.
 
 ## Euler angles
 
@@ -460,7 +460,7 @@ R_a(\psi),
 a\neq b.
 $$
 
-Moro currently supports these six proper Euler sequences.
+Moro supports these six proper Euler sequences.
 
 For example, for `ZXZ`,
 
@@ -516,14 +516,14 @@ Tait--Bryan sequences are widely used in applications involving concepts such as
 However, the terms **roll**, **pitch**, and **yaw** should not be treated as universal synonyms for $\phi$, $\theta$, and $\psi$. Their precise interpretation depends on the selected sequence and on whether the rotations are intrinsic or extrinsic.
 
 ```{note}
-Tait--Bryan sequences are not yet supported by Moro's Euler-angle conversion functions. They are included here to clarify the general convention and to distinguish them from proper Euler sequences.
+Moro 0.5.0 supports all six Tait--Bryan sequences in `eul2rot` and `rot2eul`, using the same intrinsic/extrinsic convention as for proper Euler sequences.
 ```
 
 ## Canonical Euler-angle ranges
 
 Euler-angle representations are not unique. In general, several angle triples may represent the same physical orientation.
 
-When extracting Euler angles from a rotation matrix, Moro uses a single canonical solution.
+When extracting Euler angles from a rotation matrix, Moro returns the valid branches associated with the selected sequence. In a nonsingular configuration, two equivalent triples are generally returned; at singular configurations, Moro applies a deterministic convention with the third angle set to zero.
 
 For proper Euler sequences, the canonical ranges are
 
@@ -546,7 +546,7 @@ $$
 }
 $$
 
-Returning one canonical representation makes the result deterministic and avoids requiring users to handle multiple equivalent solutions for a single orientation.
+The returned solutions represent the same orientation. Applications that require a single branch should select one explicitly according to their continuity or configuration needs.
 
 ```{note}
 A canonical Euler-angle triple is not the unique mathematical representation of an orientation. It is one representative chosen from a family of equivalent angle triples.
@@ -781,6 +781,101 @@ When comparing axis--angle representations for rotations of $\pi$ radians, the a
 
 The cases near $\theta=0$ and $\theta=\pi$ are handled explicitly by Moro because the general expressions used to recover the rotation axis from a matrix become numerically ill-conditioned near these configurations.
 
+## Quaternions
+
+Moro represents orientation quaternions as scalar-first column vectors
+
+$$
+q=
+\begin{bmatrix}
+w\\x\\y\\z
+\end{bmatrix}.
+$$
+
+For a unit axis $\hat u$ and angle $\theta$,
+
+$$
+q=
+\begin{bmatrix}
+\cos(\theta/2)\\
+\hat u\sin(\theta/2)
+\end{bmatrix}.
+$$
+
+Because $q$ and $-q$ represent the same physical orientation, quaternion comparisons should normally be made through the represented rotation rather than by component equality. `rot2quat()` prefers a representative with nonnegative scalar component whenever that sign can be determined.
+
+The public conversions are:
+
+```python
+rot2quat(R)
+quat2rot(q)
+axa2quat(k, theta)
+quat2axa(q)
+```
+
+Quaternion inputs do not need to be normalized in advance; Moro normalizes nonzero quaternions internally.
+
+## Rotation vectors
+
+A rotation vector combines axis and angle in one vector:
+
+$$
+\phi=\theta\hat u.
+$$
+
+Its magnitude is the rotation angle,
+
+$$
+\|\phi\|=\theta.
+$$
+
+Moro exposes:
+
+```python
+rot2rotvec(R)
+rotvec2rot(phi)
+```
+
+`rot2rotvec()` returns the principal rotation vector with magnitude in $[0,\pi]$, while `rotvec2rot()` accepts non-principal magnitudes as well.
+
+The exponential-map form used by `rotvec2rot()` is
+
+$$
+R
+=
+I
++
+\frac{\sin\theta}{\theta}[\phi]_\times
++
+\frac{1-\cos\theta}{\theta^2}[\phi]_\times^2.
+$$
+
+At the identity rotation the principal rotation vector is the zero vector.
+
+## The vex operator
+
+The inverse vectorization of a skew-symmetric matrix is provided by `vex()`.
+
+For
+
+$$
+S=[u]_\times,
+$$
+
+Moro satisfies
+
+$$
+\operatorname{vex}(S)=u,
+$$
+
+and therefore
+
+$$
+\operatorname{vex}(\operatorname{skew}(u))=u.
+$$
+
+`vex()` validates skew symmetry rather than silently projecting an arbitrary matrix onto the skew-symmetric subspace.
+
 ## Summary of conventions used by Moro
 
 The rotation conventions used throughout Moro may be summarized as follows:
@@ -796,8 +891,8 @@ The rotation conventions used throughout Moro may be summarized as follows:
 | Composition | $R_k^j=R_i^jR_k^i$ |
 | Fixed-axis rotation | New rotation multiplies on the left |
 | Moving-axis rotation | New rotation multiplies on the right |
-| Euler interpretation | Intrinsic |
-| Current Euler sequences | Proper Euler |
+| Euler interpretation | Intrinsic by default; extrinsic supported |
+| Current Euler sequences | Proper Euler + Tait--Bryan |
 | Proper Euler middle-angle range | $[0,\pi]$ |
 | Proper Euler first/third range | $[-\pi,\pi]$ |
 | Singular Euler convention | $\psi=0$ |
