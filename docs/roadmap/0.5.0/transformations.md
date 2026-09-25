@@ -4,7 +4,7 @@ This section records the accepted preliminary scope for the `moro.transformation
 
 ## Status
 
-Accepted as a candidate feature area for Moro 0.5.0.
+Accepted for Moro 0.5.0. Detailed design complete.
 
 ## Objective
 
@@ -85,7 +85,7 @@ quat2axa(q)
 
 The exact accepted input containers, output type, normalization policy, canonical sign convention, numerical tolerances, and behavior for non-unit input quaternions are deferred to detailed design.
 
-The initial quaternion scope is intentionally limited. Quaternions will not become an alternative primary target format for `solve_pose()` in 0.5.0; users may convert them to a rotation matrix and construct the canonical homogeneous-transform target explicitly.
+The initial quaternion scope is intentionally limited. Quaternions will not become an alternative primary target format for `solve_pose_ik()` in 0.5.0; users may convert them to a rotation matrix and construct the canonical homogeneous-transform target explicitly.
 
 ## Rotation vectors and `SO(3)` logarithmic/exponential maps
 
@@ -135,7 +135,7 @@ and
 
 Robust numerical treatment near zero rotation and rotations near `pi` is required. The exact algorithms and thresholds are deferred to detailed design.
 
-`rot2rotvec()` is expected to provide the reusable primitive used by full-pose inverse kinematics to construct the orientation residual, subject to the final left/right relative-rotation convention selected for `solve_pose()`.
+`rot2rotvec()` is expected to provide the reusable primitive used by full-pose inverse kinematics to construct the orientation residual, subject to the final left/right relative-rotation convention selected for `solve_pose_ik()`.
 
 ## `skew()` and `vex()`
 
@@ -274,7 +274,7 @@ A numerical operation such as full-pose IK must reject an indeterminate symbolic
 
 The introduction of stronger validation helpers should not imply that every existing constructor or extractor must perform full geometric validation on every call.
 
-Simple structural utilities such as rotation/translation extraction may continue to perform only the validation necessary for their operation. Full `SO(3)` or homogeneous-transform validation should be applied where geometric validity is semantically required, including orientation conversions and the target accepted by `solve_pose()`.
+Simple structural utilities such as rotation/translation extraction may continue to perform only the validation necessary for their operation. Full `SO(3)` or homogeneous-transform validation should be applied where geometric validity is semantically required, including orientation conversions and the target accepted by `solve_pose_ik()`.
 
 Moro 0.5.0 should not silently project invalid matrices onto `SO(3)` or `SE(3)`. Within tolerance, numerical inputs may be accepted; otherwise they should be reported as invalid. Explicit projection utilities may be considered separately in a future version.
 
@@ -326,20 +326,10 @@ The following capabilities are not part of the accepted initial transformations 
 
 These capabilities may be considered after the core orientation conversions and full-pose IK conventions are stable.
 
-## Deferred detailed-design decisions
+## Detailed design
 
-The following points are intentionally deferred until detailed design and implementation of `transformations.py`:
+The implementation-level contract for this feature is finalized in:
 
-- exact formulas, returned ranges, and singular representative conventions for each Tait-Bryan sequence;
-- refactoring strategy for sharing implementation between proper Euler and Tait-Bryan conversions;
-- exact quaternion input/output container and dtype;
-- quaternion normalization and canonical-sign policy;
-- exact behavior for invalid or zero-norm quaternions;
-- whether `axa2quat()` should also expose `deg=False` for complete angle-unit symmetry;
-- exact numerical algorithm for `rot2rotvec()` near zero and `pi`;
-- exact symbolic behavior and simplification strategy for rotation-vector conversions;
-- precise tolerance norms used by rotation and homogeneous-transform validation;
-- detailed handling of symbolic assumptions in ternary predicates;
-- exact validation and exception messages;
-- compatibility/deprecation strategy for the existing `is_SO3()` utility;
-- whether additional private validators should be centralized in `transformations.py` or shared through another internal module.
+[`docs/design/0.5.0/transformations.md`](../../design/0.5.0/transformations.md)
+
+That document is the normative source for detailed API semantics, validation, numerical policy, result invariants, tests, and implementation guidance. If implementation evidence requires a contract change, update the detailed design explicitly rather than changing behavior silently.
