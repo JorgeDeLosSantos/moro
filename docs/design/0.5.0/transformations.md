@@ -232,7 +232,7 @@ Positive singularity, `theta=+pi/2`:
 | `seq` | `phi_eq` |
 | --- | --- |
 | `xyz` | `atan2(R[1,0], R[1,1])` |
-| `xzy` | `atan2(R[2,1], R[2,2])` |
+| `xzy` | `atan2(R[2,0], R[1,0])` |
 | `yxz` | `atan2(R[0,1], R[0,0])` |
 | `yzx` | `atan2(R[0,2], R[2,2])` |
 | `zxy` | `atan2(R[1,0], R[0,0])` |
@@ -243,7 +243,7 @@ Negative singularity, `theta=-pi/2`:
 | `seq` | `phi_eq` |
 | --- | --- |
 | `xyz` | `atan2(-R[1,0], R[1,1])` |
-| `xzy` | `atan2(-R[2,1], R[2,2])` |
+| `xzy` | `atan2(-R[2,0], -R[1,0])` |
 | `yxz` | `atan2(-R[0,1], R[0,0])` |
 | `yzx` | `atan2(R[0,2], R[2,2])` |
 | `zxy` | `atan2(R[1,0], R[0,0])` |
