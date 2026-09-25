@@ -17,6 +17,7 @@ from moro.transformations import (
     quat2axa,
     quat2rot,
     rot,
+    rotz,
     rot2eul,
     rot2quat,
     rot2rotvec,
