@@ -10,6 +10,7 @@ from moro.transformations import (
     htmrot,
     htmtra,
     invhtm,
+    is_homogeneous_transform,
     is_rotation_matrix,
     quat2axa,
     quat2rot,
@@ -1130,3 +1131,109 @@ def test_vex_rejects_symbolically_indeterminate_skew_symmetry():
 def test_vex_invalid_tolerance(tol):
     with pytest.raises(ValueError):
         vex(sp.zeros(3), tol=tol)
+
+
+
+def test_is_homogeneous_transform_exact_valid():
+    T = rt2htm(rotz(sp.pi/4), [1, 2, 3])
+
+    assert is_homogeneous_transform(T) is True
+
+
+def test_is_homogeneous_transform_numeric_within_tolerance():
+    T = sp.N(rt2htm(rotz(0.3), [1.0, -2.0, 0.5]))
+    T[3, 0] = 1e-11
+    T[3, 3] = 1.0 + 1e-11
+
+    assert is_homogeneous_transform(T, tol=1e-9) is True
+
+
+def test_is_homogeneous_transform_invalid_last_row():
+    T = rt2htm(sp.eye(3), [0, 0, 0])
+    T[3, 2] = sp.Rational(1, 10)
+
+    assert is_homogeneous_transform(T) is False
+
+
+def test_is_homogeneous_transform_invalid_rotation_block():
+    T = sp.eye(4)
+    T[:3, :3] = sp.diag(1, 1, -1)
+
+    assert is_homogeneous_transform(T) is False
+
+
+def test_is_homogeneous_transform_wrong_shape():
+    assert is_homogeneous_transform(sp.eye(3)) is False
+
+
+def test_is_homogeneous_transform_rejects_nonreal_numeric_entries():
+    T = sp.eye(4)
+    T[0, 3] = sp.I
+
+    assert is_homogeneous_transform(T) is False
+
+
+def test_is_homogeneous_transform_symbolic_valid():
+    theta = sp.symbols("theta", real=True)
+    px, py, pz = sp.symbols("px py pz", real=True)
+    T = rt2htm(rotz(theta), [px, py, pz])
+
+    assert is_homogeneous_transform(T) is True
+
+
+def test_is_homogeneous_transform_symbolic_invalid():
+    a = sp.symbols("a", real=True)
+    T = sp.eye(4)
+    T[3, 0] = a + 1
+
+    assert is_homogeneous_transform(T) is False
+
+
+def test_is_homogeneous_transform_symbolically_indeterminate():
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i", real=True)
+    R = sp.Matrix([[a,b,c],[d,e,f],[g,h,i]])
+    T = rt2htm(R, [0, 0, 0])
+
+    assert is_homogeneous_transform(T) is None
+
+
+def test_invhtm_valid_rigid_transform_matches_general_inverse():
+    T = rt2htm(rotz(sp.pi/6), [1, 2, 3])
+
+    T_inv = invhtm(T)
+
+    assert_matrix_equal(sp.simplify(T_inv * T), sp.eye(4))
+    assert_matrix_equal(sp.simplify(T_inv), sp.simplify(T.inv()))
+
+
+def test_invhtm_rejects_non_se3_matrix_even_if_4x4():
+    T = sp.eye(4)
+    T[0, 0] = 2
+
+    with pytest.raises(ValueError, match="homogeneous transformation"):
+        invhtm(T)
+
+
+def test_invhtm_rejects_invalid_last_row():
+    T = sp.eye(4)
+    T[3, 0] = sp.Rational(1, 10)
+
+    with pytest.raises(ValueError, match="homogeneous transformation"):
+        invhtm(T)
+
+
+def test_invhtm_rejects_symbolically_indeterminate_transform():
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i", real=True)
+    R = sp.Matrix([[a,b,c],[d,e,f],[g,h,i]])
+    T = rt2htm(R, [0, 0, 0])
+
+    with pytest.raises(ValueError, match="indeterminate"):
+        invhtm(T)
+
+
+@pytest.mark.parametrize("tol", [0, -1e-9])
+def test_homogeneous_transform_invalid_tolerance(tol):
+    with pytest.raises(ValueError):
+        is_homogeneous_transform(sp.eye(4), tol=tol)
+    with pytest.raises(ValueError):
+        invhtm(sp.eye(4), tol=tol)
