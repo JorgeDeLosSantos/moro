@@ -24,12 +24,14 @@ __all__ = [
     "quat2rot",
     "rot2eul",
     "rot2quat",
+    "rot2rotvec",
     "rot2axa",
     "rot2htm",
     "rot",
     "rotx",
     "roty",
     "rotz",
+    "rotvec2rot",
     "rt2htm",
     "skew"
 ]
@@ -1137,116 +1139,157 @@ def quat2axa(q, deg=False, *, tol=1e-9):
     return axis, angle
 
 
+def _rotation_angle_from_matrix(R, tol):
+    """Return the principal rotation angle and its numerical/symbolic case."""
+    cos_angle = sp.simplify((sp.trace(R) - 1) / 2)
+
+    if _is_numeric_real(cos_angle):
+        value = float(sp.N(cos_angle))
+        if value > 1.0 + tol or value < -1.0 - tol:
+            raise ValueError(
+                "The rotation angle cosine is outside the valid range "
+                "[-1, 1] beyond tolerance."
+            )
+        value = max(-1.0, min(1.0, value))
+        angle = sp.acos(sp.Float(value))
+        angle_value = float(sp.N(angle))
+
+        if abs(angle_value) <= tol:
+            return sp.S(0), "identity"
+        if abs(angle_value - float(sp.pi)) <= tol:
+            return sp.pi, "pi"
+        return angle, "general"
+
+    angle = sp.acos(cos_angle)
+    angle_simplified = sp.simplify(angle)
+    if angle_simplified.is_zero is True:
+        return sp.S(0), "identity"
+    if sp.simplify(angle_simplified - sp.pi).is_zero is True:
+        return sp.pi, "pi"
+    return angle_simplified, "general"
+
+
+def _largest_rotation_axis_diagonal_index(diagonal):
+    if all(_is_numeric_real(value) for value in diagonal):
+        return max(range(3), key=lambda i: float(sp.N(diagonal[i])))
+
+    known_nonzero = [
+        i for i, value in enumerate(diagonal)
+        if sp.simplify(value).is_zero is not True
+    ]
+    if not known_nonzero:
+        return 0
+
+    numeric_values = [sp.N(diagonal[i]) for i in known_nonzero]
+    if all(value.is_number for value in numeric_values):
+        return max(known_nonzero, key=lambda i: float(sp.N(diagonal[i])))
+    return known_nonzero[0]
+
+
+def _axis_at_pi(R):
+    """Recover a unit rotation axis for an exact/numerical pi rotation."""
+    A = sp.simplify((R + sp.eye(3)) / 2)
+    diagonal = [sp.simplify(A[i, i]) for i in range(3)]
+    i = _largest_rotation_axis_diagonal_index(diagonal)
+
+    axis = Matrix([0, 0, 0])
+    if _is_numeric_real(diagonal[i]):
+        axis[i] = sp.sqrt(
+            sp.Float(max(0.0, float(sp.N(diagonal[i]))))
+        )
+    else:
+        axis[i] = sp.sqrt(diagonal[i])
+
+    if sp.simplify(axis[i]).is_zero is True:
+        raise ValueError("Could not recover a rotation axis at theta = pi.")
+
+    for j in range(3):
+        if j != i:
+            axis[j] = sp.simplify(A[j, i] / axis[i])
+
+    return sp.simplify(axis / axis.norm())
+
+
+def _axis_from_rotation_matrix(R, angle, angle_case):
+    if angle_case == "identity":
+        return Matrix([1, 0, 0])
+    if angle_case == "pi":
+        return _axis_at_pi(R)
+
+    axis = Matrix([
+        R[2, 1] - R[1, 2],
+        R[0, 2] - R[2, 0],
+        R[1, 0] - R[0, 1],
+    ]) / (2 * sp.sin(angle))
+    return sp.simplify(axis / axis.norm())
+
+
 def rot2axa(R, deg=False, tol=1e-9):
-    """
-    Return the axis-angle representation of a rotation matrix.
-
-    Parameters
-    ---------- 
-
-    R : sympy Matrix
-        Rotation matrix in SO(3).
-
-    deg : bool, optional
-        If True, the angle is returned in degrees. Default is False.
-
-    tol : float, optional
-        Positive tolerance used to validate numeric rotation matrices, classify
-        angles close to 0, classify angles close to pi, and tolerate small
-        floating-point errors in trigonometric quantities. Default is 1e-9.
-
-    Returns
-    -------
-    k : sympy.matrices.dense.MutableDenseMatrix
-        Axis of rotation, a 3D vector.
-    theta : float, int or symbolic
-        Rotation angle in radians by default, or in degrees when ``deg=True``.
-    """
+    """Return the principal axis-angle representation of a rotation matrix."""
     tol = _validate_tol(tol)
     R = _validate_rotation_matrix(R, tol=tol)
 
-    def _result(axis, angle):
-        axis = sp.simplify(axis / axis.norm())
-        angle = sp.simplify(angle)
-        if deg:
-            angle = sp.simplify(rad2deg(angle, evalf=False))
-        return axis, angle
+    angle, angle_case = _rotation_angle_from_matrix(R, tol)
+    axis = _axis_from_rotation_matrix(R, angle, angle_case)
 
-    def _largest_diagonal_index(diagonal):
-        if all(_has_float(value) and _is_numeric_real(value) for value in diagonal):
-            return max(range(3), key=lambda i: float(sp.N(diagonal[i])))
+    if deg:
+        angle = sp.simplify(rad2deg(angle, evalf=False))
+    return axis, sp.simplify(angle)
 
-        known_nonzero = [i for i, value in enumerate(diagonal) if sp.simplify(value) != 0]
-        if not known_nonzero:
-            return 0
-        numeric_values = [sp.N(diagonal[i]) for i in known_nonzero]
-        if all(value.is_number for value in numeric_values):
-            return max(known_nonzero, key=lambda i: sp.N(diagonal[i]))
-        return known_nonzero[0]
 
-    def _angle_from_cos(cos_angle):
-        cos_angle = sp.simplify(cos_angle)
-        if _has_float(cos_angle) and _is_numeric_real(cos_angle):
-            value = float(sp.N(cos_angle))
-            if value > 1.0 + tol or value < -1.0 - tol:
-                raise ValueError("The rotation angle cosine is outside the valid range [-1, 1] beyond tolerance.")
-            value = max(-1.0, min(1.0, value))
-            return sp.acos(sp.Float(value)), value
-        return sp.acos(cos_angle), None
+_ROTATION_VECTOR_SERIES_THRESHOLD = 1e-4
 
-    def _angle_case(angle, numeric_cos_angle):
-        if numeric_cos_angle is not None:
-            angle_value = float(sp.N(angle))
-            if abs(angle_value) <= tol:
-                return "identity"
-            if abs(angle_value - float(sp.pi)) <= tol:
-                return "pi"
-            return "general"
 
-        angle_simplified = sp.simplify(angle)
-        is_zero = angle_simplified.is_zero
-        is_pi = sp.simplify(angle_simplified - sp.pi).is_zero
-        if is_zero is True:
-            return "identity"
-        if is_pi is True:
-            return "pi"
-        return "general"
-    
-    cos_angle = (sp.trace(R) - 1) / 2
-    angle, numeric_cos_angle = _angle_from_cos(cos_angle)
-    angle_case = _angle_case(angle, numeric_cos_angle)
+def rotvec2rot(phi):
+    """Convert a three-component rotation vector to a rotation matrix."""
+    phi = _as_3d_vector(phi, name="phi")
+    entries = [sp.sympify(value) for value in phi]
 
-    # Case 1: angle = 0
-    # In this case, the rotation is the identity, so we can return any axis (we choose the x-axis) and an angle of 0.
+    if all(value.is_number is True for value in entries):
+        if any(
+            value.is_real is not True or value.is_finite is not True
+            for value in entries
+        ):
+            raise ValueError("phi components must be finite real values.")
+
+    theta_sq = sp.simplify(phi.dot(phi))
+    if theta_sq.is_zero is True:
+        return sp.eye(3)
+
+    Phi = skew(phi)
+
+    if all(value.is_number is True for value in entries):
+        theta = float(sp.N(sp.sqrt(theta_sq)))
+        if theta < _ROTATION_VECTOR_SERIES_THRESHOLD:
+            theta2 = theta * theta
+            theta4 = theta2 * theta2
+            A = 1.0 - theta2 / 6.0 + theta4 / 120.0
+            B = 0.5 - theta2 / 24.0 + theta4 / 720.0
+            return sp.simplify(
+                sp.eye(3)
+                + sp.Float(A) * Phi
+                + sp.Float(B) * Phi**2
+            )
+
+    theta = sp.sqrt(theta_sq)
+    A = sp.sin(theta) / theta
+    B = (1 - sp.cos(theta)) / theta_sq
+    return sp.simplify(sp.eye(3) + A * Phi + B * Phi**2)
+
+
+def rot2rotvec(R, tol=1e-9):
+    """Return the principal rotation vector of a rotation matrix."""
+    tol = _validate_tol(tol)
+    R = _validate_rotation_matrix(R, tol=tol)
+
+    angle, angle_case = _rotation_angle_from_matrix(R, tol)
     if angle_case == "identity":
-        return _result(Matrix([1, 0, 0]), sp.S(0))
+        return sp.zeros(3, 1)
 
-    # Case 2: angle = pi
-    # In this case, R = 2*k*k.T - I, so A = (R + I)/2 = k*k.T.
-    # Select the largest available diagonal term to recover the most stable component,
-    # then use off-diagonal terms to preserve the relative signs of the axis components.
-    if angle_case == "pi":
-        A = sp.simplify((R + sp.eye(3)) / 2)
-        diagonal = [sp.simplify(A[i, i]) for i in range(3)]
-        i = _largest_diagonal_index(diagonal)
-        axis = Matrix([0, 0, 0])
-        axis[i] = sp.sqrt(max(0.0, float(sp.N(diagonal[i])))) if _has_float(diagonal[i]) and _is_numeric_real(diagonal[i]) else sp.sqrt(diagonal[i])
+    axis = _axis_from_rotation_matrix(R, angle, angle_case)
+    return sp.simplify(angle * axis)
 
-        for j in range(3):
-            if j != i:
-                axis[j] = sp.simplify(A[j, i] / axis[i])
 
-        return _result(axis, angle)
-
-    # Case 3: general case
-    axis = Matrix([
-        R[2,1] - R[1,2],
-        R[0,2] - R[2,0],
-        R[1,0] - R[0,1]
-    ]) / (2 * sp.sin(angle))
-
-    return _result(axis, angle)
-    
 def axa2rot(k,theta):
     """
     Build a rotation matrix from an axis-angle representation.
