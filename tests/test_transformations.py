@@ -9,6 +9,7 @@ from moro.transformations import (
     htmrot,
     htmtra,
     invhtm,
+    is_rotation_matrix,
     rot,
     rot2eul,
     rot2axa,
@@ -19,6 +20,8 @@ from moro.transformations import (
 
 
 PROPER_EULER_SEQUENCES = ["xyx", "xzx", "yxy", "yzy", "zxz", "zyz"]
+TAIT_BRYAN_SEQUENCES = ["xyz", "xzy", "yxz", "yzx", "zxy", "zyx"]
+ALL_EULER_SEQUENCES = PROPER_EULER_SEQUENCES + TAIT_BRYAN_SEQUENCES
 EULER_COS_INDEX = {
     "xyx": (0, 0),
     "xzx": (0, 0),
@@ -455,61 +458,23 @@ def test_rot2eul_negative_singularity_exact(seq):
 
 
 @pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-def test_rot2eul_near_positive_singularity_float(seq):
-    R = sp.Matrix(sp.N(eul2rot(0.3, 0, 0.4, seq=seq)))
-    i, j = EULER_COS_INDEX[seq]
-    R[i, j] = sp.Float("0.9999999999999998")
+@pytest.mark.parametrize("theta", [1e-10, float(sp.pi) - 1e-10])
+def test_rot2eul_valid_near_proper_euler_singularity(seq, theta):
+    R = sp.N(eul2rot(0.3, theta, 0.4, seq=seq))
 
     solutions = rot2eul(R, seq=seq)
 
     assert len(solutions) == 1
-    phi, theta, psi = solutions[0]
-    assert theta == 0
-    assert psi == 0
-    R_clipped = R.copy()
-    R_clipped[i, j] = 1.0
-    assert_matrix_close(eul2rot(phi, theta, psi, seq=seq), R_clipped, tol=1e-9)
+    assert solutions[0][2] == 0
+    assert_matrix_close(eul2rot(*solutions[0], seq=seq), R, tol=1e-8)
 
 
-@pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-def test_rot2eul_near_negative_singularity_float(seq):
-    R = sp.Matrix(sp.N(eul2rot(0.3, sp.pi, 0.4, seq=seq)))
-    i, j = EULER_COS_INDEX[seq]
-    R[i, j] = sp.Float("-0.9999999999999998")
-
-    solutions = rot2eul(R, seq=seq)
-
-    assert len(solutions) == 1
-    phi, theta, psi = solutions[0]
-    assert theta == sp.pi
-    assert psi == 0
-    R_clipped = R.copy()
-    R_clipped[i, j] = -1.0
-    assert_matrix_close(eul2rot(phi, theta, psi, seq=seq), R_clipped, tol=1e-9)
-
-
-@pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-@pytest.mark.parametrize("value,expected", [(sp.Float("1.000000000001"), 1.0), (sp.Float("-1.000000000001"), -1.0)])
-def test_rot2eul_clips_slightly_out_of_range_r33(seq, value, expected):
-    R = sp.Matrix(sp.N(eul2rot(0.3, 0 if expected > 0 else sp.pi, 0.4, seq=seq)))
-    i, j = EULER_COS_INDEX[seq]
-    R[i, j] = value
-
-    solutions = rot2eul(R, seq=seq, tol=1e-9)
-
-    assert len(solutions) == 1
-    assert not any(sp.sympify(angle).has(sp.I) for solution in solutions for angle in solution)
-
-
-@pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-@pytest.mark.parametrize("value", [sp.Float("1.0001"), sp.Float("-1.0001")])
-def test_rot2eul_rejects_r33_outside_tolerance(seq, value):
+def test_rot2eul_rejects_non_rotation_matrix():
     R = sp.eye(3)
-    i, j = EULER_COS_INDEX[seq]
-    R[i, j] = value
+    R[0, 0] = sp.Float("1.0000001")
 
-    with pytest.raises(ValueError, match="outside the valid range"):
-        rot2eul(R, seq=seq, tol=1e-9)
+    with pytest.raises(ValueError, match="rotation matrix"):
+        rot2eul(R)
 
 
 @pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
@@ -571,18 +536,6 @@ def test_rot2eul_general_degrees_reconstructs(seq):
 
 
 @pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-@pytest.mark.parametrize("theta", [1e-10, float(sp.pi) - 1e-10])
-def test_rot2eul_near_singularities_classified_with_default_tolerance(seq, theta):
-    R = sp.N(eul2rot(0.3, theta, 0.4, seq=seq))
-
-    solutions = rot2eul(R, seq=seq)
-
-    assert len(solutions) == 1
-    assert solutions[0][2] == 0
-    assert_matrix_close(eul2rot(*solutions[0], seq=seq), R, tol=1e-8)
-
-
-@pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
 def test_rot2eul_near_singularity_can_be_general_with_smaller_tolerance(seq):
     R = sp.N(eul2rot(0.3, 1e-6, 0.4, seq=seq))
 
@@ -605,9 +558,111 @@ def test_euler_sequence_case_insensitive(seq_lower, seq_mixed, seq_upper):
     assert rot2eul(R_lower, seq=seq_lower) == rot2eul(R_lower, seq=seq_upper)
 
 
-@pytest.mark.parametrize("seq", ["xyz", "zyx", "", 1, None])
-def test_euler_invalid_sequences_raise_value_error(seq):
+@pytest.mark.parametrize("seq", ["xxx", "xy", "", "abc"])
+def test_euler_invalid_sequence_strings_raise_value_error(seq):
     with pytest.raises(ValueError, match="seq must be one of"):
         eul2rot(0, 0, 0, seq=seq)
     with pytest.raises(ValueError, match="seq must be one of"):
         rot2eul(sp.eye(3), seq=seq)
+
+
+@pytest.mark.parametrize("seq", [1, None, [], object()])
+def test_euler_non_string_sequences_raise_type_error(seq):
+    with pytest.raises(TypeError, match="seq must be a string"):
+        eul2rot(0, 0, 0, seq=seq)
+    with pytest.raises(TypeError, match="seq must be a string"):
+        rot2eul(sp.eye(3), seq=seq)
+
+
+@pytest.mark.parametrize("seq", TAIT_BRYAN_SEQUENCES)
+def test_tait_bryan_general_numeric_returns_two_reconstructing_solutions(seq):
+    R = sp.N(eul2rot(0.3, 0.5, -0.4, seq=seq))
+
+    solutions = rot2eul(R, seq=seq)
+
+    assert len(solutions) == 2
+    for solution in solutions:
+        assert_matrix_close(eul2rot(*solution, seq=seq), R, tol=1e-9)
+
+
+@pytest.mark.parametrize("seq", TAIT_BRYAN_SEQUENCES)
+@pytest.mark.parametrize("theta", [sp.pi / 2, -sp.pi / 2])
+def test_tait_bryan_exact_singularities_reconstruct_with_third_angle_zero(seq, theta):
+    R = eul2rot(sp.pi / 5, theta, sp.pi / 7, seq=seq)
+
+    solutions = rot2eul(R, seq=seq)
+
+    assert len(solutions) == 1
+    phi, recovered_theta, psi = solutions[0]
+    assert sp.simplify(recovered_theta - theta) == 0
+    assert sp.simplify(psi) == 0
+    assert_matrix_equal(eul2rot(phi, recovered_theta, psi, seq=seq), R)
+
+
+@pytest.mark.parametrize("seq", ALL_EULER_SEQUENCES)
+def test_euler_extrinsic_general_round_trip(seq):
+    R = sp.N(eul2rot(0.2, 0.4, -0.3, seq=seq, intrinsic=False))
+
+    solutions = rot2eul(R, seq=seq, intrinsic=False)
+
+    assert len(solutions) == 2
+    for solution in solutions:
+        assert_matrix_close(
+            eul2rot(*solution, seq=seq, intrinsic=False),
+            R,
+            tol=1e-9,
+        )
+
+
+@pytest.mark.parametrize("seq", TAIT_BRYAN_SEQUENCES)
+@pytest.mark.parametrize("theta", [sp.pi / 2, -sp.pi / 2])
+def test_tait_bryan_extrinsic_singular_round_trip_keeps_public_third_angle_zero(seq, theta):
+    R = eul2rot(sp.pi / 5, theta, sp.pi / 7, seq=seq, intrinsic=False)
+
+    solutions = rot2eul(R, seq=seq, intrinsic=False)
+
+    assert len(solutions) == 1
+    assert sp.simplify(solutions[0][2]) == 0
+    assert_matrix_equal(
+        eul2rot(*solutions[0], seq=seq, intrinsic=False),
+        R,
+    )
+
+
+@pytest.mark.parametrize("seq", ALL_EULER_SEQUENCES)
+def test_euler_intrinsic_extrinsic_equivalence(seq):
+    phi, theta, psi = sp.pi / 7, sp.pi / 5, -sp.pi / 9
+
+    R_ext = eul2rot(phi, theta, psi, seq=seq, intrinsic=False)
+    R_int = eul2rot(psi, theta, phi, seq=seq[::-1], intrinsic=True)
+
+    assert_matrix_equal(R_ext, R_int)
+
+
+@pytest.mark.parametrize("intrinsic", [0, 1, None, "yes"])
+def test_euler_intrinsic_requires_bool(intrinsic):
+    with pytest.raises(TypeError, match="intrinsic must be a bool"):
+        eul2rot(0, 0, 0, intrinsic=intrinsic)
+    with pytest.raises(TypeError, match="intrinsic must be a bool"):
+        rot2eul(sp.eye(3), intrinsic=intrinsic)
+
+
+def test_is_rotation_matrix_numeric_and_symbolic_contract():
+    theta = sp.symbols("theta", real=True)
+
+    assert is_rotation_matrix(sp.eye(3)) is True
+    assert is_rotation_matrix(rot(theta, "z")) is True
+    assert is_rotation_matrix(sp.diag(1, 1, -1)) is False
+    assert is_rotation_matrix(sp.eye(2)) is False
+
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i")
+    generic = sp.Matrix([[a, b, c], [d, e, f], [g, h, i]])
+    assert is_rotation_matrix(generic) is None
+
+
+def test_rot2eul_rejects_symbolically_indeterminate_matrix():
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i")
+    generic = sp.Matrix([[a, b, c], [d, e, f], [g, h, i]])
+
+    with pytest.raises(ValueError, match="indeterminate"):
+        rot2eul(generic)
