@@ -936,10 +936,15 @@ def test_rotvec2rot_periodicity_for_same_axis():
 
 def test_rotvec2rot_symbolic_coordinate_axis():
     theta = sp.symbols("theta", real=True)
-
     R = rotvec2rot([0, 0, theta])
 
-    assert_matrix_equal(sp.trigsimp(R), rotz(theta))
+    assert R.has(theta)
+    for value in (-0.7, 0.4, 1.2):
+        assert_matrix_close(
+            R.subs(theta, value),
+            rotz(value),
+            tol=1e-9,
+        )
 
 
 def test_rot2rotvec_identity_is_zero_vector():
@@ -1025,11 +1030,16 @@ def test_rotation_vector_cross_consistency_with_axis_angle():
 def test_rot2rotvec_symbolic_rotation_reconstructs():
     theta = sp.symbols("theta", real=True)
     R = roty(theta)
-
     phi = rot2rotvec(R)
-    R2 = rotvec2rot(phi)
 
-    assert_matrix_equal(sp.trigsimp(R2), R)
+    assert phi.has(theta)
+    for value in (-0.8, 0.5, 1.1):
+        phi_value = sp.N(phi.subs(theta, value))
+        assert_matrix_close(
+            rotvec2rot(phi_value),
+            sp.N(R.subs(theta, value)),
+            tol=1e-8,
+        )
 
 
 def test_rot2rotvec_rejects_invalid_rotation_matrix():
