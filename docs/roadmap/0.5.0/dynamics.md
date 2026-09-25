@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted as a candidate feature for Moro 0.5.0.
+Accepted for Moro 0.5.0. Detailed design complete.
 
 ## Objective
 
@@ -53,7 +53,7 @@ Backward-compatibility/deprecation policy is deferred; a temporary deprecation p
 
 SciPy becomes a required dependency. Numerical integration will use `scipy.integrate.solve_ivp`.
 
-## Preliminary public API
+## Public API direction
 
 ```python
 inverse_dynamics(robot, q, qd, qdd, *, parameters=None)
@@ -156,6 +156,10 @@ Cover inverse/forward dynamics consistency, gravity motion, constant and time-va
 - advanced event handling;
 - multibody contact simulation.
 
-## Deferred detailed-design decisions
+## Detailed design
 
-Validation/messages, deprecation mechanics, exact `DynamicsSolution` invariants, accepted input shapes/dtypes, ODE tolerance defaults/options, failed-integration policy, unresolved-symbol handling, caching/compilation location, `qdd` reconstruction, and visualization interoperability remain deferred.
+The implementation-level contract for this feature is finalized in:
+
+[`docs/design/0.5.0/dynamics.md`](../../design/0.5.0/dynamics.md)
+
+That document is the normative source for detailed API semantics, validation, numerical policy, result invariants, tests, and implementation guidance. If implementation evidence requires a contract change, update the detailed design explicitly rather than changing behavior silently.
