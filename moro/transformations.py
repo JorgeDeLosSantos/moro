@@ -1213,21 +1213,30 @@ def _rotation_angle_from_matrix(R, tol):
     cos_angle = sp.simplify((sp.trace(R) - 1) / 2)
 
     if _has_float(cos_angle) and _is_numeric_real(cos_angle):
-        value = float(sp.N(cos_angle))
-        if value > 1.0 + tol or value < -1.0 - tol:
+        cos_value = float(sp.N(cos_angle))
+        if cos_value > 1.0 + tol or cos_value < -1.0 - tol:
             raise ValueError(
                 "The rotation angle cosine is outside the valid range "
                 "[-1, 1] beyond tolerance."
             )
-        value = max(-1.0, min(1.0, value))
-        angle = sp.acos(sp.Float(value))
-        angle_value = float(sp.N(angle))
+        cos_value = max(-1.0, min(1.0, cos_value))
 
-        if abs(angle_value) <= tol:
+        skew_vector = Matrix([
+            R[2, 1] - R[1, 2],
+            R[0, 2] - R[2, 0],
+            R[1, 0] - R[0, 1],
+        ])
+        sin_value = 0.5 * float(
+            sp.N(sp.sqrt(sp.simplify(skew_vector.dot(skew_vector))))
+        )
+
+        if sin_value <= tol and abs(cos_value - 1.0) <= tol:
             return sp.S(0), "identity"
-        if abs(angle_value - float(sp.pi)) <= tol:
+        if sin_value <= tol and abs(cos_value + 1.0) <= tol:
             return sp.pi, "pi"
-        return angle, "general"
+
+        angle = sp.atan2(sp.Float(sin_value), sp.Float(cos_value))
+        return sp.simplify(angle), "general"
 
     angle = sp.acos(cos_angle)
     angle_simplified = sp.simplify(angle)
