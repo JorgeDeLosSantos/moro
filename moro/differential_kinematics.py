@@ -124,6 +124,13 @@ def _robot_interface(robot):
 
 
 def _as_vector(value, size, *, name):
+    if (
+        isinstance(value, Sequence)
+        and not isinstance(value, (str, bytes, bytearray))
+        and any(item is None for item in value)
+    ):
+        raise ValueError(f"{name} must not contain None.")
+
     try:
         vector = Matrix(value)
     except Exception as exc:
@@ -198,10 +205,10 @@ def _require_resolved_real_finite(expr, *, name):
     for value in matrix:
         value = sp.sympify(value)
         numeric = sp.N(value)
-        if numeric.is_real is not True:
-            raise ValueError(f"{name} must contain only real values.")
         if numeric.is_finite is not True:
             raise ValueError(f"{name} must contain only finite values.")
+        if numeric.is_real is not True:
+            raise ValueError(f"{name} must contain only real values.")
 
     return matrix
 
