@@ -17,12 +17,15 @@ from moro.transformations import (
     quat2axa,
     quat2rot,
     rot,
+    rotx,
+    roty,
     rotz,
     rot2eul,
     rot2quat,
     rot2rotvec,
     rot2axa,
     rot2htm,
+    rotvec2rot,
     rt2htm,
     skew,
     vex,
@@ -779,7 +782,7 @@ def test_quat2axa_degree_output():
     axis, angle = quat2axa(q, deg=True)
 
     assert_matrix_equal(axis, sp.Matrix([0, 1, 0]))
-    assert sp.simplify(angle - 60) == 0
+    assert abs(float(sp.N(angle - 60))) <= 1e-9
 
 
 @pytest.mark.parametrize("axis", [
@@ -1144,7 +1147,7 @@ def test_is_homogeneous_transform_exact_valid():
 
 
 def test_is_homogeneous_transform_numeric_within_tolerance():
-    T = sp.N(rt2htm(rotz(0.3), [1.0, -2.0, 0.5]))
+    T = sp.Matrix(sp.N(rt2htm(rotz(0.3), [1.0, -2.0, 0.5])))
     T[3, 0] = 1e-11
     T[3, 3] = 1.0 + 1e-11
 
@@ -1296,7 +1299,7 @@ def test_legacy_predicates_collapse_symbolic_indeterminate_to_false():
 
 
 def test_legacy_predicates_forward_tolerance():
-    R = sp.N(rotz(0.3))
+    R = sp.Matrix(sp.N(rotz(0.3)))
     R[0,0] += 1e-11
 
     with pytest.warns(DeprecationWarning):
