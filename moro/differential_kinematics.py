@@ -237,34 +237,36 @@ def _to_numpy_matrix(expr, *, name):
     return array
 
 
+def _is_scalar_number(value):
+    return np.isscalar(value) or isinstance(value, sp.Number)
+
+
 def _validate_positive_real(value, *, name):
-    if isinstance(value, bool) or not np.isscalar(value):
+    if isinstance(value, bool) or not _is_scalar_number(value):
         raise TypeError(f"{name} must be a finite positive real scalar.")
 
-    try:
-        numeric = float(value)
-    except (TypeError, ValueError, OverflowError) as exc:
-        raise TypeError(
-            f"{name} must be a finite positive real scalar."
-        ) from exc
-
-    if not math.isfinite(numeric):
+    symbolic = sp.sympify(value)
+    if symbolic.is_real is not True:
+        raise ValueError(f"{name} must be real.")
+    if symbolic.is_finite is not True:
         raise ValueError(f"{name} must be finite.")
+
+    numeric = float(symbolic)
     if numeric <= 0:
         raise ValueError(f"{name} must be greater than 0.")
     return numeric
 
 
 def _validate_finite_real(value, *, name):
-    if isinstance(value, bool) or not np.isscalar(value):
+    if isinstance(value, bool) or not _is_scalar_number(value):
         raise TypeError(f"{name} must be a finite real scalar.")
-    try:
-        numeric = float(value)
-    except (TypeError, ValueError, OverflowError) as exc:
-        raise TypeError(f"{name} must be a finite real scalar.") from exc
-    if not math.isfinite(numeric):
+
+    symbolic = sp.sympify(value)
+    if symbolic.is_real is not True:
+        raise ValueError(f"{name} must be real.")
+    if symbolic.is_finite is not True:
         raise ValueError(f"{name} must be finite.")
-    return numeric
+    return float(symbolic)
 
 
 def _normalize_method(method, damping):
