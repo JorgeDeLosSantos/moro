@@ -77,7 +77,7 @@ The implementation increments are identified as:
 
 The preferred implementation order for Moro 0.5.0 is the following.
 
-### 1. Transformations and orientation foundations
+### 1. Transformations and orientation foundations — complete
 
 Complete the `transformations.py` audit first:
 
@@ -415,6 +415,6 @@ The next phase is implementation in the accepted sequence:
       -> 0.5-E -> 0.5-F -> 0.5-G -> 0.5-H
 ```
 
-Implementation begins with **0.5-A: transformations and orientation foundations**.
+**0.5-A: transformations and orientation foundations is complete.** Implementation now proceeds with **0.5-B: differential kinematics**.
 
 Detailed-design documents are the normative source for numerical tolerances, dataclass invariants, validation semantics, private-helper direction, caching/compilation policy, and exact result contracts. Any implementation-driven contract revision should first be recorded there rather than introduced silently.
