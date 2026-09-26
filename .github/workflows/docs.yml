@@ -10,6 +10,13 @@ on:
       - "pyproject.toml"
       - ".github/workflows/docs.yml"
 
+  pull_request:
+    paths:
+      - "docs/**"
+      - "moro/**"
+      - "pyproject.toml"
+      - ".github/workflows/docs.yml"
+
   workflow_dispatch:
 
 permissions:
@@ -44,6 +51,7 @@ jobs:
           python -m pip install sphinx myst-parser sphinx-rtd-theme numpydoc
 
       - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       - name: Build Sphinx documentation
@@ -51,11 +59,13 @@ jobs:
           sphinx-build -b html docs/source docs/build/html
 
       - name: Upload GitHub Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
           path: docs/build/html
 
   deploy:
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

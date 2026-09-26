@@ -37,6 +37,7 @@ benefit from symbolic kinematics and dynamics.
    examples/anthropomorphic-rrr
    examples/position-inverse-kinematics
    examples/cartesian-trajectory-ik
+   examples/velocity-inverse-kinematics
    examples/planar-2r-dynamics
 
 

@@ -480,6 +480,122 @@ where $\dot{\vec x}$ represents the geometric velocity composed of linear and an
 
 This local linear approximation is one of the main reasons why the Jacobian plays a central role in robot motion analysis and numerical inverse kinematics.
 
+## Task Jacobians in Moro
+
+For many applications the full six-component twist is not the relevant task. Moro therefore defines a task Jacobian by selecting rows from the end-effector geometric Jacobian.
+
+The canonical component ordering is
+
+$$
+(v_x,v_y,v_z,\omega_x,\omega_y,\omega_z).
+$$
+
+If a task selects components indexed by a row set $\mathcal I$, then
+
+$$
+J_{task}=J[\mathcal I,:].
+$$
+
+Task selection does not change the underlying geometric convention: all selected linear and angular velocity components remain expressed in the base frame $\{0\}$.
+
+Moro provides the presets `linear`, `angular`, and `twist`, and also accepts explicit ordered subsets such as `("vx", "vy", "wz")`. Explicit order is part of the task definition.
+
+## Forward Cartesian velocity
+
+For a selected task, forward differential kinematics is
+
+$$
+\boxed{
+\dot x_{task}=J_{task}(q)\dot q.
+}
+$$
+
+This operation is direct: no inverse or optimization is involved. In Moro, `cartesian_velocity()` preserves exact SymPy arithmetic when all symbols have been resolved.
+
+## Velocity-level inverse kinematics
+
+The inverse velocity problem seeks a joint velocity $\dot q$ that realizes a desired task velocity $\dot x_d$:
+
+$$
+J_{task}(q)\dot q\approx\dot x_d.
+$$
+
+Because $J_{task}$ may be square, rectangular, redundant, overdetermined, or rank deficient, Moro uses SVD-based generalized inverse methods rather than an ordinary matrix inverse.
+
+### Moore--Penrose pseudoinverse
+
+The default solver uses
+
+$$
+\boxed{
+\dot q=J^\dagger\dot x_d.
+}
+$$
+
+For
+
+$$
+J=U\Sigma V^T,
+$$
+
+the pseudoinverse is formed using reciprocal nonzero singular values above the numerical rank threshold.
+
+For redundant systems, the pseudoinverse returns the minimum-norm joint velocity. For overdetermined systems, it returns the least-squares solution.
+
+Rank deficiency is not itself an error: a requested velocity may still lie in the attainable task subspace.
+
+### Damped least squares
+
+Near singular configurations, pseudoinverse solutions can require very large joint velocities. Moro also provides damped least squares:
+
+$$
+\boxed{
+J_\lambda^\dagger
+=
+V\,\mathrm{diag}\!\left(
+\frac{\sigma_i}{\sigma_i^2+\lambda^2}
+\right)U^T,
+}
+$$
+
+with $\lambda>0$ supplied explicitly by the user.
+
+Damping reduces amplification of small singular values, trading exact task tracking for smaller and numerically better-behaved joint velocities.
+
+### Residual and success
+
+After solving, Moro defines the achieved task velocity as
+
+$$
+\dot x_a=J\dot q,
+$$
+
+and the residual as
+
+$$
+\boxed{
+r=\dot x_d-\dot x_a.
+}
+$$
+
+The solver reports success when
+
+$$
+\|r\|_2\leq\texttt{tol}.
+$$
+
+Thus, `success` is a task-achievement statement. It is deliberately independent from rank and condition number.
+
+### Joint-velocity saturation
+
+Optional joint-velocity limits are applied component-wise after the unconstrained solution:
+
+$$
+\dot q_i=\operatorname{clip}(\dot q_i^\star,\dot q_{i,min},\dot q_{i,max}).
+$$
+
+After clipping, the achieved velocity and residual are recomputed from the returned joint velocity. Moro 0.5.0 does not solve a constrained least-squares redistribution problem after saturation.
+
 ## Jacobian rank
 
 The rank of the Jacobian indicates the number of independent instantaneous Cartesian velocity directions that the robot can generate.
