@@ -1,7 +1,10 @@
 import sympy as sp
 import pytest
 
+from moro.util import is_SE3, is_SO3, ishtm, isrot
+
 from moro.transformations import (
+    axa2quat,
     axa2rot,
     eul2rot,
     htm2rot,
@@ -9,16 +12,29 @@ from moro.transformations import (
     htmrot,
     htmtra,
     invhtm,
+    is_homogeneous_transform,
+    is_rotation_matrix,
+    quat2axa,
+    quat2rot,
     rot,
+    rotx,
+    roty,
+    rotz,
     rot2eul,
+    rot2quat,
+    rot2rotvec,
     rot2axa,
     rot2htm,
+    rotvec2rot,
     rt2htm,
     skew,
+    vex,
 )
 
 
 PROPER_EULER_SEQUENCES = ["xyx", "xzx", "yxy", "yzy", "zxz", "zyz"]
+TAIT_BRYAN_SEQUENCES = ["xyz", "xzy", "yxz", "yzx", "zxy", "zyx"]
+ALL_EULER_SEQUENCES = PROPER_EULER_SEQUENCES + TAIT_BRYAN_SEQUENCES
 EULER_COS_INDEX = {
     "xyx": (0, 0),
     "xzx": (0, 0),
@@ -455,61 +471,23 @@ def test_rot2eul_negative_singularity_exact(seq):
 
 
 @pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-def test_rot2eul_near_positive_singularity_float(seq):
-    R = sp.Matrix(sp.N(eul2rot(0.3, 0, 0.4, seq=seq)))
-    i, j = EULER_COS_INDEX[seq]
-    R[i, j] = sp.Float("0.9999999999999998")
+@pytest.mark.parametrize("theta", [1e-10, float(sp.pi) - 1e-10])
+def test_rot2eul_valid_near_proper_euler_singularity(seq, theta):
+    R = sp.N(eul2rot(0.3, theta, 0.4, seq=seq))
 
     solutions = rot2eul(R, seq=seq)
 
     assert len(solutions) == 1
-    phi, theta, psi = solutions[0]
-    assert theta == 0
-    assert psi == 0
-    R_clipped = R.copy()
-    R_clipped[i, j] = 1.0
-    assert_matrix_close(eul2rot(phi, theta, psi, seq=seq), R_clipped, tol=1e-9)
+    assert solutions[0][2] == 0
+    assert_matrix_close(eul2rot(*solutions[0], seq=seq), R, tol=1e-8)
 
 
-@pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-def test_rot2eul_near_negative_singularity_float(seq):
-    R = sp.Matrix(sp.N(eul2rot(0.3, sp.pi, 0.4, seq=seq)))
-    i, j = EULER_COS_INDEX[seq]
-    R[i, j] = sp.Float("-0.9999999999999998")
-
-    solutions = rot2eul(R, seq=seq)
-
-    assert len(solutions) == 1
-    phi, theta, psi = solutions[0]
-    assert theta == sp.pi
-    assert psi == 0
-    R_clipped = R.copy()
-    R_clipped[i, j] = -1.0
-    assert_matrix_close(eul2rot(phi, theta, psi, seq=seq), R_clipped, tol=1e-9)
-
-
-@pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-@pytest.mark.parametrize("value,expected", [(sp.Float("1.000000000001"), 1.0), (sp.Float("-1.000000000001"), -1.0)])
-def test_rot2eul_clips_slightly_out_of_range_r33(seq, value, expected):
-    R = sp.Matrix(sp.N(eul2rot(0.3, 0 if expected > 0 else sp.pi, 0.4, seq=seq)))
-    i, j = EULER_COS_INDEX[seq]
-    R[i, j] = value
-
-    solutions = rot2eul(R, seq=seq, tol=1e-9)
-
-    assert len(solutions) == 1
-    assert not any(sp.sympify(angle).has(sp.I) for solution in solutions for angle in solution)
-
-
-@pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-@pytest.mark.parametrize("value", [sp.Float("1.0001"), sp.Float("-1.0001")])
-def test_rot2eul_rejects_r33_outside_tolerance(seq, value):
+def test_rot2eul_rejects_non_rotation_matrix():
     R = sp.eye(3)
-    i, j = EULER_COS_INDEX[seq]
-    R[i, j] = value
+    R[0, 0] = sp.Float("1.0000001")
 
-    with pytest.raises(ValueError, match="outside the valid range"):
-        rot2eul(R, seq=seq, tol=1e-9)
+    with pytest.raises(ValueError, match="rotation matrix"):
+        rot2eul(R)
 
 
 @pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
@@ -571,18 +549,6 @@ def test_rot2eul_general_degrees_reconstructs(seq):
 
 
 @pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
-@pytest.mark.parametrize("theta", [1e-10, float(sp.pi) - 1e-10])
-def test_rot2eul_near_singularities_classified_with_default_tolerance(seq, theta):
-    R = sp.N(eul2rot(0.3, theta, 0.4, seq=seq))
-
-    solutions = rot2eul(R, seq=seq)
-
-    assert len(solutions) == 1
-    assert solutions[0][2] == 0
-    assert_matrix_close(eul2rot(*solutions[0], seq=seq), R, tol=1e-8)
-
-
-@pytest.mark.parametrize("seq", PROPER_EULER_SEQUENCES)
 def test_rot2eul_near_singularity_can_be_general_with_smaller_tolerance(seq):
     R = sp.N(eul2rot(0.3, 1e-6, 0.4, seq=seq))
 
@@ -605,9 +571,736 @@ def test_euler_sequence_case_insensitive(seq_lower, seq_mixed, seq_upper):
     assert rot2eul(R_lower, seq=seq_lower) == rot2eul(R_lower, seq=seq_upper)
 
 
-@pytest.mark.parametrize("seq", ["xyz", "zyx", "", 1, None])
-def test_euler_invalid_sequences_raise_value_error(seq):
+@pytest.mark.parametrize("seq", ["xxx", "xy", "", "abc"])
+def test_euler_invalid_sequence_strings_raise_value_error(seq):
     with pytest.raises(ValueError, match="seq must be one of"):
         eul2rot(0, 0, 0, seq=seq)
     with pytest.raises(ValueError, match="seq must be one of"):
         rot2eul(sp.eye(3), seq=seq)
+
+
+@pytest.mark.parametrize("seq", [1, None, [], object()])
+def test_euler_non_string_sequences_raise_type_error(seq):
+    with pytest.raises(TypeError, match="seq must be a string"):
+        eul2rot(0, 0, 0, seq=seq)
+    with pytest.raises(TypeError, match="seq must be a string"):
+        rot2eul(sp.eye(3), seq=seq)
+
+
+@pytest.mark.parametrize("seq", TAIT_BRYAN_SEQUENCES)
+def test_tait_bryan_general_numeric_returns_two_reconstructing_solutions(seq):
+    R = sp.N(eul2rot(0.3, 0.5, -0.4, seq=seq))
+
+    solutions = rot2eul(R, seq=seq)
+
+    assert len(solutions) == 2
+    for solution in solutions:
+        assert_matrix_close(eul2rot(*solution, seq=seq), R, tol=1e-9)
+
+
+@pytest.mark.parametrize("seq", TAIT_BRYAN_SEQUENCES)
+@pytest.mark.parametrize("theta", [sp.pi / 2, -sp.pi / 2])
+def test_tait_bryan_exact_singularities_reconstruct_with_third_angle_zero(seq, theta):
+    R = eul2rot(sp.pi / 5, theta, sp.pi / 7, seq=seq)
+
+    solutions = rot2eul(R, seq=seq)
+
+    assert len(solutions) == 1
+    phi, recovered_theta, psi = solutions[0]
+    assert sp.simplify(recovered_theta - theta) == 0
+    assert sp.simplify(psi) == 0
+    assert_matrix_equal(eul2rot(phi, recovered_theta, psi, seq=seq), R)
+
+
+@pytest.mark.parametrize("seq", ALL_EULER_SEQUENCES)
+def test_euler_extrinsic_general_round_trip(seq):
+    R = sp.N(eul2rot(0.2, 0.4, -0.3, seq=seq, intrinsic=False))
+
+    solutions = rot2eul(R, seq=seq, intrinsic=False)
+
+    assert len(solutions) == 2
+    for solution in solutions:
+        assert_matrix_close(
+            eul2rot(*solution, seq=seq, intrinsic=False),
+            R,
+            tol=1e-9,
+        )
+
+
+@pytest.mark.parametrize("seq", TAIT_BRYAN_SEQUENCES)
+@pytest.mark.parametrize("theta", [sp.pi / 2, -sp.pi / 2])
+def test_tait_bryan_extrinsic_singular_round_trip_keeps_public_third_angle_zero(seq, theta):
+    R = eul2rot(sp.pi / 5, theta, sp.pi / 7, seq=seq, intrinsic=False)
+
+    solutions = rot2eul(R, seq=seq, intrinsic=False)
+
+    assert len(solutions) == 1
+    assert sp.simplify(solutions[0][2]) == 0
+    assert_matrix_equal(
+        eul2rot(*solutions[0], seq=seq, intrinsic=False),
+        R,
+    )
+
+
+@pytest.mark.parametrize("seq", ALL_EULER_SEQUENCES)
+def test_euler_intrinsic_extrinsic_equivalence(seq):
+    phi, theta, psi = sp.pi / 7, sp.pi / 5, -sp.pi / 9
+
+    R_ext = eul2rot(phi, theta, psi, seq=seq, intrinsic=False)
+    R_int = eul2rot(psi, theta, phi, seq=seq[::-1], intrinsic=True)
+
+    assert_matrix_equal(R_ext, R_int)
+
+
+@pytest.mark.parametrize("intrinsic", [0, 1, None, "yes"])
+def test_euler_intrinsic_requires_bool(intrinsic):
+    with pytest.raises(TypeError, match="intrinsic must be a bool"):
+        eul2rot(0, 0, 0, intrinsic=intrinsic)
+    with pytest.raises(TypeError, match="intrinsic must be a bool"):
+        rot2eul(sp.eye(3), intrinsic=intrinsic)
+
+
+def test_is_rotation_matrix_numeric_and_symbolic_contract():
+    theta = sp.symbols("theta", real=True)
+
+    assert is_rotation_matrix(sp.eye(3)) is True
+    assert is_rotation_matrix(rot(theta, "z")) is True
+    assert is_rotation_matrix(sp.diag(1, 1, -1)) is False
+    assert is_rotation_matrix(sp.eye(2)) is False
+
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i")
+    generic = sp.Matrix([[a, b, c], [d, e, f], [g, h, i]])
+    assert is_rotation_matrix(generic) is None
+
+
+def test_rot2eul_rejects_symbolically_indeterminate_matrix():
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i")
+    generic = sp.Matrix([[a, b, c], [d, e, f], [g, h, i]])
+
+    with pytest.raises(ValueError, match="indeterminate"):
+        rot2eul(generic)
+
+
+
+def assert_quaternion_equivalent(q1, q2, tol=1e-9):
+    q1 = sp.Matrix(q1)
+    q2 = sp.Matrix(q2)
+    try:
+        assert_matrix_close(q1, q2, tol=tol)
+        return
+    except AssertionError:
+        pass
+    assert_matrix_close(q1, -q2, tol=tol)
+
+
+@pytest.mark.parametrize("q", [
+    [1, 0, 0, 0],
+    (1, 0, 0, 0),
+    sp.Matrix([1, 0, 0, 0]),
+    sp.Matrix([[1, 0, 0, 0]]),
+])
+def test_quat2rot_accepts_supported_vector_formats(q):
+    assert_matrix_equal(quat2rot(q), sp.eye(3))
+
+
+@pytest.mark.parametrize("q", [
+    [],
+    [1, 0, 0],
+    [1, 0, 0, 0, 0],
+    sp.eye(2),
+])
+def test_quaternion_rejects_invalid_shapes(q):
+    with pytest.raises(ValueError, match="4D vector"):
+        quat2rot(q)
+
+
+def test_quat2rot_normalizes_non_unit_input_and_double_coverage():
+    q = sp.Matrix([2, 2, 0, 0])
+
+    R1 = quat2rot(q)
+    R2 = quat2rot(-3*q)
+
+    assert_matrix_equal(sp.simplify(R1), sp.simplify(R2))
+    assert_matrix_equal(R1, rotx(sp.pi/2))
+
+
+@pytest.mark.parametrize("q", [
+    [0, 0, 0, 0],
+    [1e-12, 0, 0, 0],
+])
+def test_quaternion_rejects_zero_or_near_zero_numeric_norm(q):
+    with pytest.raises(ValueError):
+        quat2rot(q, tol=1e-9)
+
+
+def test_axa2quat_identity_and_coordinate_axis():
+    assert_matrix_equal(
+        axa2quat([1, 0, 0], 0),
+        sp.Matrix([1, 0, 0, 0]),
+    )
+
+    q = axa2quat([0, 0, 1], sp.pi/2)
+    expected = sp.Matrix([
+        sp.sqrt(2)/2,
+        0,
+        0,
+        sp.sqrt(2)/2,
+    ])
+    assert_matrix_equal(q, expected)
+
+
+def test_axa2quat_normalizes_axis_and_supports_degrees():
+    q1 = axa2quat([0, 0, 5], 90, deg=True)
+    q2 = axa2quat([0, 0, 1], sp.pi/2)
+    assert_matrix_equal(q1, q2)
+
+
+def test_axa2quat_rejects_zero_axis():
+    with pytest.raises(ValueError, match="zero vector"):
+        axa2quat([0, 0, 0], 1.0)
+
+
+def test_quat2axa_identity_uses_conventional_x_axis():
+    axis, angle = quat2axa([1, 0, 0, 0])
+    assert_matrix_equal(axis, sp.Matrix([1, 0, 0]))
+    assert sp.simplify(angle) == 0
+
+
+def test_quat2axa_general_round_trip():
+    q = axa2quat([1, -2, 3], 0.9)
+
+    axis, angle = quat2axa(q)
+
+    R1 = quat2rot(q)
+    R2 = axa2rot(axis, angle)
+    assert_matrix_close(R1, R2, tol=1e-9)
+
+
+def test_quat2axa_degree_output():
+    q = axa2quat([0, 1, 0], 60, deg=True)
+
+    axis, angle = quat2axa(q, deg=True)
+
+    assert_matrix_equal(axis, sp.Matrix([0, 1, 0]))
+    assert abs(float(sp.N(angle - 60))) <= 1e-9
+
+
+@pytest.mark.parametrize("axis", [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+    [1, -2, 3],
+])
+@pytest.mark.parametrize("angle", [0.2, 1.1, float(sp.pi)-1e-8, float(sp.pi)])
+def test_rotation_quaternion_round_trip_numeric(axis, angle):
+    R = sp.N(axa2rot(axis, angle))
+
+    q = rot2quat(R)
+    R2 = quat2rot(q)
+
+    assert_matrix_close(R2, R, tol=1e-8)
+    assert float(sp.N(q[0])) >= -1e-12
+
+
+@pytest.mark.parametrize("axis", [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+])
+def test_rot2quat_exact_pi_reconstructs(axis):
+    R = axa2rot(axis, sp.pi)
+
+    q = rot2quat(R)
+
+    assert_matrix_close(quat2rot(q), R, tol=1e-9)
+
+
+def test_rot2quat_identity_is_canonical():
+    q = rot2quat(sp.eye(3))
+    assert_matrix_close(q, sp.Matrix([1, 0, 0, 0]), tol=1e-12)
+
+
+def test_quaternion_matrix_round_trip_from_negative_scalar_input():
+    q = sp.Matrix([-sp.sqrt(2)/2, 0, 0, -sp.sqrt(2)/2])
+
+    R = quat2rot(q)
+    q2 = rot2quat(R)
+
+    assert_quaternion_equivalent(q, q2)
+    assert float(sp.N(q2[0])) >= 0
+
+
+def test_symbolic_axa2quat_and_quat2rot():
+    theta = sp.symbols("theta", real=True)
+    q = axa2quat([0, 0, 1], theta)
+
+    expected = sp.Matrix([
+        sp.cos(theta/2),
+        0,
+        0,
+        sp.sin(theta/2),
+    ])
+    assert_matrix_equal(q, expected)
+
+    R = quat2rot(q)
+    assert_matrix_equal(sp.trigsimp(R), rotz(theta))
+
+
+def test_symbolic_rot2quat_reconstructs_rotation():
+    theta = sp.symbols("theta", real=True)
+    R = rotx(theta)
+
+    q = rot2quat(R)
+    R2 = quat2rot(q)
+
+    assert_matrix_equal(sp.trigsimp(R2), R)
+
+
+def test_symbolic_quaternion_with_indeterminate_norm_is_accepted():
+    w, x, y, z = sp.symbols("w x y z", real=True)
+    q = sp.Matrix([w, x, y, z])
+
+    R = quat2rot(q)
+
+    assert R.shape == (3, 3)
+    assert R.has(w, x, y, z)
+
+
+@pytest.mark.parametrize("tol", [0, -1e-9])
+def test_quaternion_invalid_tolerance(tol):
+    with pytest.raises(ValueError):
+        quat2rot([1, 0, 0, 0], tol=tol)
+    with pytest.raises(ValueError):
+        rot2quat(sp.eye(3), tol=tol)
+    with pytest.raises(ValueError):
+        quat2axa([1, 0, 0, 0], tol=tol)
+
+
+
+def test_rotvec2rot_zero_is_exact_identity():
+    R = rotvec2rot([0, 0, 0])
+    assert_matrix_equal(R, sp.eye(3))
+
+
+@pytest.mark.parametrize("axis,index", [
+    ("x", 0),
+    ("y", 1),
+    ("z", 2),
+])
+def test_rotvec2rot_coordinate_axes(axis, index):
+    theta = sp.pi / 3
+    phi = sp.zeros(3, 1)
+    phi[index] = theta
+
+    assert_matrix_equal(rotvec2rot(phi), rot(theta, axis))
+
+
+def test_rotvec2rot_general_axis_matches_axis_angle():
+    axis = sp.Matrix([1, -2, 3])
+    axis = axis / axis.norm()
+    theta = sp.Rational(7, 10)
+
+    R1 = rotvec2rot(theta * axis)
+    R2 = axa2rot(axis, theta)
+
+    assert_matrix_equal(sp.simplify(R1), sp.simplify(R2))
+
+
+def test_rotvec2rot_small_numeric_angle_is_stable():
+    phi = sp.Matrix([1e-10, -2e-10, 3e-10])
+
+    R = rotvec2rot(phi)
+
+    assert is_rotation_matrix(R, tol=1e-9) is True
+    assert_matrix_close(R, sp.eye(3) + skew(phi), tol=1e-9)
+
+
+@pytest.mark.parametrize("angle", [
+    float(sp.pi) - 1e-8,
+    float(sp.pi),
+    1.5 * float(sp.pi),
+])
+def test_rotvec2rot_large_and_near_pi_magnitudes(angle):
+    axis = sp.Matrix([1, 2, -1])
+    axis = axis / axis.norm()
+    phi = angle * axis
+
+    R = rotvec2rot(phi)
+
+    assert is_rotation_matrix(R, tol=1e-8) is True
+
+
+def test_rotvec2rot_periodicity_for_same_axis():
+    axis = sp.Matrix([1, -2, 3])
+    axis = axis / axis.norm()
+
+    R1 = rotvec2rot((sp.pi / 3) * axis)
+    R2 = rotvec2rot((sp.pi / 3 + 2 * sp.pi) * axis)
+
+    assert_matrix_equal(sp.trigsimp(R1), sp.trigsimp(R2))
+
+
+def test_rotvec2rot_symbolic_coordinate_axis():
+    theta = sp.symbols("theta", real=True)
+    R = rotvec2rot([0, 0, theta])
+
+    assert R.has(theta)
+    for value in (-0.7, 0.4, 1.2):
+        assert_matrix_close(
+            R.subs(theta, value),
+            rotz(value),
+            tol=1e-9,
+        )
+
+
+def test_rot2rotvec_identity_is_zero_vector():
+    phi = rot2rotvec(sp.eye(3))
+    assert_matrix_equal(phi, sp.zeros(3, 1))
+
+
+@pytest.mark.parametrize("axis", [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+    [1, -2, 3],
+])
+@pytest.mark.parametrize("angle", [
+    0.2,
+    1.2,
+    float(sp.pi) - 1e-8,
+    float(sp.pi),
+])
+def test_rotation_vector_round_trip_reconstructs(axis, angle):
+    R = sp.N(axa2rot(axis, angle))
+
+    phi = rot2rotvec(R)
+    R2 = rotvec2rot(phi)
+
+    assert_matrix_close(R2, R, tol=1e-8)
+    assert float(sp.N(phi.norm())) <= float(sp.pi) + 1e-8
+
+
+def test_rot2rotvec_near_identity_returns_zero_with_tolerance():
+    R = sp.N(axa2rot([1, 0, 0], 1e-10))
+
+    phi = rot2rotvec(R, tol=1e-9)
+
+    assert_matrix_equal(phi, sp.zeros(3, 1))
+
+
+def test_rot2rotvec_nonprincipal_input_returns_principal_equivalent():
+    axis = sp.Matrix([0, 0, 1])
+    original = 3 * sp.pi / 2 * axis
+
+    R = rotvec2rot(original)
+    principal = rot2rotvec(R)
+
+    assert float(sp.N(principal.norm())) <= float(sp.pi) + 1e-12
+    assert_matrix_equal(
+        sp.trigsimp(rotvec2rot(principal)),
+        sp.trigsimp(R),
+    )
+
+
+@pytest.mark.parametrize("axis", [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+])
+def test_rot2rotvec_exact_pi_reconstructs(axis):
+    R = axa2rot(axis, sp.pi)
+
+    phi = rot2rotvec(R)
+
+    assert sp.simplify(phi.norm() - sp.pi) == 0
+    assert_matrix_close(rotvec2rot(phi), R, tol=1e-9)
+
+
+def test_rotation_vector_cross_consistency_with_axis_angle():
+    axis = sp.Matrix([1, -2, 3])
+    axis = axis / axis.norm()
+    theta = sp.Rational(4, 5)
+    R = axa2rot(axis, theta)
+
+    recovered_axis, recovered_theta = rot2axa(R)
+    phi = rot2rotvec(R)
+
+    assert_matrix_equal(
+        sp.simplify(phi),
+        sp.simplify(recovered_theta * recovered_axis),
+    )
+
+
+def test_rot2rotvec_symbolic_rotation_reconstructs():
+    theta = sp.symbols("theta", real=True)
+    R = roty(theta)
+    phi = rot2rotvec(R)
+
+    assert phi.has(theta)
+    for value in (-0.8, 0.5, 1.1):
+        phi_value = sp.N(phi.subs(theta, value))
+        assert_matrix_close(
+            rotvec2rot(phi_value),
+            sp.N(R.subs(theta, value)),
+            tol=1e-8,
+        )
+
+
+def test_rot2rotvec_rejects_invalid_rotation_matrix():
+    with pytest.raises(ValueError, match="rotation matrix"):
+        rot2rotvec(sp.diag(1, 1, -1))
+
+
+@pytest.mark.parametrize("phi", [
+    [sp.oo, 0, 0],
+    [sp.nan, 0, 0],
+    [sp.I, 0, 0],
+])
+def test_rotvec2rot_rejects_nonfinite_or_nonreal_numeric_inputs(phi):
+    with pytest.raises(ValueError, match="finite real"):
+        rotvec2rot(phi)
+
+
+
+@pytest.mark.parametrize("u", [
+    [1, 2, 3],
+    sp.Matrix([1, -2, 3]),
+    sp.Matrix(sp.symbols("ux uy uz")),
+])
+def test_vex_skew_round_trip(u):
+    u = sp.Matrix(u)
+
+    recovered = vex(skew(u))
+
+    assert_matrix_equal(recovered, u)
+
+
+def test_skew_vex_round_trip():
+    S = sp.Matrix([
+        [0, -3, 2],
+        [3, 0, -1],
+        [-2, 1, 0],
+    ])
+
+    assert_matrix_equal(skew(vex(S)), S)
+
+
+def test_vex_accepts_small_numeric_skew_symmetry_error_within_tolerance():
+    S = sp.Matrix([
+        [0, -3.0, 2.0],
+        [3.0 + 1e-11, 0, -1.0],
+        [-2.0, 1.0, 0],
+    ])
+
+    u = vex(S, tol=1e-9)
+
+    assert_matrix_close(
+        u,
+        sp.Matrix([1.0, 2.0, 3.000000000005]),
+        tol=1e-9,
+    )
+
+
+def test_vex_rejects_numeric_matrix_outside_skew_tolerance():
+    S = sp.Matrix([
+        [0, -3.0, 2.0],
+        [3.1, 0, -1.0],
+        [-2.0, 1.0, 0],
+    ])
+
+    with pytest.raises(ValueError, match="skew-symmetric"):
+        vex(S, tol=1e-9)
+
+
+def test_vex_rejects_wrong_shape():
+    with pytest.raises(ValueError, match="3x3"):
+        vex(sp.eye(2))
+
+
+def test_vex_rejects_symbolically_indeterminate_skew_symmetry():
+    a, b, c = sp.symbols("a b c")
+    S = sp.Matrix([
+        [0, a, 0],
+        [b, 0, c],
+        [0, -c, 0],
+    ])
+
+    with pytest.raises(ValueError, match="could not be established"):
+        vex(S)
+
+
+@pytest.mark.parametrize("tol", [0, -1e-9])
+def test_vex_invalid_tolerance(tol):
+    with pytest.raises(ValueError):
+        vex(sp.zeros(3), tol=tol)
+
+
+
+def test_is_homogeneous_transform_exact_valid():
+    T = rt2htm(rotz(sp.pi/4), [1, 2, 3])
+
+    assert is_homogeneous_transform(T) is True
+
+
+def test_is_homogeneous_transform_numeric_within_tolerance():
+    T = sp.Matrix(sp.N(rt2htm(rotz(0.3), [1.0, -2.0, 0.5])))
+    T[3, 0] = 1e-11
+    T[3, 3] = 1.0 + 1e-11
+
+    assert is_homogeneous_transform(T, tol=1e-9) is True
+
+
+def test_is_homogeneous_transform_invalid_last_row():
+    T = rt2htm(sp.eye(3), [0, 0, 0])
+    T[3, 2] = sp.Rational(1, 10)
+
+    assert is_homogeneous_transform(T) is False
+
+
+def test_is_homogeneous_transform_invalid_rotation_block():
+    T = sp.eye(4)
+    T[:3, :3] = sp.diag(1, 1, -1)
+
+    assert is_homogeneous_transform(T) is False
+
+
+def test_is_homogeneous_transform_wrong_shape():
+    assert is_homogeneous_transform(sp.eye(3)) is False
+
+
+def test_is_homogeneous_transform_rejects_nonreal_numeric_entries():
+    T = sp.eye(4)
+    T[0, 3] = sp.I
+
+    assert is_homogeneous_transform(T) is False
+
+
+def test_is_homogeneous_transform_symbolic_valid():
+    theta = sp.symbols("theta", real=True)
+    px, py, pz = sp.symbols("px py pz", real=True)
+    T = rt2htm(rotz(theta), [px, py, pz])
+
+    assert is_homogeneous_transform(T) is True
+
+
+def test_is_homogeneous_transform_symbolic_invalid():
+    a = sp.symbols("a", positive=True)
+    T = sp.eye(4)
+    T[3, 0] = a
+
+    assert is_homogeneous_transform(T) is False
+
+
+def test_is_homogeneous_transform_symbolically_indeterminate():
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i", real=True)
+    R = sp.Matrix([[a,b,c],[d,e,f],[g,h,i]])
+    T = rt2htm(R, [0, 0, 0])
+
+    assert is_homogeneous_transform(T) is None
+
+
+def test_invhtm_valid_rigid_transform_matches_general_inverse():
+    T = rt2htm(rotz(sp.pi/6), [1, 2, 3])
+
+    T_inv = invhtm(T)
+
+    assert_matrix_equal(sp.simplify(T_inv * T), sp.eye(4))
+    assert_matrix_equal(sp.simplify(T_inv), sp.simplify(T.inv()))
+
+
+def test_invhtm_rejects_non_se3_matrix_even_if_4x4():
+    T = sp.eye(4)
+    T[0, 0] = 2
+
+    with pytest.raises(ValueError, match="homogeneous transformation"):
+        invhtm(T)
+
+
+def test_invhtm_rejects_invalid_last_row():
+    T = sp.eye(4)
+    T[3, 0] = sp.Rational(1, 10)
+
+    with pytest.raises(ValueError, match="homogeneous transformation"):
+        invhtm(T)
+
+
+def test_invhtm_rejects_symbolically_indeterminate_transform():
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i", real=True)
+    R = sp.Matrix([[a,b,c],[d,e,f],[g,h,i]])
+    T = rt2htm(R, [0, 0, 0])
+
+    with pytest.raises(ValueError, match="indeterminate"):
+        invhtm(T)
+
+
+@pytest.mark.parametrize("tol", [0, -1e-9])
+def test_homogeneous_transform_invalid_tolerance(tol):
+    with pytest.raises(ValueError):
+        is_homogeneous_transform(sp.eye(4), tol=tol)
+    with pytest.raises(ValueError):
+        invhtm(sp.eye(4), tol=tol)
+
+
+
+def test_axa2rot_degree_support_matches_radians():
+    R_deg = axa2rot([0, 0, 1], 90, deg=True)
+    R_rad = axa2rot([0, 0, 1], sp.pi/2)
+
+    assert_matrix_equal(R_deg, R_rad)
+
+
+def test_axis_angle_degree_round_trip():
+    R = axa2rot([1, 2, 3], 60, deg=True)
+
+    axis, angle = rot2axa(R, deg=True)
+
+    assert sp.simplify(angle - 60) == 0
+    assert_matrix_close(
+        axa2rot(axis, angle, deg=True),
+        R,
+        tol=1e-9,
+    )
+
+
+@pytest.mark.parametrize(
+    "legacy,new_predicate,value",
+    [
+        (is_SO3, is_rotation_matrix, rotz(sp.pi/4)),
+        (isrot, is_rotation_matrix, rotz(sp.pi/4)),
+        (is_SE3, is_homogeneous_transform, rt2htm(rotz(sp.pi/4), [1,2,3])),
+        (ishtm, is_homogeneous_transform, rt2htm(rotz(sp.pi/4), [1,2,3])),
+    ],
+)
+def test_legacy_transform_predicates_warn_and_preserve_boolean_contract(
+    legacy,
+    new_predicate,
+    value,
+):
+    with pytest.warns(DeprecationWarning):
+        result = legacy(value)
+
+    assert result is True
+    assert result == (new_predicate(value) is True)
+
+
+def test_legacy_predicates_collapse_symbolic_indeterminate_to_false():
+    a, b, c, d, e, f, g, h, i = sp.symbols("a:i", real=True)
+    R = sp.Matrix([[a,b,c],[d,e,f],[g,h,i]])
+    T = rt2htm(R, [0,0,0])
+
+    with pytest.warns(DeprecationWarning):
+        assert is_SO3(R) is False
+    with pytest.warns(DeprecationWarning):
+        assert is_SE3(T) is False
+
+
+def test_legacy_predicates_forward_tolerance():
+    R = sp.Matrix(sp.N(rotz(0.3)))
+    R[0,0] += 1e-11
+
+    with pytest.warns(DeprecationWarning):
+        assert is_SO3(R, tol=1e-9) is True

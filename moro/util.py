@@ -5,6 +5,7 @@ This library has been designed, mainly, for academic and research purposes,
 using SymPy as base library. 
 """
 
+import warnings
 from sympy import pi
 from sympy.matrices import Matrix
 import sympy as sp
@@ -96,60 +97,43 @@ def issympyobject(obj):
         return False
 
     
-def ishtm(H):
-    """
-    Check if H a homogeneous transformation matrix.
-    """
-    return is_SE3(H)
-    
-def is_SE3(H):
-    """
-    Check if H is a matrix of the SE(3) group.
-    """
-    nrow,ncol = H.shape
-    if nrow == ncol == 4:
-        if is_SO3(H[:3,:3]) and H[3,3]==1 and not any(H[3,:3]):
-            return True
-    return False
+def _warn_legacy_transform_predicate(name, replacement):
+    warnings.warn(
+        f"{name}() is deprecated; use "
+        f"moro.transformations.{replacement}() instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
-def is_SO3(R):
-    """
-    Check if R is a matrix of the SO(3) group.
-    
-    Parameters
-    ----------
-    
-    R : `sympy.matrices.dense.MutableDenseMatrix`
-    
-    Returns
-    -------
-    
-    False or True
-    
-    """
-    nrow,ncol = R.shape
-    if (nrow == ncol == 3) and isorthonormal(R):
-        return True
-    return False
 
-def isrot(R):
-    """
-    Is R a rotation matrix ?
-    
-    Parameters
-    ----------
-    
-    R : `sympy.matrices.dense.MutableDenseMatrix`
-    
-    Returns
-    -------
-    
-    False or True
-    
-    """
-    return is_SO3(R)
-    
-    
+def ishtm(H, tol=1e-9):
+    """Deprecated Boolean compatibility wrapper for SE(3) membership."""
+    _warn_legacy_transform_predicate("ishtm", "is_homogeneous_transform")
+    from moro.transformations import is_homogeneous_transform
+    return is_homogeneous_transform(H, tol=tol) is True
+
+
+def is_SE3(H, tol=1e-9):
+    """Deprecated Boolean compatibility wrapper for SE(3) membership."""
+    _warn_legacy_transform_predicate("is_SE3", "is_homogeneous_transform")
+    from moro.transformations import is_homogeneous_transform
+    return is_homogeneous_transform(H, tol=tol) is True
+
+
+def is_SO3(R, tol=1e-9):
+    """Deprecated Boolean compatibility wrapper for SO(3) membership."""
+    _warn_legacy_transform_predicate("is_SO3", "is_rotation_matrix")
+    from moro.transformations import is_rotation_matrix
+    return is_rotation_matrix(R, tol=tol) is True
+
+
+def isrot(R, tol=1e-9):
+    """Deprecated Boolean compatibility wrapper for SO(3) membership."""
+    _warn_legacy_transform_predicate("isrot", "is_rotation_matrix")
+    from moro.transformations import is_rotation_matrix
+    return is_rotation_matrix(R, tol=tol) is True
+
+
 def isorthonormal(R):
     """
     Check if R is orthonormal
