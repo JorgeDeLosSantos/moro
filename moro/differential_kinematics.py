@@ -363,7 +363,26 @@ def _svd_diagnostics(J):
 
 
 def task_jacobian(robot, q=None, *, task="twist", parameters=None):
-    """Return the selected geometric task Jacobian as a SymPy matrix."""
+    """Return a selected task Jacobian derived from robot.J.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like, optional
+        Joint configuration in robot.qs order. If omitted, the selected
+        Jacobian remains symbolic in the joint variables.
+    task : str or sequence of str, optional
+        "linear", "angular", "twist", or an explicit ordered subset of
+        vx, vy, vz, wx, wy, wz.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint model parameters.
+
+    Returns
+    -------
+    sympy.Matrix
+        Task Jacobian with one row per requested task component.
+    """
     components = _normalize_task(task)
     J, qs, dof = _robot_interface(robot)
 
@@ -386,7 +405,27 @@ def cartesian_velocity(
     task="twist",
     parameters=None,
 ):
-    """Propagate joint velocity into the selected Cartesian task velocity."""
+    """Propagate joint velocity into the selected Cartesian task velocity.
+
+    Computes J_task(q) * qd using the exact task-component ordering.
+    Exact SymPy arithmetic is preserved when all symbols are resolved.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q, qd : vector-like
+        Configuration and joint velocity in robot.qs order.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for remaining symbolic quantities.
+
+    Returns
+    -------
+    sympy.Matrix
+        Cartesian task velocity as a column matrix.
+    """
     components = _normalize_task(task)
     _, _, dof = _robot_interface(robot)
 
@@ -423,7 +462,39 @@ def solve_velocity_ik(
     parameters=None,
     tol=1e-9,
 ):
-    """Solve velocity-level inverse kinematics for a selected task."""
+    """Solve velocity-level inverse kinematics for a selected task.
+
+    One SVD supports the inverse operator, numerical rank, and condition
+    number. Optional joint-velocity limits are applied by component-wise
+    clipping after the unconstrained solve, then task diagnostics are
+    recomputed from the returned velocity.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    velocity : vector-like
+        Desired task velocity in the ordering defined by task.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    method : {"pinv", "dls"}, optional
+        Numerical inverse method.
+    damping : positive real, optional
+        Required for dls and invalid for pinv.
+    joint_velocity_limits : sequence, optional
+        Symmetric positive magnitudes or explicit (lower, upper) pairs.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+    tol : positive real, optional
+        Task-space residual tolerance used only for success.
+
+    Returns
+    -------
+    VelocityIKSolution
+        Joint velocity and task-space/numerical diagnostics.
+    """
     components = _normalize_task(task)
     method, damping = _normalize_method(method, damping)
     tol = _validate_positive_real(tol, name="tol")
