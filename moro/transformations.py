@@ -1212,7 +1212,7 @@ def _rotation_angle_from_matrix(R, tol):
     """Return the principal rotation angle and its numerical/symbolic case."""
     cos_angle = sp.simplify((sp.trace(R) - 1) / 2)
 
-    if _is_numeric_real(cos_angle):
+    if _has_float(cos_angle) and _is_numeric_real(cos_angle):
         value = float(sp.N(cos_angle))
         if value > 1.0 + tol or value < -1.0 - tol:
             raise ValueError(
@@ -1262,7 +1262,7 @@ def _axis_at_pi(R):
     i = _largest_rotation_axis_diagonal_index(diagonal)
 
     axis = Matrix([0, 0, 0])
-    if _is_numeric_real(diagonal[i]):
+    if _has_float(diagonal[i]) and _is_numeric_real(diagonal[i]):
         axis[i] = sp.sqrt(
             sp.Float(max(0.0, float(sp.N(diagonal[i]))))
         )
