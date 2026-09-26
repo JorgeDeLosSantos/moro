@@ -90,7 +90,7 @@ Complete the `transformations.py` audit first:
 
 This increment establishes the orientation primitives and validation rules required by full-pose IK while remaining independently useful and testable.
 
-### 2. Differential kinematics
+### 2. Differential kinematics — complete
 
 Implement the task-space conventions and main velocity-level API:
 
@@ -415,6 +415,6 @@ The next phase is implementation in the accepted sequence:
       -> 0.5-E -> 0.5-F -> 0.5-G -> 0.5-H
 ```
 
-**0.5-A: transformations and orientation foundations is complete.** Implementation now proceeds with **0.5-B: differential kinematics**.
+**0.5-A and 0.5-B are complete.** Implementation now proceeds with **0.5-C: singularities and manipulability**.
 
 Detailed-design documents are the normative source for numerical tolerances, dataclass invariants, validation semantics, private-helper direction, caching/compilation policy, and exact result contracts. Any implementation-driven contract revision should first be recorded there rather than introduced silently.
