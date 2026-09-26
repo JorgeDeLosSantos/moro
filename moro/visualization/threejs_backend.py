@@ -1,7 +1,5 @@
 """Three.js visualization backend and HTML serialization helpers."""
 
-from __future__ import annotations
-
 import json
 import re
 import uuid

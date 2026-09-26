@@ -1,13 +1,11 @@
 """Numerical data containers used by the visualization backends."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import numpy as np
 
 
-@dataclass
+@dataclass(slots=True)
 class FrameData:
     """Numerical homogeneous transformation of one robot frame."""
 
@@ -34,7 +32,7 @@ class FrameData:
         return self.rotation[:, 2]
 
 
-@dataclass
+@dataclass(slots=True)
 class SceneData:
     """Evaluated numerical data for one robot configuration."""
 

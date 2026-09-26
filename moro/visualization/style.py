@@ -1,11 +1,9 @@
 """Backend-independent visualization style configuration."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class VisualizationStyle:
     """
     Style configuration for robot visualization.

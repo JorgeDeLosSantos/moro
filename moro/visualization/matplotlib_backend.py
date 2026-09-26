@@ -1,7 +1,5 @@
 """Matplotlib visualization backend."""
 
-from __future__ import annotations
-
 import numpy as np
 
 from .data import SceneData
