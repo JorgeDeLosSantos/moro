@@ -682,3 +682,72 @@ def test_velocity_ik_solution_is_frozen():
 
     with pytest.raises(Exception):
         solution.rank = 2
+
+
+
+def test_cartesian_velocity_prismatic_joint():
+    robot = Robot((0, 0, q1, 0, "p"),)
+
+    result = cartesian_velocity(
+        robot,
+        [2],
+        [sp.Rational(3, 2)],
+        task=("vz",),
+    )
+
+    assert_matrix_equal(result, sp.Matrix([sp.Rational(3, 2)]))
+
+
+def test_velocity_ik_accepts_exact_sympy_scalar_options():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ])
+    )
+
+    solution = solve_velocity_ik(
+        robot,
+        [0],
+        [1],
+        task=("vx",),
+        method="dls",
+        damping=sp.Rational(1, 10),
+        joint_velocity_limits=[sp.Rational(2, 1)],
+        tol=sp.Rational(1, 2),
+    )
+
+    assert solution.method == "dls"
+    assert solution.rank == 1
+    assert solution.limited is False
+    assert solution.success is True
+
+
+def test_velocity_ik_accepts_exact_sympy_asymmetric_limits():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ])
+    )
+
+    solution = solve_velocity_ik(
+        robot,
+        [0],
+        [2],
+        task=("vx",),
+        joint_velocity_limits=[
+            (sp.Rational(-1, 2), sp.Rational(3, 2)),
+        ],
+    )
+
+    assert_matrix_close(solution.qd, [1.5])
+    assert solution.limited is True
