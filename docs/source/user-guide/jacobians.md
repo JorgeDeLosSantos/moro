@@ -448,6 +448,131 @@ different linear Jacobian
 
 The `J_point()` interface makes it possible to compute these quantities without defining a separate robot model.
 
+## Task-space Jacobians and Cartesian velocity
+
+Moro 0.5.0 adds a functional differential-kinematics layer in `moro.differential_kinematics`. It reuses `robot.J` as the geometric source of truth and selects only the task components needed by the analysis.
+
+```python
+from moro.differential_kinematics import (
+    task_jacobian,
+    cartesian_velocity,
+    solve_velocity_ik,
+)
+```
+
+The canonical geometric-twist component order is:
+
+```text
+vx, vy, vz, wx, wy, wz
+```
+
+The convenience task presets are:
+
+```text
+linear   -> vx, vy, vz
+angular  -> wx, wy, wz
+twist    -> vx, vy, vz, wx, wy, wz
+```
+
+Explicit ordered subsets are also supported:
+
+```python
+J_xy = task_jacobian(robot, task=("vx", "vy"))
+J_planar = task_jacobian(robot, task=("vx", "vy", "wz"))
+J_custom = task_jacobian(robot, task=("wz", "vx"))
+```
+
+The order supplied by the user is preserved. Therefore the task `("wz", "vx")` expects task-space velocities in the same order.
+
+To evaluate the Jacobian at a configuration while keeping exact SymPy arithmetic:
+
+```python
+from sympy import pi
+
+Jq = task_jacobian(
+    robot,
+    q=[pi / 4, -pi / 6],
+    task=("vx", "vy", "wz"),
+    parameters={l1: 1, l2: 0.8},
+)
+```
+
+Forward differential kinematics is evaluated with:
+
+```python
+velocity = cartesian_velocity(
+    robot,
+    q=[pi / 4, -pi / 6],
+    qd=[0.5, -0.2],
+    task=("vx", "vy", "wz"),
+    parameters={l1: 1, l2: 0.8},
+)
+```
+
+which computes
+
+$$
+\dot x_{task}=J_{task}(q)\dot q.
+$$
+
+`cartesian_velocity()` returns a SymPy column matrix and preserves exact symbolic numbers whenever all model parameters are resolved.
+
+## Velocity inverse kinematics
+
+`solve_velocity_ik()` computes joint velocities that best realize a desired task-space velocity.
+
+```python
+solution = solve_velocity_ik(
+    robot,
+    q=[pi / 4, -pi / 6],
+    velocity=[0.1, 0.0],
+    task=("vx", "vy"),
+    parameters={l1: 1, l2: 0.8},
+)
+```
+
+The default method is the Moore--Penrose pseudoinverse. Damped least squares is selected explicitly:
+
+```python
+solution = solve_velocity_ik(
+    robot,
+    q=[pi / 4, -pi / 6],
+    velocity=[0.1, 0.0],
+    task=("vx", "vy"),
+    method="dls",
+    damping=0.05,
+    parameters={l1: 1, l2: 0.8},
+)
+```
+
+The result contains:
+
+- `qd`: the returned joint velocity;
+- `unconstrained_qd`: the pre-limit solution;
+- `desired_velocity` and `achieved_velocity`;
+- `residual = desired_velocity - achieved_velocity`;
+- `residual_norm`;
+- numerical Jacobian `rank` and `condition_number`;
+- `success`, `limited`, `method`, and an explanatory `message`.
+
+`success` depends only on whether the final task-space residual norm is within `tol`. Rank deficiency or a large condition number does not automatically mean failure.
+
+### Joint-velocity limits
+
+Optional limits are applied as post-solution clipping. Symmetric limits use one positive magnitude per joint:
+
+```python
+joint_velocity_limits=[1.0, 0.5]
+```
+
+and asymmetric limits use `(lower, upper)` pairs:
+
+```python
+joint_velocity_limits=[(-1.0, 0.8), (-0.4, 0.6)]
+```
+
+After clipping, Moro recomputes achieved velocity, residual, and `success`. It does not redistribute the saturated motion through other joints.
+
 ## Notes and conventions
 
 When working with Jacobians in `moro`, keep the following points in mind:
