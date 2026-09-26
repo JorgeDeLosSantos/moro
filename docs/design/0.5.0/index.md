@@ -14,7 +14,7 @@ Implementation should now proceed against these documents. Scope or contract cha
 
 | Increment | Feature | Detailed design | Status |
 |---|---|---|---|
-| 0.5-A | Transformations and orientation foundations | [transformations.md](transformations.md) | Complete |
+| 0.5-A | Transformations and orientation foundations | [transformations.md](transformations.md) | Implemented |
 | 0.5-B | Differential kinematics | [differential-kinematics.md](differential-kinematics.md) | Complete |
 | 0.5-C | Singularities and manipulability | [singularities-manipulability.md](singularities-manipulability.md) | Complete |
 | 0.5-D | Full-pose inverse kinematics | [inverse-kinematics.md](inverse-kinematics.md) | Complete |
@@ -151,4 +151,4 @@ If implementation evidence reveals that a detailed-design decision is impractica
 
 The Moro 0.5.0 functional design phase is closed.
 
-The next project phase is implementation, beginning with **0.5-A: transformations and orientation foundations**.
+Implementation is underway. **0.5-A: transformations and orientation foundations** is complete; the next active increment is **0.5-B: differential kinematics**.
