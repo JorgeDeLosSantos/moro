@@ -995,17 +995,19 @@ def test_full_column_rank_overdetermined_jacobian_is_not_singular():
 def test_task_dependent_singularity_classification():
     robot = dummy_robot(
         sp.Matrix([
-            [1, 0],
-            [0, 1],
-            [0, 0],
-            [0, 0],
-            [0, 0],
-            [0, 0],
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
         ])
     )
 
-    assert is_singular(robot, [0, 0], task=("vx", "vy")) is False
-    assert is_singular(robot, [0, 0], task="twist") is True
+    # The reduced 2D task has its maximum attainable rank (2), while the
+    # full twist task can attain rank 3 for a 3-DOF robot but has only rank 2.
+    assert is_singular(robot, [0, 0, 0], task=("vx", "vy")) is False
+    assert is_singular(robot, [0, 0, 0], task="twist") is True
 
 
 def test_zero_jacobian_analysis_contract():
