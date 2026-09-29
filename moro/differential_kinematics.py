@@ -18,6 +18,11 @@ __all__ = [
     "VelocityIKSolution",
     "task_jacobian",
     "cartesian_velocity",
+    "singular_values",
+    "jacobian_rank",
+    "condition_number",
+    "is_singular",
+    "manipulability",
     "solve_velocity_ik",
 ]
 
@@ -337,29 +342,84 @@ def _normalize_joint_velocity_limits(limits, dof):
     return tuple(normalized)
 
 
-def _svd_diagnostics(J):
-    U, singular_values, Vt = np.linalg.svd(J, full_matrices=False)
+def _evaluate_task_jacobian_numeric(
+    robot,
+    q,
+    *,
+    task,
+    parameters=None,
+):
+    """Evaluate a selected task Jacobian as a finite real NumPy matrix."""
+    components = _normalize_task(task)
+    _, _, dof = _robot_interface(robot)
+    q_vector = _as_vector(q, dof, name="q")
+    parameter_substitutions = _normalize_parameters(parameters)
+
+    J_symbolic = task_jacobian(
+        robot,
+        q_vector,
+        task=components,
+        parameters=parameter_substitutions,
+    )
+    J_numeric = _to_numpy_matrix(J_symbolic, name="Task Jacobian")
+    return components, J_numeric
+
+
+def _svd_diagnostics(J, *, rank_tol=None):
+    """Return economy SVD and diagnostics under one shared rank policy."""
+    if rank_tol is not None:
+        threshold = _validate_positive_real(rank_tol, name="tol")
+    else:
+        threshold = None
+
+    try:
+        U, singular_values, Vt = np.linalg.svd(J, full_matrices=False)
+    except np.linalg.LinAlgError as exc:
+        raise RuntimeError("SVD failed for the task Jacobian.") from exc
+
+    if not np.all(np.isfinite(singular_values)):
+        raise RuntimeError("SVD produced non-finite singular values.")
+    if np.any(singular_values < 0):
+        raise RuntimeError("SVD produced negative singular values.")
 
     if singular_values.size == 0:
-        threshold = 0.0
+        active_threshold = 0.0 if threshold is None else threshold
         rank = 0
         condition_number = math.inf
-        return U, singular_values, Vt, threshold, rank, condition_number
+        return (
+            U,
+            singular_values,
+            Vt,
+            active_threshold,
+            rank,
+            condition_number,
+        )
 
     sigma_max = float(singular_values[0])
-    threshold = (
-        max(J.shape) * np.finfo(J.dtype).eps * sigma_max
-        if sigma_max > 0
-        else 0.0
-    )
-    rank = int(np.count_nonzero(singular_values > threshold))
+    if threshold is None:
+        active_threshold = (
+            max(J.shape) * np.finfo(J.dtype).eps * sigma_max
+            if sigma_max > 0
+            else 0.0
+        )
+    else:
+        active_threshold = threshold
 
-    if rank < min(J.shape) or singular_values[-1] <= threshold:
+    rank = int(np.count_nonzero(singular_values > active_threshold))
+
+    if rank < min(J.shape) or singular_values[-1] <= active_threshold:
         condition_number = math.inf
     else:
         condition_number = float(singular_values[0] / singular_values[-1])
 
-    return U, singular_values, Vt, threshold, rank, condition_number
+    return (
+        U,
+        singular_values,
+        Vt,
+        active_threshold,
+        rank,
+        condition_number,
+    )
 
 
 def task_jacobian(robot, q=None, *, task="twist", parameters=None):
@@ -450,6 +510,226 @@ def cartesian_velocity(
     )
 
 
+def singular_values(
+    robot,
+    q,
+    *,
+    task="twist",
+    parameters=None,
+):
+    """Return compact singular values of the selected task Jacobian.
+
+    The selected task Jacobian is evaluated numerically and analyzed with
+    the shared economy-size SVD policy. Values are ordered from largest to
+    smallest and the result has length min(m, n).
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+
+    Returns
+    -------
+    sympy.Matrix
+        Numerical singular values as a column matrix.
+    """
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+    _, values, _, _, _, _ = _svd_diagnostics(J)
+    return Matrix([float(value) for value in values])
+
+
+def jacobian_rank(
+    robot,
+    q,
+    *,
+    task="twist",
+    parameters=None,
+    tol=None,
+):
+    """Return numerical rank of the selected task Jacobian.
+
+    With tol=None, rank uses the shared scale-aware threshold
+    max(m, n) * eps * sigma_max. An explicit tol is interpreted as an
+    absolute singular-value threshold.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+    tol : positive real, optional
+        Absolute singular-value threshold. If omitted, use the automatic
+        scale-aware threshold.
+
+    Returns
+    -------
+    int
+        Numerical rank of the selected task Jacobian.
+    """
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+    _, _, _, _, rank, _ = _svd_diagnostics(J, rank_tol=tol)
+    return rank
+
+
+def condition_number(
+    robot,
+    q,
+    *,
+    task="twist",
+    parameters=None,
+):
+    """Return the condition number of the selected task Jacobian.
+
+    The compact SVD spectrum and automatic rank threshold are used. A
+    numerically rank-deficient Jacobian returns math.inf.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+
+    Returns
+    -------
+    float
+        sigma_max / sigma_min for full-rank tasks, otherwise infinity.
+    """
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+    _, _, _, _, _, value = _svd_diagnostics(J)
+    return value
+
+
+def is_singular(
+    robot,
+    q,
+    *,
+    task="twist",
+    parameters=None,
+    tol=None,
+):
+    """Return whether the selected task Jacobian is numerically singular.
+
+    Singularity is task dependent and is defined by
+    rank(J_task) < min(m, n) under the active rank threshold.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+    tol : positive real, optional
+        Absolute singular-value threshold. If omitted, use the automatic
+        scale-aware threshold.
+
+    Returns
+    -------
+    bool
+        True when the selected task Jacobian is rank deficient.
+    """
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+    _, _, _, _, rank, _ = _svd_diagnostics(J, rank_tol=tol)
+    return rank < min(J.shape)
+
+
+def manipulability(
+    robot,
+    q,
+    *,
+    task,
+    parameters=None,
+):
+    """Return Yoshikawa velocity manipulability for an explicit task.
+
+    For m <= n, the metric is computed as the product of compact singular
+    values, equivalent to sqrt(det(J J.T)) for full-row-rank tasks.
+    Rank-deficient tasks return exactly 0.0. For m > n, the
+    m-dimensional Yoshikawa volume is necessarily zero and this function
+    also returns 0.0.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str
+        Explicit task preset or ordered task subset. This argument is
+        required because manipulability depends strongly on task choice.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+
+    Returns
+    -------
+    float
+        Yoshikawa velocity manipulability for the selected task.
+
+    Notes
+    -----
+    No characteristic-length or translational/angular normalization is
+    applied in Moro 0.5.0.
+    """
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+
+    m, n = J.shape
+    _, values, _, _, rank, _ = _svd_diagnostics(J)
+
+    if m > n:
+        return 0.0
+    if rank < m:
+        return 0.0
+
+    value = float(np.prod(values, dtype=float))
+    if not math.isfinite(value):
+        raise RuntimeError("Manipulability calculation produced a non-finite value.")
+    return value
+
+
 def solve_velocity_ik(
     robot,
     q,
@@ -508,17 +788,16 @@ def solve_velocity_ik(
     )
 
     parameter_substitutions = _normalize_parameters(parameters)
-
-    J_symbolic = task_jacobian(
+    _, J = _evaluate_task_jacobian_numeric(
         robot,
         q_vector,
         task=components,
         parameters=parameter_substitutions,
     )
+
     if parameter_substitutions:
         velocity_vector = velocity_vector.subs(parameter_substitutions)
 
-    J = _to_numpy_matrix(J_symbolic, name="Task Jacobian")
     desired = _to_numpy_vector(
         velocity_vector,
         name="Desired task velocity",

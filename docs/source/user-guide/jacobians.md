@@ -573,6 +573,69 @@ joint_velocity_limits=[(-1.0, 0.8), (-0.4, 0.6)]
 
 After clipping, Moro recomputes achieved velocity, residual, and `success`. It does not redistribute the saturated motion through other joints.
 
+## Singularity and manipulability analysis
+
+The same task conventions can be used to inspect local kinematic capability:
+
+```python
+from moro.differential_kinematics import (
+    singular_values,
+    jacobian_rank,
+    condition_number,
+    is_singular,
+    manipulability,
+)
+```
+
+For a planar position task:
+
+```python
+q = [pi / 4, -pi / 6]
+parameters = {l1: 1.0, l2: 0.8}
+task = ("vx", "vy")
+
+s = singular_values(robot, q, task=task, parameters=parameters)
+rank = jacobian_rank(robot, q, task=task, parameters=parameters)
+kappa = condition_number(robot, q, task=task, parameters=parameters)
+singular = is_singular(robot, q, task=task, parameters=parameters)
+w = manipulability(robot, q, task=task, parameters=parameters)
+```
+
+`singular_values()` returns a SymPy column matrix; rank is an integer; condition number and manipulability are floats; and `is_singular()` is a Python Boolean.
+
+### Controlling effective rank
+
+`jacobian_rank()` and `is_singular()` accept an optional positive absolute singular-value tolerance:
+
+```python
+is_singular(
+    robot,
+    q,
+    task=("vx", "vy"),
+    parameters=parameters,
+    tol=1e-4,
+)
+```
+
+`condition_number()` intentionally has no public tolerance argument and always uses Moro's automatic SVD threshold. A user-selected rank tolerance can therefore classify a near-singular matrix differently from the automatic condition-number policy.
+
+### Manipulability requires a task
+
+`manipulability()` intentionally requires `task` to be supplied:
+
+```python
+w = manipulability(
+    robot,
+    q,
+    task=("vx", "vy"),
+    parameters=parameters,
+)
+```
+
+This avoids attaching an apparently universal meaning to a quantity that depends strongly on which velocity components and units are included. Full-twist manipulability is valid, but mixes translational and angular scales.
+
+For an overdetermined task with more task components than joints ($m>n$), Yoshikawa's $m$-dimensional volume is zero even when the Jacobian has full column rank. In that case `manipulability()` can return `0.0` while `is_singular()` returns `False`.
+
 ## Notes and conventions
 
 When working with Jacobians in `moro`, keep the following points in mind:
