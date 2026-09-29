@@ -103,7 +103,7 @@ Implement the task-space conventions and main velocity-level API:
 
 This creates the reusable task-Jacobian layer needed by the next increment.
 
-### 3. Singularities and manipulability
+### 3. Singularities and manipulability — complete
 
 Build the numerical analysis API on the task-Jacobian conventions introduced in the previous increment:
 
@@ -415,6 +415,6 @@ The next phase is implementation in the accepted sequence:
       -> 0.5-E -> 0.5-F -> 0.5-G -> 0.5-H
 ```
 
-**0.5-A and 0.5-B are complete.** Implementation now proceeds with **0.5-C: singularities and manipulability**.
+**0.5-A, 0.5-B, and 0.5-C are complete.** Implementation now proceeds with **0.5-D: full-pose inverse kinematics**.
 
 Detailed-design documents are the normative source for numerical tolerances, dataclass invariants, validation semantics, private-helper direction, caching/compilation policy, and exact result contracts. Any implementation-driven contract revision should first be recorded there rather than introduced silently.
