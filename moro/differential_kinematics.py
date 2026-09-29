@@ -18,6 +18,11 @@ __all__ = [
     "VelocityIKSolution",
     "task_jacobian",
     "cartesian_velocity",
+    "singular_values",
+    "jacobian_rank",
+    "condition_number",
+    "is_singular",
+    "manipulability",
     "solve_velocity_ik",
 ]
 
@@ -337,29 +342,84 @@ def _normalize_joint_velocity_limits(limits, dof):
     return tuple(normalized)
 
 
-def _svd_diagnostics(J):
-    U, singular_values, Vt = np.linalg.svd(J, full_matrices=False)
+def _evaluate_task_jacobian_numeric(
+    robot,
+    q,
+    *,
+    task,
+    parameters=None,
+):
+    """Evaluate a selected task Jacobian as a finite real NumPy matrix."""
+    components = _normalize_task(task)
+    _, _, dof = _robot_interface(robot)
+    q_vector = _as_vector(q, dof, name="q")
+    parameter_substitutions = _normalize_parameters(parameters)
+
+    J_symbolic = task_jacobian(
+        robot,
+        q_vector,
+        task=components,
+        parameters=parameter_substitutions,
+    )
+    J_numeric = _to_numpy_matrix(J_symbolic, name="Task Jacobian")
+    return components, J_numeric
+
+
+def _svd_diagnostics(J, *, rank_tol=None):
+    """Return economy SVD and diagnostics under one shared rank policy."""
+    if rank_tol is not None:
+        threshold = _validate_positive_real(rank_tol, name="tol")
+    else:
+        threshold = None
+
+    try:
+        U, singular_values, Vt = np.linalg.svd(J, full_matrices=False)
+    except np.linalg.LinAlgError as exc:
+        raise RuntimeError("SVD failed for the task Jacobian.") from exc
+
+    if not np.all(np.isfinite(singular_values)):
+        raise RuntimeError("SVD produced non-finite singular values.")
+    if np.any(singular_values < 0):
+        raise RuntimeError("SVD produced negative singular values.")
 
     if singular_values.size == 0:
-        threshold = 0.0
+        active_threshold = 0.0 if threshold is None else threshold
         rank = 0
         condition_number = math.inf
-        return U, singular_values, Vt, threshold, rank, condition_number
+        return (
+            U,
+            singular_values,
+            Vt,
+            active_threshold,
+            rank,
+            condition_number,
+        )
 
     sigma_max = float(singular_values[0])
-    threshold = (
-        max(J.shape) * np.finfo(J.dtype).eps * sigma_max
-        if sigma_max > 0
-        else 0.0
-    )
-    rank = int(np.count_nonzero(singular_values > threshold))
+    if threshold is None:
+        active_threshold = (
+            max(J.shape) * np.finfo(J.dtype).eps * sigma_max
+            if sigma_max > 0
+            else 0.0
+        )
+    else:
+        active_threshold = threshold
 
-    if rank < min(J.shape) or singular_values[-1] <= threshold:
+    rank = int(np.count_nonzero(singular_values > active_threshold))
+
+    if rank < min(J.shape) or singular_values[-1] <= active_threshold:
         condition_number = math.inf
     else:
         condition_number = float(singular_values[0] / singular_values[-1])
 
-    return U, singular_values, Vt, threshold, rank, condition_number
+    return (
+        U,
+        singular_values,
+        Vt,
+        active_threshold,
+        rank,
+        condition_number,
+    )
 
 
 def task_jacobian(robot, q=None, *, task="twist", parameters=None):
@@ -450,6 +510,109 @@ def cartesian_velocity(
     )
 
 
+def singular_values(
+    robot,
+    q,
+    *,
+    task="twist",
+    parameters=None,
+):
+    """Return singular values of the selected numerical task Jacobian."""
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+    _, values, _, _, _, _ = _svd_diagnostics(J)
+    return Matrix([float(value) for value in values])
+
+
+def jacobian_rank(
+    robot,
+    q,
+    *,
+    task="twist",
+    parameters=None,
+    tol=None,
+):
+    """Return numerical rank of the selected task Jacobian."""
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+    _, _, _, _, rank, _ = _svd_diagnostics(J, rank_tol=tol)
+    return rank
+
+
+def condition_number(
+    robot,
+    q,
+    *,
+    task="twist",
+    parameters=None,
+):
+    """Return the automatic-threshold condition number of the task Jacobian."""
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+    _, _, _, _, _, value = _svd_diagnostics(J)
+    return value
+
+
+def is_singular(
+    robot,
+    q,
+    *,
+    task="twist",
+    parameters=None,
+    tol=None,
+):
+    """Return whether the selected task Jacobian is numerically rank deficient."""
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+    _, _, _, _, rank, _ = _svd_diagnostics(J, rank_tol=tol)
+    return rank < min(J.shape)
+
+
+def manipulability(
+    robot,
+    q,
+    *,
+    task,
+    parameters=None,
+):
+    """Return Yoshikawa velocity manipulability for the selected task."""
+    _, J = _evaluate_task_jacobian_numeric(
+        robot,
+        q,
+        task=task,
+        parameters=parameters,
+    )
+
+    m, n = J.shape
+    _, values, _, _, rank, _ = _svd_diagnostics(J)
+
+    if m > n:
+        return 0.0
+    if rank < m:
+        return 0.0
+
+    value = float(np.prod(values, dtype=float))
+    if not math.isfinite(value):
+        raise RuntimeError("Manipulability calculation produced a non-finite value.")
+    return value
+
+
 def solve_velocity_ik(
     robot,
     q,
@@ -508,17 +671,16 @@ def solve_velocity_ik(
     )
 
     parameter_substitutions = _normalize_parameters(parameters)
-
-    J_symbolic = task_jacobian(
+    _, J = _evaluate_task_jacobian_numeric(
         robot,
         q_vector,
         task=components,
         parameters=parameter_substitutions,
     )
+
     if parameter_substitutions:
         velocity_vector = velocity_vector.subs(parameter_substitutions)
 
-    J = _to_numpy_matrix(J_symbolic, name="Task Jacobian")
     desired = _to_numpy_vector(
         velocity_vector,
         name="Desired task velocity",
