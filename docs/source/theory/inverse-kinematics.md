@@ -30,6 +30,109 @@ $$
 
 The conventions used in this section follow [Mathematical notation and conventions](notation.md), [Forward kinematics](forward-kinematics.md), and [Differential kinematics](differential-kinematics.md).
 
+## Full-pose inverse kinematics
+
+For a desired end-effector pose
+
+$
+T_d=
+\begin{bmatrix}
+R_d & p_d\\
+0 & 1
+\end{bmatrix},
+$
+
+Moro 0.5.0 solves both translation and orientation.
+
+The position residual is
+
+$
+e_p=p_d-p(q),
+$
+
+and the orientation residual is the principal rotation vector
+
+$
+\boxed{
+e_R=\operatorname{Log}(R_dR(q)^T)^\vee
+}.
+$
+
+This residual is expressed in the base frame and is compatible with the geometric angular Jacobian $J_\omega$.
+
+The local pose system is
+
+$
+\begin{bmatrix}
+J_v\\
+J_\omega
+\end{bmatrix}
+\Delta q
+\approx
+\begin{bmatrix}
+e_p\\
+e_R
+\end{bmatrix}.
+$
+
+Moro uses scalar positive weights:
+
+$
+e_w=
+\begin{bmatrix}
+w_p e_p\\
+w_R e_R
+\end{bmatrix},
+\qquad
+J_w=
+\begin{bmatrix}
+w_p J_v\\
+w_R J_\omega
+\end{bmatrix}.
+$
+
+The weights affect the optimization merit
+
+$
+E_w=\|e_w\|_2,
+$
+
+but convergence is checked independently:
+
+$
+\|e_p\|_2\le \varepsilon_p,
+\qquad
+\|e_R\|_2\le \varepsilon_R.
+$
+
+### Newton and Levenberg--Marquardt
+
+Newton uses a direct solve when appropriate and otherwise the Moore--Penrose pseudoinverse:
+
+$
+\Delta q=J_w^\dagger e_w.
+$
+
+Levenberg--Marquardt uses
+
+$
+(J_w^T J_w+\lambda^2I)\Delta q=J_w^Te_w.
+$
+
+LM accepts a trial only when the weighted merit decreases. Damping is then reduced; otherwise it is increased.
+
+### Lower-DOF and singular robots
+
+No requirement such as $n\ge6$ is imposed. A lower-DOF manipulator can still reach particular full poses, and rank-deficient Jacobians are handled numerically rather than treated as input errors.
+
+### Orientation near zero and pi
+
+Near zero orientation error, the rotation-vector residual approaches zero continuously. Near $\pi$, the rotation axis has an unavoidable sign ambiguity; equivalent principal rotation vectors should be interpreted geometrically rather than by fixed component signs.
+
+### Result model
+
+`solve_pose_ik()` returns `PoseIKSolution`, which stores the final joint state, separate position/orientation residuals and errors, and both target and achieved poses.
+
 ## Position inverse kinematics in Moro
 
 The general inverse-kinematics problem may involve both position and orientation:
