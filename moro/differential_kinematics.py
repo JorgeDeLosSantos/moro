@@ -517,7 +517,28 @@ def singular_values(
     task="twist",
     parameters=None,
 ):
-    """Return singular values of the selected numerical task Jacobian."""
+    """Return compact singular values of the selected task Jacobian.
+
+    The selected task Jacobian is evaluated numerically and analyzed with
+    the shared economy-size SVD policy. Values are ordered from largest to
+    smallest and the result has length min(m, n).
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+
+    Returns
+    -------
+    sympy.Matrix
+        Numerical singular values as a column matrix.
+    """
     _, J = _evaluate_task_jacobian_numeric(
         robot,
         q,
@@ -536,7 +557,31 @@ def jacobian_rank(
     parameters=None,
     tol=None,
 ):
-    """Return numerical rank of the selected task Jacobian."""
+    """Return numerical rank of the selected task Jacobian.
+
+    With tol=None, rank uses the shared scale-aware threshold
+    max(m, n) * eps * sigma_max. An explicit tol is interpreted as an
+    absolute singular-value threshold.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+    tol : positive real, optional
+        Absolute singular-value threshold. If omitted, use the automatic
+        scale-aware threshold.
+
+    Returns
+    -------
+    int
+        Numerical rank of the selected task Jacobian.
+    """
     _, J = _evaluate_task_jacobian_numeric(
         robot,
         q,
@@ -554,7 +599,27 @@ def condition_number(
     task="twist",
     parameters=None,
 ):
-    """Return the automatic-threshold condition number of the task Jacobian."""
+    """Return the condition number of the selected task Jacobian.
+
+    The compact SVD spectrum and automatic rank threshold are used. A
+    numerically rank-deficient Jacobian returns math.inf.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+
+    Returns
+    -------
+    float
+        sigma_max / sigma_min for full-rank tasks, otherwise infinity.
+    """
     _, J = _evaluate_task_jacobian_numeric(
         robot,
         q,
@@ -573,7 +638,30 @@ def is_singular(
     parameters=None,
     tol=None,
 ):
-    """Return whether the selected task Jacobian is numerically rank deficient."""
+    """Return whether the selected task Jacobian is numerically singular.
+
+    Singularity is task dependent and is defined by
+    rank(J_task) < min(m, n) under the active rank threshold.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str, optional
+        Task preset or explicit ordered task subset.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+    tol : positive real, optional
+        Absolute singular-value threshold. If omitted, use the automatic
+        scale-aware threshold.
+
+    Returns
+    -------
+    bool
+        True when the selected task Jacobian is rank deficient.
+    """
     _, J = _evaluate_task_jacobian_numeric(
         robot,
         q,
@@ -591,7 +679,36 @@ def manipulability(
     task,
     parameters=None,
 ):
-    """Return Yoshikawa velocity manipulability for the selected task."""
+    """Return Yoshikawa velocity manipulability for an explicit task.
+
+    For m <= n, the metric is computed as the product of compact singular
+    values, equivalent to sqrt(det(J J.T)) for full-row-rank tasks.
+    Rank-deficient tasks return exactly 0.0. For m > n, the
+    m-dimensional Yoshikawa volume is necessarily zero and this function
+    also returns 0.0.
+
+    Parameters
+    ----------
+    robot
+        Object exposing compatible J, qs, and dof attributes.
+    q : vector-like
+        Joint configuration.
+    task : str or sequence of str
+        Explicit task preset or ordered task subset. This argument is
+        required because manipulability depends strongly on task choice.
+    parameters : mapping, optional
+        SymPy-object substitutions for non-joint symbolic quantities.
+
+    Returns
+    -------
+    float
+        Yoshikawa velocity manipulability for the selected task.
+
+    Notes
+    -----
+    No characteristic-length or translational/angular normalization is
+    applied in Moro 0.5.0.
+    """
     _, J = _evaluate_task_jacobian_numeric(
         robot,
         q,

@@ -1183,3 +1183,47 @@ def test_analysis_task_order_is_supported():
 
     assert values.shape == (1, 1)
     assert float(values[0]) == pytest.approx(math.sqrt(13))
+
+
+def test_analysis_rejects_complex_task_jacobian_entries():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1 + sp.I],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ])
+    )
+
+    with pytest.raises(ValueError, match="real"):
+        singular_values(robot, [0], task=("vx",))
+
+
+def test_explicit_singularity_tolerance_can_differ_from_condition_number_policy():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0],
+            [0, 1e-6],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    assert is_singular(
+        robot,
+        [0, 0],
+        task=("vx", "vy"),
+        tol=1e-4,
+    ) is True
+
+    value = condition_number(
+        robot,
+        [0, 0],
+        task=("vx", "vy"),
+    )
+    assert math.isfinite(value)
+    assert value == pytest.approx(1e6)
