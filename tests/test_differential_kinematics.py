@@ -11,6 +11,11 @@ from moro.core import Robot
 from moro.differential_kinematics import (
     VelocityIKSolution,
     cartesian_velocity,
+    condition_number,
+    is_singular,
+    jacobian_rank,
+    manipulability,
+    singular_values,
     solve_velocity_ik,
     task_jacobian,
 )
@@ -751,3 +756,428 @@ def test_velocity_ik_accepts_exact_sympy_asymmetric_limits():
 
     assert_matrix_close(solution.qd, [1.5])
     assert solution.limited is True
+
+
+
+def test_singular_values_return_sympy_column_matrix_descending():
+    robot = dummy_robot(
+        sp.Matrix([
+            [3, 0],
+            [0, 1],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    values = singular_values(robot, [0, 0], task=("vx", "vy"))
+
+    assert isinstance(values, sp.MatrixBase)
+    assert values.shape == (2, 1)
+    assert float(values[0]) == pytest.approx(3.0)
+    assert float(values[1]) == pytest.approx(1.0)
+
+
+def test_singular_values_rectangular_length_is_min_dimension():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0, 0],
+            [0, 2, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ])
+    )
+
+    values = singular_values(robot, [0, 0, 0], task=("vx", "vy"))
+
+    assert values.shape == (2, 1)
+
+
+def test_analysis_resolves_symbolic_parameters():
+    length = sp.symbols("length", positive=True)
+    robot = dummy_robot(
+        sp.Matrix([
+            [length, 0],
+            [0, 2 * length],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    values = singular_values(
+        robot,
+        [0, 0],
+        task=("vx", "vy"),
+        parameters={length: 1.5},
+    )
+
+    assert_matrix_close(values, [3.0, 1.5])
+
+
+def test_analysis_rejects_unresolved_symbols():
+    length = sp.symbols("length", real=True)
+    robot = dummy_robot(
+        sp.Matrix([
+            [length],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ])
+    )
+
+    with pytest.raises(ValueError, match="unresolved symbols"):
+        singular_values(robot, [0], task=("vx",))
+
+
+def test_analysis_rejects_nonfinite_entries():
+    robot = dummy_robot(
+        sp.Matrix([
+            [sp.oo],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ])
+    )
+
+    with pytest.raises(ValueError, match="finite"):
+        singular_values(robot, [0], task=("vx",))
+
+
+@pytest.mark.parametrize("value", [0, -1, np.inf, np.nan])
+def test_rank_and_singularity_reject_invalid_explicit_tolerance(value):
+    robot = dummy_robot(sp.zeros(6, 1))
+
+    with pytest.raises(ValueError):
+        jacobian_rank(robot, [0], task=("vx",), tol=value)
+    with pytest.raises(ValueError):
+        is_singular(robot, [0], task=("vx",), tol=value)
+
+
+def test_rank_and_singularity_reject_boolean_tolerance():
+    robot = dummy_robot(sp.zeros(6, 1))
+
+    with pytest.raises(TypeError):
+        jacobian_rank(robot, [0], task=("vx",), tol=True)
+    with pytest.raises(TypeError):
+        is_singular(robot, [0], task=("vx",), tol=True)
+
+
+def test_explicit_rank_tolerance_changes_classification():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0],
+            [0, 1e-6],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    assert jacobian_rank(robot, [0, 0], task=("vx", "vy")) == 2
+    assert is_singular(robot, [0, 0], task=("vx", "vy")) is False
+
+    assert jacobian_rank(
+        robot,
+        [0, 0],
+        task=("vx", "vy"),
+        tol=1e-4,
+    ) == 1
+    assert is_singular(
+        robot,
+        [0, 0],
+        task=("vx", "vy"),
+        tol=1e-4,
+    ) is True
+
+
+def test_condition_number_full_rank_square():
+    robot = dummy_robot(
+        sp.Matrix([
+            [4, 0],
+            [0, 2],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    value = condition_number(robot, [0, 0], task=("vx", "vy"))
+
+    assert value == pytest.approx(2.0)
+
+
+def test_condition_number_rank_deficient_is_infinite():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0],
+            [2, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    assert math.isinf(
+        condition_number(robot, [0, 0], task=("vx", "vy"))
+    )
+
+
+def test_one_dimensional_task_has_condition_number_one_when_regular():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1e-8],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ])
+    )
+
+    assert jacobian_rank(robot, [0], task=("vx",)) == 1
+    assert is_singular(robot, [0], task=("vx",)) is False
+    assert condition_number(robot, [0], task=("vx",)) == pytest.approx(1.0)
+
+
+def test_one_dimensional_zero_task_is_singular():
+    robot = dummy_robot(sp.zeros(6, 1))
+
+    assert jacobian_rank(robot, [0], task=("vx",)) == 0
+    assert is_singular(robot, [0], task=("vx",)) is True
+    assert math.isinf(condition_number(robot, [0], task=("vx",)))
+
+
+def test_full_row_rank_redundant_jacobian_is_not_singular():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ])
+    )
+
+    assert jacobian_rank(robot, [0, 0, 0], task=("vx", "vy")) == 2
+    assert is_singular(robot, [0, 0, 0], task=("vx", "vy")) is False
+
+
+def test_full_column_rank_overdetermined_jacobian_is_not_singular():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    assert jacobian_rank(robot, [0, 0], task="linear") == 2
+    assert is_singular(robot, [0, 0], task="linear") is False
+    assert math.isfinite(condition_number(robot, [0, 0], task="linear"))
+
+
+def test_task_dependent_singularity_classification():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0],
+            [0, 1],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    assert is_singular(robot, [0, 0], task=("vx", "vy")) is False
+    assert is_singular(robot, [0, 0], task="twist") is True
+
+
+def test_zero_jacobian_analysis_contract():
+    robot = dummy_robot(sp.zeros(6, 2))
+
+    values = singular_values(robot, [0, 0], task=("vx", "vy"))
+
+    assert_matrix_close(values, [0, 0])
+    assert jacobian_rank(robot, [0, 0], task=("vx", "vy")) == 0
+    assert is_singular(robot, [0, 0], task=("vx", "vy")) is True
+    assert math.isinf(
+        condition_number(robot, [0, 0], task=("vx", "vy"))
+    )
+    assert manipulability(
+        robot,
+        [0, 0],
+        task=("vx", "vy"),
+    ) == 0.0
+
+
+def test_manipulability_requires_explicit_task():
+    robot = dummy_robot(sp.zeros(6, 1))
+
+    with pytest.raises(TypeError):
+        manipulability(robot, [0])
+
+
+def test_manipulability_product_of_singular_values():
+    robot = dummy_robot(
+        sp.Matrix([
+            [3, 0],
+            [0, 2],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    value = manipulability(robot, [0, 0], task=("vx", "vy"))
+
+    assert value == pytest.approx(6.0)
+
+
+def test_manipulability_rank_deficient_is_exact_zero():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0],
+            [2, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    assert manipulability(
+        robot,
+        [0, 0],
+        task=("vx", "vy"),
+    ) == 0.0
+
+
+def test_manipulability_m_greater_than_n_is_zero_even_if_not_singular():
+    robot = dummy_robot(
+        sp.Matrix([
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ])
+    )
+
+    assert is_singular(robot, [0, 0], task="linear") is False
+    assert manipulability(robot, [0, 0], task="linear") == 0.0
+
+
+def test_one_dimensional_manipulability_equals_singular_value():
+    robot = dummy_robot(
+        sp.Matrix([
+            [0.25],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ])
+    )
+
+    assert condition_number(robot, [0], task=("vx",)) == pytest.approx(1.0)
+    assert manipulability(robot, [0], task=("vx",)) == pytest.approx(0.25)
+
+
+def test_planar_2r_manipulability_matches_analytical_expression():
+    robot = Robot(
+        (l1, 0, 0, q1, "r"),
+        (l2, 0, 0, q2, "r"),
+    )
+    parameters = {l1: 2.0, l2: 3.0}
+
+    singular = manipulability(
+        robot,
+        [0, 0],
+        task=("vx", "vy"),
+        parameters=parameters,
+    )
+    regular = manipulability(
+        robot,
+        [0, sp.pi / 2],
+        task=("vx", "vy"),
+        parameters=parameters,
+    )
+
+    assert singular == 0.0
+    assert regular == pytest.approx(6.0, abs=1e-10)
+
+
+def test_planar_2r_condition_number_grows_near_singularity():
+    robot = Robot(
+        (1, 0, 0, q1, "r"),
+        (1, 0, 0, q2, "r"),
+    )
+
+    regular = condition_number(
+        robot,
+        [0, sp.pi / 2],
+        task=("vx", "vy"),
+    )
+    near = condition_number(
+        robot,
+        [0, 1e-4],
+        task=("vx", "vy"),
+    )
+
+    assert near > regular
+
+
+def test_revolute_prismatic_manipulability_is_finite():
+    robot = Robot(
+        (0, 0, q1, 0, "p"),
+        (0, 0, 0, q2, "r"),
+    )
+
+    value = manipulability(
+        robot,
+        [1, 0],
+        task=("vz", "wz"),
+    )
+
+    assert math.isfinite(value)
+    assert value >= 0.0
+
+
+def test_analysis_task_order_is_supported():
+    robot = dummy_robot(
+        sp.Matrix([
+            [2],
+            [0],
+            [0],
+            [0],
+            [0],
+            [3],
+        ])
+    )
+
+    values = singular_values(
+        robot,
+        [0],
+        task=("wz", "vx"),
+    )
+
+    assert values.shape == (1, 1)
+    assert float(values[0]) == pytest.approx(math.sqrt(13))
