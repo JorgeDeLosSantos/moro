@@ -813,3 +813,89 @@ def test_frame_data_copies_input_matrix():
     T[0, 3] = 10.0
 
     assert frame.position[0] == 0.0
+
+
+def test_robot_visualizer_plot_accepts_joint_vector(simple_robot):
+    robot, _, _ = simple_robot
+    viz = RobotVisualizer(robot)
+
+    fig, ax = viz.plot([0.25, -0.1], backend="matplotlib")
+
+    assert isinstance(fig, Figure)
+    assert ax.name == "3d"
+    plt.close(fig)
+
+
+def test_robot_visualizer_animate_accepts_joint_matrix(simple_robot):
+    robot, _, _ = simple_robot
+    viz = RobotVisualizer(robot)
+
+    q = np.array([
+        [0.0, 0.0],
+        [0.2, -0.1],
+        [0.4, -0.2],
+    ])
+
+    anim = viz.animate(q, backend="matplotlib")
+
+    assert isinstance(anim, FuncAnimation)
+    anim._draw_was_started = True
+
+
+def test_robot_visualizer_animate_accepts_joint_vector_sequence(simple_robot):
+    robot, _, _ = simple_robot
+    viz = RobotVisualizer(robot)
+
+    result = viz.animate(
+        [[0.0, 0.0], [0.2, -0.1]],
+        backend="threejs",
+    )
+
+    assert isinstance(result, HTML)
+
+
+def test_robot_visualizer_preserves_mapping_input(simple_robot):
+    robot, q1, q2 = simple_robot
+    viz = RobotVisualizer(robot)
+
+    fig, ax = viz.plot({q1: 0.1, q2: -0.2}, backend="matplotlib")
+
+    assert isinstance(fig, Figure)
+    assert ax.name == "3d"
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        [0.1],
+        [0.1, 0.2, 0.3],
+        [0.1, np.nan],
+        [0.1, np.inf],
+        [0.1, 0.2 + 0.1j],
+    ],
+)
+def test_robot_visualizer_plot_rejects_invalid_joint_vector(simple_robot, values):
+    robot, _, _ = simple_robot
+    viz = RobotVisualizer(robot)
+
+    with pytest.raises(ValueError):
+        viz.plot(values)
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        np.array([[0.0], [0.1]]),
+        np.array([[0.0, 0.0, 0.0]]),
+        np.array([[0.0, np.nan]]),
+        np.array([0.0, 0.1]),
+        np.empty((0, 2)),
+    ],
+)
+def test_robot_visualizer_animate_rejects_invalid_joint_matrix(simple_robot, values):
+    robot, _, _ = simple_robot
+    viz = RobotVisualizer(robot)
+
+    with pytest.raises(ValueError):
+        viz.animate(values)
