@@ -115,7 +115,7 @@ Build the numerical analysis API on the task-Jacobian conventions introduced in 
 
 Keeping this immediately after differential kinematics minimizes duplicated numerical-Jacobian logic and allows singular/near-singular behavior to be tested together with velocity IK.
 
-### 4. Full-pose inverse kinematics
+### 4. Full-pose inverse kinematics — complete
 
 Extend `inverse_kinematics.py` with `solve_pose_ik()` and `PoseIKSolution` after the rotation-vector and HTM-validation primitives are stable.
 
@@ -415,6 +415,6 @@ The next phase is implementation in the accepted sequence:
       -> 0.5-E -> 0.5-F -> 0.5-G -> 0.5-H
 ```
 
-**0.5-A, 0.5-B, and 0.5-C are complete.** Implementation now proceeds with **0.5-D: full-pose inverse kinematics**.
+**0.5-A, 0.5-B, 0.5-C, and 0.5-D are complete.** Implementation now proceeds with **0.5-E: trajectory generation**.
 
 Detailed-design documents are the normative source for numerical tolerances, dataclass invariants, validation semantics, private-helper direction, caching/compilation policy, and exact result contracts. Any implementation-driven contract revision should first be recorded there rather than introduced silently.
