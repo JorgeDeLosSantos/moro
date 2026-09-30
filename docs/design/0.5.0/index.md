@@ -18,7 +18,7 @@ Implementation should now proceed against these documents. Scope or contract cha
 | 0.5-B | Differential kinematics | [differential-kinematics.md](differential-kinematics.md) | Implemented |
 | 0.5-C | Singularities and manipulability | [singularities-manipulability.md](singularities-manipulability.md) | Implemented |
 | 0.5-D | Full-pose inverse kinematics | [inverse-kinematics.md](inverse-kinematics.md) | Implemented |
-| 0.5-E | Trajectory generation | [trajectory.md](trajectory.md) | Complete |
+| 0.5-E | Trajectory generation | [trajectory.md](trajectory.md) | Implemented |
 | 0.5-F | Numerical dynamics and simulation | [dynamics.md](dynamics.md) | Complete |
 | 0.5-G | Workspace sampling | [workspace.md](workspace.md) | Complete |
 | 0.5-H | Integration, documentation, and release hardening | Cross-cutting | Begins after functional increments |
@@ -151,4 +151,4 @@ If implementation evidence reveals that a detailed-design decision is impractica
 
 The Moro 0.5.0 functional design phase is closed.
 
-Implementation is underway. **0.5-A**, **0.5-B**, **0.5-C**, and **0.5-D** are complete; the next active increment is **0.5-E: trajectory generation**.
+Implementation is underway. **0.5-A**, **0.5-B**, **0.5-C**, **0.5-D**, and **0.5-E** are complete; the next active increment is **0.5-F: numerical dynamics / simulation**.
