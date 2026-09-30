@@ -9,6 +9,9 @@ from moro.trajectory import (
     joint_trajectory,
     position_trajectory,
 )
+from moro.core import Robot
+from moro.abc import q1, q2
+from moro.inverse_kinematics import solve_position_trajectory
 
 
 class TestJointTrajectoryResult:
@@ -381,3 +384,53 @@ def test_multidof_constant_coordinate_remains_constant():
     np.testing.assert_allclose(traj.q[:, 1], 2.0)
     np.testing.assert_allclose(traj.qd[:, 1], 0.0, atol=1e-12)
     np.testing.assert_allclose(traj.qdd[:, 1], 0.0, atol=1e-12)
+
+
+
+def test_position_trajectory_integrates_with_position_ik():
+    robot = Robot(
+        (1.0, 0, 0, q1, "r"),
+        (1.0, 0, 0, q2, "r"),
+    )
+
+    q_start = [0.4, 0.5]
+    q_end = [0.6, 0.3]
+
+    def position(q):
+        return np.asarray(
+            robot.T[:3, 3].subs(dict(zip(robot.qs, q))),
+            dtype=float,
+        ).reshape(3)
+
+    p0 = position(q_start)
+    pf = position(q_end)
+
+    cart = position_trajectory(
+        p0,
+        pf,
+        np.linspace(0.0, 1.0, 7),
+        method="quintic",
+    )
+
+    ik = solve_position_trajectory(
+        robot,
+        cart.p,
+        q0=q_start,
+        method="lm",
+        tol=1e-8,
+        max_iter=200,
+    )
+
+    assert ik.converged is True
+    assert len(ik.qs) == cart.samples
+
+
+def test_joint_trajectory_q_is_visualization_compatible_shape():
+    traj = joint_trajectory(
+        [0.0, 0.0, 0.0],
+        [0.5, -0.25, 1.0],
+        np.linspace(0.0, 2.0, 21),
+    )
+
+    assert traj.q.shape == (traj.samples, traj.dof)
+    assert traj.q.shape == (21, 3)
