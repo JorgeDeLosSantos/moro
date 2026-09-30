@@ -123,7 +123,7 @@ The main integration point to verify is mathematical compatibility between the c
 
 This increment should preserve position-only IK and keep CCD position-only.
 
-### 5. Trajectory generation
+### 5. Trajectory generation — complete
 
 Introduce `moro/trajectory.py` with independent point-to-point trajectory generation:
 
@@ -415,6 +415,6 @@ The next phase is implementation in the accepted sequence:
       -> 0.5-E -> 0.5-F -> 0.5-G -> 0.5-H
 ```
 
-**0.5-A, 0.5-B, 0.5-C, and 0.5-D are complete.** Implementation now proceeds with **0.5-E: trajectory generation**.
+**0.5-A, 0.5-B, 0.5-C, 0.5-D, and 0.5-E are complete.** Implementation now proceeds with **0.5-F: numerical dynamics / simulation**.
 
 Detailed-design documents are the normative source for numerical tolerances, dataclass invariants, validation semantics, private-helper direction, caching/compilation policy, and exact result contracts. Any implementation-driven contract revision should first be recorded there rather than introduced silently.
