@@ -26,6 +26,7 @@ keywords = [
 dependencies = [
     "sympy",
     "matplotlib",
+    "scipy",
 ]
 
 classifiers = [
