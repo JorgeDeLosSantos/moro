@@ -8,14 +8,17 @@ import numpy as np
 from numbers import Integral, Real
 from dataclasses import dataclass
 from typing import Optional
-from sympy import lambdify
+from sympy import Matrix, lambdify
 from moro.util import is_position_vector
+from moro.transformations import is_homogeneous_transform, rot2rotvec
 
 __all__ = [
     "solve_position_ik",
     "solve_position_trajectory",
+    "solve_pose_ik",
     "IKSolution",
     "IKTrajectorySolution",
+    "PoseIKSolution",
 ]
 
 # --- Outcome Messages ---
@@ -23,6 +26,7 @@ MSG_CONVERGED = "Converged successfully."
 MSG_MAX_ITER = "Maximum number of iterations reached."
 MSG_STAGNATED_STEP = "Solver stagnated because the joint update became too small."
 MSG_STAGNATED_ERROR = "Solver stagnated because the position error stopped improving."
+MSG_STAGNATED_POSE_ERROR = "Solver stagnated because the pose error stopped improving."
 MSG_NUMERICAL_FK = "Numerical failure while evaluating the forward kinematics."
 MSG_NUMERICAL_JACOBIAN = "Numerical failure while evaluating the Jacobian."
 MSG_NUMERICAL_UPDATE = "Numerical failure while computing the joint update."
@@ -99,6 +103,124 @@ class IKSolution:
             f"IKSolution(q={self.q}, {status}, "
             f"method={self.method}, iters={self.iterations}, "
             f"error={self.error:.2e})"
+        )
+
+
+@dataclass
+class PoseIKSolution:
+    """Represents the result of a full-pose inverse kinematics solve."""
+
+    q: list
+    converged: bool
+    iterations: int
+    position_error: float
+    orientation_error: float
+    method: str = "lm"
+    position_residual: Optional[list] = None
+    orientation_residual: Optional[list] = None
+    target_pose: Optional[Matrix] = None
+    achieved_pose: Optional[Matrix] = None
+    message: str = ""
+
+    def __post_init__(self):
+        self.q = list(self.q) if hasattr(self.q, "__iter__") else [self.q]
+        self.converged = bool(self.converged)
+        self.iterations = int(self.iterations)
+        self.position_error = float(self.position_error)
+        self.orientation_error = float(self.orientation_error)
+        self.method = str(self.method)
+        self.message = str(self.message)
+
+        if self.iterations < 0:
+            raise ValueError("iterations must be >= 0.")
+        if self.position_error < 0 or self.orientation_error < 0:
+            raise ValueError("Pose IK errors must be non-negative.")
+        if self.method not in ("newton", "lm"):
+            raise ValueError("method must be either 'newton' or 'lm'.")
+
+        self.position_residual = self._normalize_residual(
+            self.position_residual, "position_residual"
+        )
+        self.orientation_residual = self._normalize_residual(
+            self.orientation_residual, "orientation_residual"
+        )
+        self.target_pose = self._normalize_pose(self.target_pose, "target_pose")
+        self.achieved_pose = self._normalize_pose(
+            self.achieved_pose, "achieved_pose"
+        )
+
+        if self.position_residual is not None:
+            expected = float(np.linalg.norm(self.position_residual))
+            if not np.isclose(self.position_error, expected, rtol=1e-10, atol=1e-12):
+                raise ValueError(
+                    "position_error must equal norm(position_residual)."
+                )
+        if self.orientation_residual is not None:
+            expected = float(np.linalg.norm(self.orientation_residual))
+            if not np.isclose(self.orientation_error, expected, rtol=1e-10, atol=1e-12):
+                raise ValueError(
+                    "orientation_error must equal norm(orientation_residual)."
+                )
+
+        if self.converged:
+            if not _is_finite_array(self.q):
+                raise ValueError(
+                    "A converged PoseIKSolution requires finite joint values."
+                )
+            if not (
+                np.isfinite(self.position_error)
+                and np.isfinite(self.orientation_error)
+            ):
+                raise ValueError(
+                    "A converged PoseIKSolution requires finite errors."
+                )
+            if self.position_residual is None or self.orientation_residual is None:
+                raise ValueError(
+                    "A converged PoseIKSolution requires both residual vectors."
+                )
+            if self.target_pose is None or self.achieved_pose is None:
+                raise ValueError(
+                    "A converged PoseIKSolution requires target and achieved poses."
+                )
+
+    @staticmethod
+    def _normalize_residual(value, name):
+        if value is None:
+            return None
+        try:
+            arr = np.asarray(value, dtype=float).reshape(-1)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name} must be a finite 3-element vector.") from exc
+        if arr.size != 3 or not _is_finite_array(arr):
+            raise ValueError(f"{name} must be a finite 3-element vector.")
+        return arr.tolist()
+
+    @staticmethod
+    def _normalize_pose(value, name):
+        if value is None:
+            return None
+        try:
+            pose = Matrix(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name} must be a numerical 4x4 matrix.") from exc
+        if pose.shape != (4, 4):
+            raise ValueError(f"{name} must have shape (4, 4).")
+        try:
+            arr = np.asarray(pose, dtype=float)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name} must contain real numerical values.") from exc
+        if not _is_finite_array(arr):
+            raise ValueError(f"{name} must contain only finite values.")
+        if is_homogeneous_transform(pose) is not True:
+            raise ValueError(f"{name} must be a valid homogeneous transform.")
+        return pose
+
+    def __repr__(self):
+        status = "Converged" if self.converged else "Did not converge"
+        return (
+            f"PoseIKSolution(q={self.q}, {status}, method={self.method}, "
+            f"iters={self.iterations}, position_error={self.position_error:.2e}, "
+            f"orientation_error={self.orientation_error:.2e})"
         )
 
 
@@ -622,7 +744,425 @@ def _failure_solution(q, iterations, method, message, target=None, position=None
     )
 
 
+def _validate_positive_numeric_scalar(value, name):
+    """Validate a positive finite real scalar accepted by pose IK."""
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be a finite positive real scalar.")
+    try:
+        arr = np.asarray(value)
+    except Exception as exc:
+        raise ValueError(f"{name} must be a finite positive real scalar.") from exc
+    if arr.ndim != 0:
+        raise ValueError(f"{name} must be a finite positive real scalar.")
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be a finite positive real scalar.") from exc
+    if not np.isfinite(numeric) or numeric <= 0:
+        raise ValueError(f"{name} must be a finite positive real scalar greater than 0.")
+    return numeric
+
+
+def _validate_pose_solver_options(
+    method,
+    position_weight,
+    orientation_weight,
+    position_tol,
+    orientation_tol,
+    max_iter,
+    damping,
+    damping_scale,
+):
+    """Validate full-pose IK method and scalar options."""
+    if method == "ccd":
+        raise ValueError("CCD is position-only and is not supported for full-pose IK.")
+    if method not in ("newton", "lm"):
+        raise ValueError(
+            f"Unknown method '{method}'. Choose 'newton' or 'lm'."
+        )
+
+    position_weight = _validate_positive_numeric_scalar(
+        position_weight, "position_weight"
+    )
+    orientation_weight = _validate_positive_numeric_scalar(
+        orientation_weight, "orientation_weight"
+    )
+    position_tol = _validate_positive_numeric_scalar(position_tol, "position_tol")
+    orientation_tol = _validate_positive_numeric_scalar(
+        orientation_tol, "orientation_tol"
+    )
+
+    if max_iter is None:
+        max_iter = 100
+    elif isinstance(max_iter, bool) or not isinstance(max_iter, Integral):
+        raise ValueError("max_iter must be a positive integer.")
+    elif int(max_iter) <= 0:
+        raise ValueError("max_iter must satisfy max_iter > 0.")
+    else:
+        max_iter = int(max_iter)
+
+    damping = _validate_positive_numeric_scalar(damping, "damping")
+    damping_scale = _validate_positive_numeric_scalar(
+        damping_scale, "damping_scale"
+    )
+    if not (0 < damping_scale < 1):
+        raise ValueError("damping_scale must satisfy 0 < damping_scale < 1.")
+
+    return (
+        position_weight,
+        orientation_weight,
+        position_tol,
+        orientation_tol,
+        max_iter,
+        damping,
+        damping_scale,
+    )
+
+
+def _prepare_pose_target(target):
+    """Validate a numerical SE(3) target and return SymPy/NumPy forms."""
+    try:
+        target_pose = Matrix(target)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("target must be convertible to a numerical 4x4 matrix.") from exc
+
+    if target_pose.shape != (4, 4):
+        raise ValueError("target must have shape (4, 4).")
+    if target_pose.free_symbols:
+        raise ValueError("target must be numerical and cannot contain free symbols.")
+
+    try:
+        target_num = np.asarray(target_pose, dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("target must contain real numerical values.") from exc
+    if not _is_finite_array(target_num):
+        raise ValueError("target must contain only finite values.")
+    if is_homogeneous_transform(target_pose) is not True:
+        raise ValueError("target must be a valid homogeneous transformation in SE(3).")
+
+    return target_pose, target_num
+
+
+def _safe_eval_pose(func, q):
+    """Evaluate forward kinematics as a finite numerical 4x4 pose."""
+    try:
+        pose = np.asarray(func(*q), dtype=float)
+    except Exception:
+        return None
+    if pose.shape != (4, 4) or not _is_finite_array(pose):
+        return None
+    return pose
+
+
+def _safe_eval_pose_jacobian(func, q, n):
+    """Evaluate the geometric Jacobian as a finite (6, n) array."""
+    try:
+        j_val = np.asarray(func(*q), dtype=float)
+    except Exception:
+        return None
+    if j_val.ndim == 1:
+        if j_val.size != 6 * n:
+            return None
+        j_val = j_val.reshape(6, n)
+    if j_val.shape != (6, n) or not _is_finite_array(j_val):
+        return None
+    return j_val
+
+
+def _orientation_residual(R_target, R_current):
+    """Return base-frame principal rotation-vector residual or None."""
+    try:
+        R_error = np.asarray(R_target, dtype=float) @ np.asarray(R_current, dtype=float).T
+        residual = rot2rotvec(Matrix(R_error))
+        vec = np.asarray(residual, dtype=float).reshape(-1)
+    except Exception:
+        return None
+    if vec.size != 3 or not _is_finite_array(vec):
+        return None
+    return vec
+
+
+def _evaluate_pose_state(
+    fk_func,
+    q,
+    target_num,
+    position_weight,
+    orientation_weight,
+):
+    """Evaluate pose residuals and weighted merit at q, or return None."""
+    pose = _safe_eval_pose(fk_func, q)
+    if pose is None:
+        return None
+
+    position_residual = target_num[:3, 3] - pose[:3, 3]
+    orientation_residual = _orientation_residual(
+        target_num[:3, :3], pose[:3, :3]
+    )
+    if orientation_residual is None or not _is_finite_array(position_residual):
+        return None
+
+    position_error = float(np.linalg.norm(position_residual))
+    orientation_error = float(np.linalg.norm(orientation_residual))
+    weighted_residual = np.concatenate((
+        position_weight * position_residual,
+        orientation_weight * orientation_residual,
+    ))
+    weighted_error = float(np.linalg.norm(weighted_residual))
+
+    if not (
+        np.isfinite(position_error)
+        and np.isfinite(orientation_error)
+        and np.isfinite(weighted_error)
+        and _is_finite_array(weighted_residual)
+    ):
+        return None
+
+    return {
+        "pose": pose,
+        "position_residual": position_residual,
+        "orientation_residual": orientation_residual,
+        "position_error": position_error,
+        "orientation_error": orientation_error,
+        "weighted_residual": weighted_residual,
+        "weighted_error": weighted_error,
+    }
+
+
+def _compute_ik_step(J, residual, *, method, damping):
+    """Compute one Newton/pseudoinverse or LM joint update."""
+    rows, n = J.shape
+    if method == "newton":
+        if rows == n:
+            try:
+                dq = np.linalg.solve(J, residual)
+            except np.linalg.LinAlgError:
+                dq = np.linalg.pinv(J) @ residual
+        else:
+            dq = np.linalg.pinv(J) @ residual
+    else:
+        hessian = J.T @ J
+        h_reg = hessian + damping**2 * np.eye(n)
+        try:
+            dq = np.linalg.solve(h_reg, J.T @ residual)
+        except np.linalg.LinAlgError:
+            dq = np.linalg.pinv(J) @ residual
+    return np.asarray(dq, dtype=float).reshape(-1)
+
+
+def _make_pose_solution(
+    q,
+    converged,
+    iterations,
+    method,
+    target_pose,
+    *,
+    state=None,
+    message="",
+):
+    """Build a consistent PoseIKSolution from a final evaluated state."""
+    q_safe = np.asarray(q, dtype=float).reshape(-1)
+    if not _is_finite_array(q_safe):
+        raise ValueError("Cannot build PoseIKSolution with non-finite joint values.")
+
+    if state is None:
+        return PoseIKSolution(
+            q=q_safe.tolist(),
+            converged=False,
+            iterations=iterations,
+            position_error=np.inf,
+            orientation_error=np.inf,
+            method=method,
+            position_residual=None,
+            orientation_residual=None,
+            target_pose=target_pose,
+            achieved_pose=None,
+            message=message,
+        )
+
+    return PoseIKSolution(
+        q=q_safe.tolist(),
+        converged=converged,
+        iterations=iterations,
+        position_error=state["position_error"],
+        orientation_error=state["orientation_error"],
+        method=method,
+        position_residual=state["position_residual"].tolist(),
+        orientation_residual=state["orientation_residual"].tolist(),
+        target_pose=target_pose,
+        achieved_pose=Matrix(state["pose"]),
+        message=message,
+    )
+
+
 # --- Solver Routines ---
+def _solve_pose_jacobian(
+    fk_func,
+    j_func,
+    target_pose,
+    target_num,
+    q,
+    lower_bounds,
+    upper_bounds,
+    method,
+    position_weight,
+    orientation_weight,
+    position_tol,
+    orientation_tol,
+    max_iter,
+    damping,
+    damping_scale,
+    step_tol,
+    error_change_tol,
+    stagnation_iterations,
+):
+    """Solve full-pose IK with Newton/pseudoinverse or LM updates."""
+    n = q.size
+    completed_steps = 0
+    stalled_by_step = 0
+    stalled_by_error = 0
+
+    state = _evaluate_pose_state(
+        fk_func, q, target_num, position_weight, orientation_weight
+    )
+    if state is None:
+        raise ValueError(
+            "Cannot evaluate a finite end-effector pose with the provided inputs. "
+            "Check q0 and parameters."
+        )
+
+    if (
+        state["position_error"] <= position_tol
+        and state["orientation_error"] <= orientation_tol
+    ):
+        return _make_pose_solution(
+            q, True, 0, method, target_pose, state=state, message=MSG_CONVERGED
+        )
+
+    lam = damping
+
+    for _ in range(max_iter):
+        j_val = _safe_eval_pose_jacobian(j_func, q, n)
+        if j_val is None:
+            return _make_pose_solution(
+                q, False, completed_steps, method, target_pose,
+                state=state, message=MSG_NUMERICAL_JACOBIAN
+            )
+
+        weighted_jacobian = np.vstack((
+            position_weight * j_val[:3, :],
+            orientation_weight * j_val[3:, :],
+        ))
+
+        try:
+            dq = _compute_ik_step(
+                weighted_jacobian,
+                state["weighted_residual"],
+                method=method,
+                damping=lam,
+            )
+        except (np.linalg.LinAlgError, ValueError, TypeError, FloatingPointError):
+            return _make_pose_solution(
+                q, False, completed_steps, method, target_pose,
+                state=state, message=MSG_NUMERICAL_UPDATE
+            )
+
+        if dq.size != n or not _is_finite_array(dq):
+            return _make_pose_solution(
+                q, False, completed_steps, method, target_pose,
+                state=state, message=MSG_NUMERICAL_UPDATE
+            )
+
+        q_trial = np.clip(q + dq, lower_bounds, upper_bounds)
+        if not _is_finite_array(q_trial):
+            return _make_pose_solution(
+                q, False, completed_steps, method, target_pose,
+                state=state, message=MSG_NUMERICAL_UPDATE
+            )
+
+        trial_state = _evaluate_pose_state(
+            fk_func, q_trial, target_num, position_weight, orientation_weight
+        )
+        if trial_state is None:
+            return _make_pose_solution(
+                q, False, completed_steps, method, target_pose,
+                state=state, message=MSG_NUMERICAL_FK
+            )
+
+        previous_weighted_error = state["weighted_error"]
+        accepted_step = True
+        if method == "lm":
+            if trial_state["weighted_error"] < state["weighted_error"]:
+                lam *= damping_scale
+                q_next = q_trial
+                next_state = trial_state
+            else:
+                lam /= damping_scale
+                accepted_step = False
+                q_next = q
+                next_state = state
+
+            if not np.isfinite(lam) or lam <= 0:
+                return _make_pose_solution(
+                    q, False, completed_steps, method, target_pose,
+                    state=state, message=MSG_NUMERICAL_UPDATE
+                )
+        else:
+            q_next = q_trial
+            next_state = trial_state
+
+        step_norm = float(np.linalg.norm(q_next - q))
+        if not np.isfinite(step_norm):
+            return _make_pose_solution(
+                q, False, completed_steps, method, target_pose,
+                state=state, message=MSG_NUMERICAL_UPDATE
+            )
+
+        completed_steps += 1
+
+        not_converged_next = not (
+            next_state["position_error"] <= position_tol
+            and next_state["orientation_error"] <= orientation_tol
+        )
+        if step_tol > 0 and step_norm <= step_tol and not_converged_next:
+            stalled_by_step += 1
+        else:
+            stalled_by_step = 0
+
+        improvement = previous_weighted_error - next_state["weighted_error"]
+        if improvement <= error_change_tol:
+            stalled_by_error += 1
+        else:
+            stalled_by_error = 0
+
+        q = q_next
+        state = next_state
+
+        if not not_converged_next:
+            return _make_pose_solution(
+                q, True, completed_steps, method, target_pose,
+                state=state, message=MSG_CONVERGED
+            )
+
+        if (
+            stalled_by_step >= stagnation_iterations
+            and (method != "lm" or accepted_step or stagnation_iterations > 1)
+        ):
+            return _make_pose_solution(
+                q, False, completed_steps, method, target_pose,
+                state=state, message=MSG_STAGNATED_STEP
+            )
+
+        if stalled_by_error >= stagnation_iterations:
+            return _make_pose_solution(
+                q, False, completed_steps, method, target_pose,
+                state=state, message=MSG_STAGNATED_POSE_ERROR
+            )
+
+    return _make_pose_solution(
+        q, False, max_iter, method, target_pose, state=state, message=MSG_MAX_ITER
+    )
+
+
 def _solve_newton_or_lm(
     fk_func,
     j_func,
@@ -690,23 +1230,22 @@ def _solve_newton_or_lm(
                 position=p_current,
             )
 
-        if method == "newton":
-            if n == 3:
-                try:
-                    dq = np.linalg.solve(j_val, error_vec)
-                except np.linalg.LinAlgError:
-                    dq = np.linalg.pinv(j_val) @ error_vec
-            else:
-                dq = np.linalg.pinv(j_val) @ error_vec
-        else:
-            hessian = j_val.T @ j_val
-            h_reg = hessian + lam**2 * np.eye(n)
-            try:
-                dq = np.linalg.solve(h_reg, j_val.T @ error_vec)
-            except np.linalg.LinAlgError:
-                dq = np.linalg.pinv(j_val) @ error_vec
-
-        dq = np.asarray(dq, dtype=float).reshape(-1)
+        try:
+            dq = _compute_ik_step(
+                j_val,
+                error_vec,
+                method=method,
+                damping=lam,
+            )
+        except (np.linalg.LinAlgError, ValueError, TypeError, FloatingPointError):
+            return _failure_solution(
+                q,
+                completed_steps,
+                method,
+                MSG_NUMERICAL_UPDATE,
+                target=target,
+                position=p_current,
+            )
         if dq.size != n or not _is_finite_array(dq):
             return _failure_solution(
                 q,
@@ -1459,6 +1998,130 @@ def solve_position_ik(
         tol,
         max_iter,
         method,
+        damping,
+        damping_scale,
+        step_tol,
+        error_change_tol,
+        stagnation_iterations,
+    )
+
+
+def solve_pose_ik(
+    robot,
+    target,
+    q0=None,
+    *,
+    method="lm",
+    position_weight=1.0,
+    orientation_weight=1.0,
+    position_tol=1e-6,
+    orientation_tol=1e-6,
+    joint_limits=None,
+    parameters=None,
+    max_iter=None,
+    damping=1.0,
+    damping_scale=0.5,
+    random_state=None,
+    step_tol=1e-12,
+    error_change_tol=1e-12,
+    stagnation_iterations=5,
+):
+    """Solve numerical full-pose inverse kinematics for an SE(3) target.
+
+    The pose residual combines base-frame position error with the principal
+    rotation vector of ``R_target @ R_current.T``. Positive scalar weights
+    influence the numerical optimization, while convergence is determined by
+    independent position and orientation tolerances.
+
+    Parameters
+    ----------
+    robot : Robot
+        Serial manipulator model.
+    target : matrix-like
+        Numerical 4x4 homogeneous transformation in SE(3).
+    q0 : vector-like, optional
+        Initial joint configuration. Values outside joint limits are clipped.
+    method : {"lm", "newton"}, optional
+        Numerical pose-IK method. CCD is position-only.
+    position_weight, orientation_weight : positive real, optional
+        Scalar optimization weights applied consistently to residual/Jacobian.
+    position_tol : positive real, optional
+        Position convergence tolerance in robot linear units.
+    orientation_tol : positive real, optional
+        Orientation convergence tolerance in radians.
+    joint_limits : sequence, optional
+        Joint bounds using the same format as ``solve_position_ik``.
+    parameters : mapping, optional
+        Substitutions for symbolic robot-model parameters.
+    max_iter : int, optional
+        Maximum algorithm iterations. Default is 100.
+    damping : positive real, optional
+        Initial LM damping.
+    damping_scale : real in (0, 1), optional
+        LM damping adaptation factor.
+    random_state : None, int, or numpy.random.Generator, optional
+        Random initialization source when ``q0 is None``.
+    step_tol, error_change_tol : non-negative real, optional
+        Stagnation thresholds.
+    stagnation_iterations : int, optional
+        Consecutive stalled iterations required for stagnation termination.
+
+    Returns
+    -------
+    PoseIKSolution
+        Final joint state and separate position/orientation diagnostics.
+    """
+    (
+        position_weight,
+        orientation_weight,
+        position_tol,
+        orientation_tol,
+        max_iter,
+        damping,
+        damping_scale,
+    ) = _validate_pose_solver_options(
+        method,
+        position_weight,
+        orientation_weight,
+        position_tol,
+        orientation_tol,
+        max_iter,
+        damping,
+        damping_scale,
+    )
+    step_tol, error_change_tol, stagnation_iterations = _validate_stagnation_options(
+        step_tol, error_change_tol, stagnation_iterations
+    )
+
+    target_pose, target_num = _prepare_pose_target(target)
+    n = robot.dof
+    lower_bounds, upper_bounds = _prepare_joint_limits(robot, joint_limits)
+
+    sym_vars = tuple(robot.qs)
+    fk_sym = _apply_parameters(robot.T, parameters)
+    j_sym = _apply_parameters(robot.J, parameters)
+    _validate_free_symbols([fk_sym, j_sym], sym_vars)
+
+    fk_func = lambdify(sym_vars, fk_sym, modules="numpy")
+    j_func = lambdify(sym_vars, j_sym, modules="numpy")
+
+    rng = _prepare_rng(random_state)
+    q = _prepare_initial_guess(q0, n, lower_bounds, upper_bounds, rng)
+
+    return _solve_pose_jacobian(
+        fk_func,
+        j_func,
+        target_pose,
+        target_num,
+        q,
+        lower_bounds,
+        upper_bounds,
+        method,
+        position_weight,
+        orientation_weight,
+        position_tol,
+        orientation_tol,
+        max_iter,
         damping,
         damping_scale,
         step_tol,

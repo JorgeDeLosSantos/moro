@@ -1,6 +1,6 @@
 # Inverse Kinematics
 
-`moro` provides numerical solvers for **position inverse kinematics**.
+`moro` provides numerical solvers for **position inverse kinematics** and **full-pose inverse kinematics**.
 
 Given a desired Cartesian position for the end-effector,
 
@@ -15,7 +15,7 @@ $$
 
 the inverse-kinematics solver searches for a joint configuration $q$ such that the end-effector position is sufficiently close to the target.
 
-The current interface focuses on position only. Full-pose inverse kinematics, including end-effector orientation constraints, is not currently supported.
+Position IK remains fully supported, and Moro 0.5.0 also adds full-pose IK with a numerical SE(3) target.
 
 This section focuses on practical use of the inverse-kinematics API. For the mathematical background of the numerical methods, see **Theory → Inverse Kinematics**.
 
@@ -586,6 +586,86 @@ if solution.converged:
 else:
     print("IK failed:", solution.message)
 ```
+
+## Solving a full-pose target
+
+Use:
+
+```python
+from moro.inverse_kinematics import solve_pose_ik
+```
+
+The target is a numerical homogeneous transformation:
+
+```python
+target_pose = robot.T.subs(dict(zip(robot.qs, q_target))).evalf()
+```
+
+Solve with:
+
+```python
+solution = solve_pose_ik(
+    robot,
+    target_pose,
+    q0=[...],
+    method="lm",
+    position_tol=1e-8,
+    orientation_tol=1e-8,
+)
+```
+
+Full-pose IK uses the position residual
+
+$
+e_p=p_d-p(q)
+$
+
+and the base-frame orientation residual
+
+$
+e_R=\operatorname{Log}(R_dR(q)^T)^\vee.
+$
+
+The result is a `PoseIKSolution` exposing:
+
+```python
+solution.q
+solution.converged
+solution.iterations
+solution.position_error
+solution.orientation_error
+solution.position_residual
+solution.orientation_residual
+solution.target_pose
+solution.achieved_pose
+solution.message
+```
+
+Convergence requires **both**
+
+$
+\|e_p\|\le \texttt{position_tol}
+$
+
+and
+
+$
+\|e_R\|\le \texttt{orientation_tol}.
+$
+
+The optional `position_weight` and `orientation_weight` affect the numerical optimization path, but not the convergence definition.
+
+Supported full-pose methods are `"lm"` and `"newton"`. CCD remains position-only.
+
+A robot is not rejected just because it has fewer than six degrees of freedom. The solver attempts the requested pose and returns a normal non-converged result when the target is incompatible or blocked by joint limits.
+
+### Pose IK and joint limits
+
+Full-pose IK uses the same joint-limit format as position IK. Trial configurations are clipped before FK evaluation, and stagnation uses the effective post-clipping step.
+
+### Pose target format
+
+The target must be a valid numerical $4\times4$ homogeneous transformation in $SE(3)$. Euler angles, quaternions, axis-angle pairs, and rotation vectors should be converted explicitly with `moro.transformations` before calling `solve_pose_ik()`.
 
 ## Solving a position trajectory
 
