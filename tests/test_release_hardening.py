@@ -3,17 +3,21 @@
 from pathlib import Path
 import tomllib
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 import sympy as sp
 
 import moro
 from moro import version as version_module
-from moro.abc import q1
+from moro.abc import q1, q2
 from moro.core import Robot
 from moro.differential_kinematics import __all__ as differential_all
 from moro.dynamics import DynamicsSolution, __all__ as dynamics_all
-from moro.inverse_kinematics import __all__ as ik_all
+from moro.inverse_kinematics import (
+    __all__ as ik_all,
+    solve_position_ik,
+)
 from moro.trajectory import (
     JointTrajectory,
     PositionTrajectory,
@@ -25,7 +29,7 @@ from moro.transformations import (
     is_rotation_matrix,
 )
 from moro.util import is_SE3, is_SO3, ishtm, isrot
-from moro.visualization import __all__ as visualization_all
+from moro.visualization import RobotVisualizer, __all__ as visualization_all
 from moro.workspace import Workspace, __all__ as workspace_all
 
 
@@ -213,3 +217,44 @@ def test_cross_module_time_major_and_cartesian_shape_conventions():
     assert dynamics.q.shape == (2, 1)
     assert workspace.configurations.shape == (2, 1)
     assert workspace.points.shape == (2, 3)
+
+
+def test_position_ik_04_style_workflow_remains_compatible():
+    robot = Robot(
+        (1.0, 0, 0, q1, "r"),
+        (1.0, 0, 0, q2, "r"),
+    )
+    q_reference = [0.5, -0.7]
+    target = np.asarray(
+        robot.T[:3, 3].subs(dict(zip(robot.qs, q_reference))),
+        dtype=float,
+    ).reshape(3)
+
+    solution = solve_position_ik(
+        robot,
+        target,
+        q0=[0.4, -0.6],
+        method="lm",
+        tol=1e-9,
+        max_iter=100,
+    )
+
+    assert solution.converged is True
+    achieved = np.asarray(
+        robot.T[:3, 3].subs(dict(zip(robot.qs, solution.q))),
+        dtype=float,
+    ).reshape(3)
+    np.testing.assert_allclose(achieved, target, atol=1e-8)
+
+
+def test_mapping_based_visualization_04_style_workflow_remains_compatible():
+    robot = Robot(
+        (1.0, 0, 0, q1, "r"),
+        (1.0, 0, 0, q2, "r"),
+    )
+    viz = RobotVisualizer(robot)
+
+    fig, ax = viz.plot({q1: 0.2, q2: -0.1}, backend="matplotlib")
+
+    assert ax.figure is fig
+    plt.close(fig)
