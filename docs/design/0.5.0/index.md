@@ -20,8 +20,8 @@ Implementation should now proceed against these documents. Scope or contract cha
 | 0.5-D | Full-pose inverse kinematics | [inverse-kinematics.md](inverse-kinematics.md) | Implemented |
 | 0.5-E | Trajectory generation | [trajectory.md](trajectory.md) | Implemented |
 | 0.5-F | Numerical dynamics and simulation | [dynamics.md](dynamics.md) | Implemented |
-| 0.5-G | Workspace sampling | [workspace.md](workspace.md) | Complete |
-| 0.5-H | Integration, documentation, and release hardening | Cross-cutting | Begins after functional increments |
+| 0.5-G | Workspace sampling | [workspace.md](workspace.md) | Implemented |
+| 0.5-H | Integration, documentation, and release hardening | Cross-cutting | Active |
 
 ## Implementation sequence
 
@@ -149,6 +149,6 @@ If implementation evidence reveals that a detailed-design decision is impractica
 
 ## Planning state
 
-The Moro 0.5.0 functional design phase is closed.
+The Moro 0.5.0 functional implementation phase is complete for increments **0.5-A** through **0.5-G**.
 
-Implementation is underway. **0.5-A**, **0.5-B**, **0.5-C**, **0.5-D**, **0.5-E**, and **0.5-F** are complete; the next active increment is **0.5-G: workspace sampling**.
+The active increment is **0.5-H: integration, documentation, and release hardening**.
