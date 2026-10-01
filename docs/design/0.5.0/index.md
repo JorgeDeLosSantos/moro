@@ -2,7 +2,7 @@
 
 This directory contains the implementation-level design contracts for the accepted Moro 0.5.0 feature set.
 
-The roadmap in \`docs/roadmap/0.5.0/\` defines release scope, ordering, compatibility policy, and high-level completion criteria. The documents in this directory refine that roadmap into concrete public APIs, numerical conventions, invariants, validation behavior, internal architecture, tests, and examples.
+The roadmap in `docs/roadmap/0.5.0/` defines release scope, ordering, compatibility policy, and high-level completion criteria. The documents in this directory refine that roadmap into concrete public APIs, numerical conventions, invariants, validation behavior, internal architecture, tests, and examples.
 
 ## Status
 
@@ -19,7 +19,7 @@ Implementation should now proceed against these documents. Scope or contract cha
 | 0.5-C | Singularities and manipulability | [singularities-manipulability.md](singularities-manipulability.md) | Implemented |
 | 0.5-D | Full-pose inverse kinematics | [inverse-kinematics.md](inverse-kinematics.md) | Implemented |
 | 0.5-E | Trajectory generation | [trajectory.md](trajectory.md) | Implemented |
-| 0.5-F | Numerical dynamics and simulation | [dynamics.md](dynamics.md) | Complete |
+| 0.5-F | Numerical dynamics and simulation | [dynamics.md](dynamics.md) | Implemented |
 | 0.5-G | Workspace sampling | [workspace.md](workspace.md) | Complete |
 | 0.5-H | Integration, documentation, and release hardening | Cross-cutting | Begins after functional increments |
 
@@ -27,7 +27,7 @@ Implementation should now proceed against these documents. Scope or contract cha
 
 The preferred single-stream implementation order is:
 
-\`\`\`text
+```text
 0.5-A  transformations
    ↓
 0.5-B  differential kinematics
@@ -43,7 +43,7 @@ The preferred single-stream implementation order is:
 0.5-G  workspace
    ↓
 0.5-H  integration / release hardening
-\`\`\`
+```
 
 This order minimizes rework:
 
@@ -62,17 +62,17 @@ Several decisions span more than one feature and should remain consistent during
 
 Time-series outputs use time-major arrays:
 
-\`\`\`text
+```text
 (N, dof)
-\`\`\`
+```
 
 for joint trajectories and dynamic solutions.
 
 Cartesian sampled/trajectory positions use:
 
-\`\`\`text
+```text
 (N, 3)
-\`\`\`
+```
 
 including planar cases.
 
@@ -80,15 +80,15 @@ including planar cases.
 
 Differential-kinematics and pose-IK work uses:
 
-\`\`\`text
+```text
 (vx, vy, vz, wx, wy, wz)
-\`\`\`
+```
 
 as the canonical geometric-twist ordering.
 
 ### Symbolic versus numerical responsibilities
 
-\`Robot\` remains the main symbolic model.
+`Robot` remains the main symbolic model.
 
 New numerical layers evaluate or simulate that model without replacing its symbolic construction:
 
@@ -111,14 +111,14 @@ New 0.5.0 functionality is primarily module-oriented.
 
 Examples:
 
-\`\`\`python
+```python
 from moro.transformations import rot2rotvec
 from moro.differential_kinematics import solve_velocity_ik
 from moro.inverse_kinematics import solve_pose_ik
 from moro.trajectory import joint_trajectory
 from moro.dynamics import simulate
 from moro.workspace import sample_workspace
-\`\`\`
+```
 
 New helpers do not need automatic root-package re-export unless there is a specific compatibility or usability reason.
 
@@ -126,9 +126,9 @@ New helpers do not need automatic root-package re-export unless there is a speci
 
 The most important intentional 0.5.0 compatibility changes are:
 
-- \`Robot.dynamic_model()\` changes from per-joint Euler-Lagrange equations to the standard matrix-form dynamic model;
-- the former behavior moves to \`Robot.euler_lagrange_equations()\`;
-- \`Robot.dynamic_model_matrix_form()\` may remain temporarily as a deprecated alias;
+- `Robot.dynamic_model()` changes from per-joint Euler-Lagrange equations to the standard matrix-form dynamic model;
+- the former behavior moves to `Robot.euler_lagrange_equations()`;
+- `Robot.dynamic_model_matrix_form()` may remain temporarily as a deprecated alias;
 - descriptive rotation/HTM predicates supersede legacy transformation predicate names while preserving legacy Boolean behavior during deprecation;
 - SciPy becomes a required dependency because numerical dynamics and simulation are part of the main package.
 
@@ -151,4 +151,4 @@ If implementation evidence reveals that a detailed-design decision is impractica
 
 The Moro 0.5.0 functional design phase is closed.
 
-Implementation is underway. **0.5-A**, **0.5-B**, **0.5-C**, **0.5-D**, and **0.5-E** are complete; the next active increment is **0.5-F: numerical dynamics / simulation**.
+Implementation is underway. **0.5-A**, **0.5-B**, **0.5-C**, **0.5-D**, **0.5-E**, and **0.5-F** are complete; the next active increment is **0.5-G: workspace sampling**.
