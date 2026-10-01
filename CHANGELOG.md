@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+* New `moro.dynamics` module with `inverse_dynamics()`, `forward_dynamics()`, `state_derivative()`, `simulate()`, and `DynamicsSolution`.
+* Numerical forward dynamics based on `numpy.linalg.solve()` and time-domain simulation based on `scipy.integrate.solve_ivp`.
+* Support for zero, constant, time-varying, and state-feedback generalized-force inputs through the `tau` simulation interface.
+* Numerical simulation outputs with time-major `q`, `qd`, and dynamically reconstructed `qdd` arrays.
+
+### Changed
+
+* **Breaking:** `Robot.dynamic_model()` now returns the symbolic matrix manipulator equation `M(q) qdd + C(q, qd) qd + G(q) = tau`.
+* The previous per-joint Euler-Lagrange result of `dynamic_model()` is now provided by `Robot.euler_lagrange_equations()`.
+* `Robot.dynamic_model_matrix_form()` remains temporarily available as a deprecated alias of `dynamic_model()`.
+* SciPy is now a required dependency for numerical time integration.
+
 ## [0.4.0] - 2026-08-20
 
 ### Added
