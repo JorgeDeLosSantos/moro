@@ -27,6 +27,7 @@ benefit from symbolic kinematics and dynamics.
    user-guide/inverse-kinematics
    user-guide/trajectories
    user-guide/dynamics
+   user-guide/workspace
    user-guide/visualization
 
 
@@ -44,6 +45,7 @@ benefit from symbolic kinematics and dynamics.
    examples/singularity-manipulability
    examples/planar-2r-dynamics
    examples/numerical-dynamics
+   examples/workspace-sampling
 
 
 .. toctree::
@@ -66,6 +68,7 @@ benefit from symbolic kinematics and dynamics.
    theory/inverse-kinematics
    theory/trajectory-generation
    theory/dynamics
+   theory/workspace
 
 
 .. toctree::

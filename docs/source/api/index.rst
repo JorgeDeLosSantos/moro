@@ -16,4 +16,5 @@ and the other pages in the User Guide.
    inverse_kinematics
    trajectory
    dynamics
+   workspace
    visualization
