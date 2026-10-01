@@ -74,7 +74,6 @@ The implementation increments are identified as:
 0.5-H  integration, documentation, and release hardening
 ```
 
-
 The preferred implementation order for Moro 0.5.0 is the following.
 
 ### 1. Transformations and orientation foundations — complete
@@ -135,7 +134,7 @@ Introduce `moro/trajectory.py` with independent point-to-point trajectory genera
 
 This block has few dependencies and can be implemented without changing robot modeling. Its placement after the kinematic work makes it straightforward to demonstrate reuse with existing position-trajectory IK and visualization.
 
-### 6. Numerical dynamics and simulation
+### 6. Numerical dynamics and simulation — complete
 
 Implement the numerical dynamics layer after reviewing the symbolic dynamics API and its planned naming changes:
 
@@ -148,7 +147,7 @@ Implement the numerical dynamics layer after reviewing the symbolic dynamics API
 
 Numerical compilation/lambdification should be addressed early in this increment so that ODE integration does not rely on repeated symbolic substitution.
 
-### 7. Workspace sampling
+### 7. Workspace sampling — complete
 
 Implement the sampled reachable-workspace feature after the central kinematics/dynamics work:
 
@@ -161,7 +160,7 @@ Implement the sampled reachable-workspace feature after the central kinematics/d
 
 Workspace remains intentionally independent from manipulability/singularity maps.
 
-### 8. Integration, documentation, and release hardening
+### 8. Integration, documentation, and release hardening — active
 
 After all accepted functional increments are implemented:
 
@@ -246,10 +245,11 @@ Preferred usage for new capabilities is module-oriented, for example:
 
 ```python
 from moro.transformations import rot2quat, rot2rotvec
-from moro.inverse_kinematics import solve_pose
+from moro.inverse_kinematics import solve_pose_ik
 from moro.differential_kinematics import solve_velocity_ik
 from moro.trajectory import joint_trajectory
 from moro.dynamics import simulate
+from moro.workspace import sample_workspace
 ```
 
 This keeps the package root compact and avoids accumulating every public helper in `moro.__init__`.
@@ -398,23 +398,14 @@ Consider Moro 0.5.0 release-ready when:
 
 The accepted 0.5.0 scope intentionally excludes several natural follow-on capabilities so that the release remains focused. In particular, the release does not aim to introduce general motion planning, collision-aware IK, null-space secondary objectives, pose trajectories, SLERP, screw-theory/SE(3) utilities as a general subsystem, constrained/contact dynamics, controller classes, advanced trajectory profiles, or exact analytical workspace computation.
 
-Workspace remains the most independent feature and could still be deferred if future implementation evidence or schedule pressure requires scope reduction. At the close of detailed design it remains part of the accepted 0.5.0 scope.
-
 ## Planning status
 
-The Moro 0.5.0 functional design phase is complete.
+The Moro 0.5.0 functional design phase is complete and all seven accepted functional increments are implemented.
 
-All seven accepted functional areas now have implementation-level contracts in:
-
-[`docs/design/0.5.0/`](../../design/0.5.0/index.md)
-
-The next phase is implementation in the accepted sequence:
+The active phase is now:
 
 ```text
-0.5-A -> 0.5-B -> 0.5-C -> 0.5-D
-      -> 0.5-E -> 0.5-F -> 0.5-G -> 0.5-H
+0.5-H  integration / documentation / release hardening
 ```
 
-**0.5-A, 0.5-B, 0.5-C, 0.5-D, and 0.5-E are complete.** Implementation now proceeds with **0.5-F: numerical dynamics / simulation**.
-
-Detailed-design documents are the normative source for numerical tolerances, dataclass invariants, validation semantics, private-helper direction, caching/compilation policy, and exact result contracts. Any implementation-driven contract revision should first be recorded there rather than introduced silently.
+Detailed-design documents remain the normative source for numerical tolerances, dataclass invariants, validation semantics, compilation policy, and result contracts. Contract changes discovered during hardening should be recorded explicitly rather than introduced silently.
