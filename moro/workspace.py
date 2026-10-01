@@ -114,7 +114,9 @@ def _normalize_samples(samples):
 
 
 def _normalize_limit_scalar(value, *, name):
-    if isinstance(value, bool) or not isinstance(value, Real):
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be a finite real scalar.")
+    if not isinstance(value, Real):
         try:
             value = float(value)
         except Exception as exc:
@@ -177,7 +179,11 @@ def _prepare_position_model(robot, parameters=None):
                 "parameters must be a SymPy-compatible substitution mapping."
             ) from exc
 
-    unresolved = set(position.free_symbols) - set(qs)
+    allowed_symbols = set(qs)
+    for q in qs:
+        allowed_symbols.update(getattr(q, "free_symbols", set()))
+
+    unresolved = set(position.free_symbols) - allowed_symbols
     if unresolved:
         missing = ", ".join(str(symbol) for symbol in sorted(unresolved, key=str))
         raise ValueError(
@@ -250,6 +256,8 @@ def sample_workspace(
     lower = np.array([pair[0] for pair in effective_limits], dtype=float)
     upper = np.array([pair[1] for pair in effective_limits], dtype=float)
 
+    position_func = _prepare_position_model(robot, parameters=parameters)
+
     rng = np.random.default_rng(seed)
     configurations = rng.uniform(
         low=lower,
@@ -257,7 +265,6 @@ def sample_workspace(
         size=(samples, robot.dof),
     )
 
-    position_func = _prepare_position_model(robot, parameters=parameters)
     points = np.empty((samples, 3), dtype=float)
     for index, q in enumerate(configurations):
         points[index] = _evaluate_position(
