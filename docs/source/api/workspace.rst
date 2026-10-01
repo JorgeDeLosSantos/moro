@@ -2,15 +2,11 @@ Workspace Sampling
 ==================
 
 The :mod:`moro.workspace` module provides sampled end-effector workspace
-analysis, while :func:`moro.visualization.plot_workspace` renders the sampled
-point cloud with Matplotlib.
+analysis. Workspace visualization is exposed through
+:func:`moro.visualization.plot_workspace` and documented in the Visualization
+API reference.
 
 .. automodule:: moro.workspace
    :members:
    :undoc-members:
    :show-inheritance:
-
-Visualization helper
---------------------
-
-.. autofunction:: moro.visualization.plot_workspace
