@@ -25,6 +25,7 @@ keywords = [
 
 dependencies = [
     "sympy",
+    "numpy",
     "matplotlib",
     "scipy",
 ]
