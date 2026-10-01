@@ -43,6 +43,7 @@ benefit from symbolic kinematics and dynamics.
    examples/velocity-inverse-kinematics
    examples/singularity-manipulability
    examples/planar-2r-dynamics
+   examples/numerical-dynamics
 
 
 .. toctree::

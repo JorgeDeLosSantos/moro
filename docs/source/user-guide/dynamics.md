@@ -1,538 +1,66 @@
 # Dynamics
 
-`moro` provides symbolic tools for defining and analyzing the dynamic model of serial robotic manipulators.
+Moro separates **symbolic model construction** from **numerical dynamics**.
 
-Once the kinematic structure of a `Robot` has been created, additional physical parameters can be assigned to describe the mass distribution of its links and the gravity field. These quantities can then be used to compute energies, the manipulator inertia matrix, Coriolis terms, gravity torques, and equations of motion.
+The `Robot` class remains the symbolic layer. It constructs energies and the standard manipulator terms
 
-This section focuses on practical use of the dynamics API. For the mathematical derivation of the expressions used by `moro`, see **Theory → Dynamics**.
+$$
+M(q),\qquad C(q,\dot q),\qquad G(q).
+$$
 
-## Defining the dynamic model
+The `moro.dynamics` module evaluates those symbolic expressions numerically and integrates the equations of motion.
 
-Consider a planar 2R manipulator:
+## Defining the physical model
+
+A robot must first define its kinematic structure and the physical quantities required by the dynamic model.
 
 ```python
+import sympy as sp
+
 from moro import Robot
-from moro.abc import q1, q2, l1, l2
+from moro.abc import q1, q2
 
 robot = Robot(
-    (l1, 0, 0, q1, "r"),
-    (l2, 0, 0, q2, "r"),
+    (1.0, 0, 0, q1, "r"),
+    (0.8, 0, 0, q2, "r"),
 )
-```
 
-The DH parameters define the robot kinematics, but they are not sufficient to construct its dynamic model.
-
-For dynamic calculations, the following quantities may also be required:
-
-```python
-robot.masses
-robot.cm_positions
-robot.inertia_tensors
-robot.gravity
-```
-
-These describe:
-
-* the mass of each link;
-* the position of each link center of mass;
-* the inertia tensor of each link;
-* the gravity acceleration expressed in the base frame.
-
-The required subset depends on the quantity being computed. For example, the inertia matrix requires masses, center-of-mass positions, and inertia tensors, while potential energy also requires gravity.
-
-For dynamic analyses, the joint variables should be time-dependent symbols. The variables provided by `moro.abc`, such as `q1` and `q2`, are suitable for this purpose.
-
-## Link masses
-
-The mass of each link is assigned through:
-
-```python
-robot.masses = [
-    m1,
-    m2,
-]
-```
-
-where the number of values must match the number of robot links.
-
-Masses may be numerical:
-
-```python
-robot.masses = [
-    2.0,
-    1.5,
-]
-```
-
-or symbolic:
-
-```python
-from sympy import symbols
-
-m1, m2 = symbols("m1 m2", positive=True)
-
-robot.masses = [
-    m1,
-    m2,
-]
-```
-
-An individual link mass can be accessed with:
-
-```python
-robot.m(1)
-robot.m(2)
-```
-
-If symbolic placeholder masses are desired, they can also be generated automatically with:
-
-```python
-robot.masses = None
-```
-
-which creates one symbolic mass for each link.
-
-These automatically generated quantities are convenience symbols rather than assumed physical values.
-
-## Center-of-mass positions
-
-The center of mass of each link is specified relative to the corresponding link frame `{i}`.
-
-Use:
-
-```python
+robot.masses = [1.2, 0.8]
 robot.cm_positions = [
-    (x1, y1, z1),
-    (x2, y2, z2),
+    (-0.5, 0, 0),
+    (-0.4, 0, 0),
 ]
-```
-
-For example, consider a planar model where each link frame is located at its distal end and each center of mass lies along the negative local $x_i$-axis:
-
-```python
-from sympy import symbols
-
-lc1, lc2 = symbols("lc1 lc2", positive=True)
-
-robot.cm_positions = [
-    (-lc1, 0, 0),
-    (-lc2, 0, 0),
-]
-```
-
-Each entry must contain exactly three components.
-
-The stored center-of-mass position of link `i`, expressed in its local frame, is used internally to compute quantities such as its position in the base frame:
-
-```python
-rG1 = robot.r_cm(1)
-rG2 = robot.r_cm(2)
-```
-
-The resulting vectors are expressed with respect to frame `{0}`.
-
-The corresponding linear velocities are available through:
-
-```python
-vG1 = robot.v_cm(1)
-vG2 = robot.v_cm(2)
-```
-
-Because these velocities are obtained by differentiation with respect to time, time-dependent joint variables should be used.
-
-## Inertia tensors
-
-The inertia tensor of each link is assigned with:
-
-```python
 robot.inertia_tensors = [
-    I1,
-    I2,
+    sp.diag(0, 0, 0.08),
+    sp.diag(0, 0, 0.04),
 ]
-```
-
-Each tensor must be a $3\times3$ matrix.
-
-The tensor of link `i` is defined with respect to a frame:
-
-* located at the center of mass of the link;
-* oriented in the same way as frame `{i}`.
-
-For example:
-
-```python
-from sympy import Matrix, symbols
-
-Ixx1, Iyy1, Izz1 = symbols("Ixx1 Iyy1 Izz1")
-Ixx2, Iyy2, Izz2 = symbols("Ixx2 Iyy2 Izz2")
-
-I1 = Matrix([
-    [Ixx1, 0, 0],
-    [0, Iyy1, 0],
-    [0, 0, Izz1],
-])
-
-I2 = Matrix([
-    [Ixx2, 0, 0],
-    [0, Iyy2, 0],
-    [0, 0, Izz2],
-])
-
-robot.inertia_tensors = [
-    I1,
-    I2,
-]
-```
-
-The stored tensor can be retrieved with:
-
-```python
-robot.I_cm(1)
-```
-
-To express the same tensor with axes aligned with the base frame, use:
-
-```python
-robot.I_cm0(1)
-```
-
-which applies the corresponding link rotation:
-
-$$
-I_{C_i}^{0}
-=
-R_i^0
-I_{C_i}^{i}
-(R_i^0)^T.
-$$
-
-### Automatically generated diagonal tensors
-
-If:
-
-```python
-robot.inertia_tensors = None
-```
-
-is used, `moro` creates symbolic diagonal inertia tensors automatically.
-
-Conceptually:
-
-$$
-I_i =
-\begin{bmatrix}
-I_{x_i x_i} & 0 & 0 \\
-0 & I_{y_i y_i} & 0 \\
-0 & 0 & I_{z_i z_i}
-\end{bmatrix}.
-$$
-
-This assumes zero products of inertia.
-
-It is therefore a modeling convenience, not a universal physical assumption. Explicit tensors should be provided when the link geometry does not justify diagonal inertia tensors in the selected center-of-mass frame.
-
-## Gravity
-
-The gravity acceleration is specified with respect to the robot base frame:
-
-```python
-robot.gravity = (gx, gy, gz)
-```
-
-For example, if gravity acts along the negative $y$-axis:
-
-```python
-from sympy import symbols
-
-g = symbols("g", positive=True)
-
-robot.gravity = (0, -g, 0)
-```
-
-A numerical value can also be used:
-
-```python
 robot.gravity = (0, -9.81, 0)
 ```
 
-The current gravity vector can be inspected with:
+For numerical dynamics, joint coordinates must be time-dependent SymPy quantities. The generalized coordinates from `moro.abc` satisfy this requirement.
 
-```python
-robot.gravity
-```
+## Symbolic dynamics
 
-The choice of direction must be consistent with the orientation of the robot base frame.
-
-## Inspecting the model state
-
-Before computing dynamic quantities, it is often useful to check which physical properties have already been defined.
-
-Use:
-
-```python
-print(robot.model_summary())
-```
-
-The summary reports the state of quantities such as:
-
-* joint limits;
-* masses;
-* inertia tensors;
-* center-of-mass positions;
-* gravity.
-
-For example, a quantity may appear as:
-
-```text
-explicit
-```
-
-when it was provided directly by the user,
-
-```text
-assumed (...)
-```
-
-when `moro` generated a symbolic placeholder based on a documented assumption, or:
-
-```text
-NOT SET
-```
-
-when the required information has not yet been defined.
-
-This is particularly useful before requesting a dynamic quantity that depends on several model properties.
-
-## Center-of-mass kinematics
-
-Several dynamic computations depend on the motion of each link center of mass.
-
-The position of the center of mass of link `i` in the base frame is:
-
-```python
-robot.r_cm(i)
-```
-
-Its linear velocity is:
-
-```python
-robot.v_cm(i)
-```
-
-and the angular velocity of the link is:
-
-```python
-robot.w(i)
-```
-
-The center-of-mass Jacobians are also available:
-
-```python
-robot.J_cm_i(i)
-robot.Jv_cm_i(i)
-robot.Jw_cm_i(i)
-```
-
-These quantities are the same interfaces introduced in **Jacobians**, but they become especially useful when constructing kinetic-energy and inertia expressions.
-
-## Kinetic and potential energy
-
-`moro` can compute both per-link and total system energies.
-
-### Link kinetic energy
-
-Use:
-
-```python
-K1 = robot.link_kinetic_energy(1)
-```
-
-For link $i$, the kinetic energy includes both translational and rotational contributions:
-
-$$
-K_i
-=
-\frac{1}{2}
-m_i
-v_{G_i}^T
-v_{G_i}
-+
-\frac{1}{2}
-\omega_i^T
-R_i^0 I_{C_i}^{i}(R_i^0)^T
-\omega_i.
-$$
-
-The total kinetic energy is:
+The main symbolic quantities remain available on `Robot`:
 
 ```python
 K = robot.kinetic_energy()
-```
-
-which corresponds to:
-
-$$
-K = \sum_{i=1}^{n} K_i.
-$$
-
-### Link potential energy
-
-The gravitational potential energy of link `i` is:
-
-```python
-P1 = robot.link_potential_energy(1)
-```
-
-and is computed as:
-
-$$
-P_i
-=
--m_i g^T r_{G_i}.
-$$
-
-The total potential energy is:
-
-```python
 P = robot.potential_energy()
-```
-
-with:
-
-$$
-P = \sum_{i=1}^{n} P_i.
-$$
-
-### Lagrangian
-
-The system Lagrangian is available directly:
-
-```python
 L = robot.lagrangian()
-```
-
-and is defined as:
-
-$$
-L = K - P.
-$$
-
-All these quantities are returned symbolically.
-
-## The inertia matrix
-
-The manipulator inertia matrix is computed with:
-
-```python
 M = robot.inertia_matrix()
-```
-
-For a robot with $n$ degrees of freedom, the result is an $n\times n$ symbolic matrix.
-
-`moro` constructs it from the translational and rotational kinetic-energy contributions of all links:
-
-$$
-M(q)
-=
-\sum_{i=1}^{n}
-\left[
-m_i
-J_{v_i}^{T}
-J_{v_i}
-+
-J_{\omega_i}^{T}
-R_i^0
-I_{C_i}^{i}
-(R_i^0)^T
-J_{\omega_i}
-\right].
-$$
-
-Before calling `inertia_matrix()`, the following must be defined:
-
-```text
-masses
-cm_positions
-inertia_tensors
-```
-
-For example:
-
-```python
-M = robot.inertia_matrix()
-```
-
-can then be simplified or inspected using normal SymPy operations:
-
-```python
-from sympy import simplify
-
-M = simplify(M)
-```
-
-For larger symbolic mechanisms, explicit simplification can become computationally expensive.
-
-## Coriolis and gravity terms
-
-The remaining terms in the standard manipulator equation can also be computed directly.
-
-### Coriolis matrix
-
-Use:
-
-```python
 C = robot.coriolis_matrix()
-```
-
-which returns:
-
-$$
-C(q,\dot q).
-$$
-
-The implementation constructs this matrix from the Christoffel symbols of the first kind.
-
-The resulting matrix satisfies the usual form:
-
-$$
-C(q,\dot q)\dot q.
-$$
-
-Since this quantity depends on joint velocities, the joint variables should be time dependent.
-
-### Gravity vector
-
-Use:
-
-```python
 G = robot.gravity_vector()
 ```
 
-which returns the generalized gravity-force vector:
-
-$$
-G(q)
-=
-\nabla P(q).
-$$
-
-The result has one component per degree of freedom.
-
-Because `gravity_vector()` is obtained from the potential energy, masses, center-of-mass locations, and gravity must already be defined.
-
-## Equations of motion
-
-`moro` provides two convenient representations of the robot equations of motion.
-
 ### Euler-Lagrange equations
 
-Use:
+Moro 0.5.0 exposes the per-joint Euler-Lagrange equations explicitly through:
 
 ```python
-equations = robot.dynamic_model()
+equations = robot.euler_lagrange_equations()
 ```
 
-This returns one equation per joint:
+Each equation has the form
 
 $$
 \frac{d}{dt}
@@ -545,24 +73,15 @@ $$
 \tau_i.
 $$
 
-For example:
+### Matrix dynamic model
+
+The standard manipulator equation is now returned by:
 
 ```python
-eq1 = equations[0]
-eq2 = equations[1]
+model = robot.dynamic_model()
 ```
 
-The equations are returned as SymPy equation objects.
-
-### Matrix form
-
-The compact manipulator equation is available through:
-
-```python
-model = robot.dynamic_model_matrix_form()
-```
-
-which represents:
+with
 
 $$
 M(q)\ddot q
@@ -574,209 +93,181 @@ G(q)
 \tau.
 $$
 
-This form is often convenient when inspecting the structure of the dynamic model or comparing it with the standard robotics notation.
+:::{important}
+This is a breaking API change in Moro 0.5.0. In 0.4.x, `dynamic_model()` returned the Euler-Lagrange equation list. Use `euler_lagrange_equations()` for that representation in 0.5.0.
+:::
 
-The two interfaces represent the same underlying model from different viewpoints: `dynamic_model()` exposes the Euler-Lagrange equations individually, while `dynamic_model_matrix_form()` organizes the dynamics into the usual $M$, $C$, and $G$ terms.
+`dynamic_model_matrix_form()` remains temporarily available as a deprecated alias of `dynamic_model()`.
 
-## Evaluating symbolic dynamics
+## Numerical inverse dynamics
 
-Dynamic quantities returned by `moro` are symbolic SymPy expressions and matrices.
+Inverse dynamics answers:
 
-Consider a model containing symbolic physical parameters:
+> What generalized force is required to produce a prescribed acceleration?
 
-```python
-M = robot.inertia_matrix()
-C = robot.coriolis_matrix()
-G = robot.gravity_vector()
-```
-
-Numerical values can be introduced with a substitution dictionary.
-
-For example:
+Use:
 
 ```python
-values = {
-    l1: 1.0,
-    l2: 0.8,
-    lc1: 0.5,
-    lc2: 0.4,
-    m1: 2.0,
-    m2: 1.5,
-    g: 9.81,
-}
-```
+from moro.dynamics import inverse_dynamics
 
-Joint configurations can be added as well:
-
-```python
-values.update({
-    q1: 0.5,
-    q2: 0.8,
-})
-```
-
-Then:
-
-```python
-M_num = M.subs(values).evalf()
-G_num = G.subs(values).evalf()
-```
-
-Velocity-dependent quantities require values for the derivatives of the joint variables.
-
-For example:
-
-```python
-values.update({
-    q1.diff(): 0.2,
-    q2.diff(): -0.1,
-})
-```
-
-and acceleration-dependent expressions can similarly use:
-
-```python
-values.update({
-    q1.diff().diff(): 0.5,
-    q2.diff().diff(): 0.3,
-})
-```
-
-The same symbolic model can therefore be evaluated at multiple states without reconstructing the robot.
-
-## A worked example
-
-Consider a planar 2R robot with symbolic geometry and dynamic parameters:
-
-```python
-from sympy import diag, symbols
-
-from moro import Robot
-from moro.abc import q1, q2, l1, l2
-
-robot = Robot(
-    (l1, 0, 0, q1, "r"),
-    (l2, 0, 0, q2, "r"),
+tau = inverse_dynamics(
+    robot,
+    q=[0.3, -0.4],
+    qd=[0.5, -0.2],
+    qdd=[0.7, -0.6],
 )
 ```
 
-Define masses and center-of-mass locations:
+The calculation is
+
+$$
+\tau
+=
+M(q)\ddot q
++
+C(q,\dot q)\dot q
++
+G(q).
+$$
+
+The result is a one-dimensional NumPy array with shape `(robot.dof,)`.
+
+For a 1-DOF robot, scalar state values are accepted as a convenience. Scalar broadcasting is intentionally rejected for multi-DOF models.
+
+## Numerical forward dynamics
+
+Forward dynamics answers:
+
+> What acceleration results from the applied generalized force?
 
 ```python
-m1, m2 = symbols("m1 m2", positive=True)
-lc1, lc2 = symbols("lc1 lc2", positive=True)
+from moro.dynamics import forward_dynamics
 
-robot.masses = [m1, m2]
-
-robot.cm_positions = [
-    (-lc1, 0, 0),
-    (-lc2, 0, 0),
-]
+qdd = forward_dynamics(
+    robot,
+    q=[0.3, -0.4],
+    qd=[0.5, -0.2],
+    tau=tau,
+)
 ```
 
-For a planar mechanism, suppose only the $z$-axis moments of inertia are relevant:
+Internally Moro solves
+
+$$
+M(q)\ddot q
+=
+\tau-C(q,\dot q)\dot q-G(q)
+$$
+
+using a numerical linear solve. Moro does not form `inv(M)` and does not silently fall back to a pseudoinverse when the mass matrix is singular.
+
+## Symbolic model parameters
+
+Fixed symbolic quantities can be supplied through `parameters`:
 
 ```python
-Iz1, Iz2 = symbols("Iz1 Iz2", positive=True)
-
-robot.inertia_tensors = [
-    diag(0, 0, Iz1),
-    diag(0, 0, Iz2),
-]
-```
-
-Define gravity along the negative $y$-direction:
-
-```python
-g = symbols("g", positive=True)
-
-robot.gravity = (0, -g, 0)
-```
-
-Check the model:
-
-```python
-print(robot.model_summary())
-```
-
-Now compute the main dynamic quantities:
-
-```python
-M = robot.inertia_matrix()
-C = robot.coriolis_matrix()
-G = robot.gravity_vector()
-```
-
-The total energies are:
-
-```python
-K = robot.kinetic_energy()
-P = robot.potential_energy()
-L = robot.lagrangian()
-```
-
-The Euler-Lagrange equations can be generated with:
-
-```python
-equations = robot.dynamic_model()
-```
-
-or the compact matrix representation with:
-
-```python
-matrix_model = robot.dynamic_model_matrix_form()
-```
-
-To evaluate the model numerically, define:
-
-```python
-values = {
-    l1: 1.0,
-    l2: 0.8,
-    lc1: 0.5,
-    lc2: 0.4,
+params = {
     m1: 2.0,
     m2: 1.5,
-    Iz1: 0.15,
-    Iz2: 0.08,
     g: 9.81,
-    q1: 0.4,
-    q2: -0.2,
-    q1.diff(): 0.3,
-    q2.diff(): -0.1,
 }
+
+tau = inverse_dynamics(
+    robot,
+    q,
+    qd,
+    qdd,
+    parameters=params,
+)
 ```
 
-Then:
+`parameters` is intended for fixed model quantities such as geometry, mass, inertia and gravity constants. Joint state values are supplied separately through `q`, `qd` and `qdd`.
+
+The original symbolic robot is not mutated.
+
+## State derivative
+
+The state convention is
+
+$$
+x=
+\begin{bmatrix}
+q\\
+\dot q
+\end{bmatrix}.
+$$
+
+Use:
 
 ```python
-M_num = M.subs(values).evalf()
-C_num = C.subs(values).evalf()
-G_num = G.subs(values).evalf()
+from moro.dynamics import state_derivative
+
+xd = state_derivative(
+    robot,
+    t=0.5,
+    state=[q1_value, q2_value, qd1_value, qd2_value],
+    tau=[1.0, 0.0],
+)
 ```
 
-This workflow keeps the derivation symbolic while allowing the resulting model to be evaluated for specific physical parameters and robot states.
+The returned vector is
 
-## Notes and limitations
+$$
+\dot x=
+\begin{bmatrix}
+\dot q\\
+\ddot q
+\end{bmatrix}.
+$$
 
-The dynamics tools in the current version of `moro` are primarily intended for symbolic modeling and analysis.
+## Generalized-force inputs
 
-Keep the following points in mind:
+`state_derivative()` and `simulate()` accept three generalized-force forms.
 
-* dynamic properties are defined on the same `Robot` object used for kinematics;
-* masses, center-of-mass locations, inertia tensors, and gravity are not inferred automatically from DH geometry;
-* automatically generated masses or diagonal inertia tensors are symbolic conveniences and should not be interpreted as measured physical properties;
-* center-of-mass positions are expressed in their corresponding link frames;
-* inertia tensors are defined at the link center of mass and aligned with the corresponding `{i}` frame;
-* gravity is expressed in the base frame;
-* dynamic results are symbolic SymPy expressions;
-* velocity-dependent calculations require time-dependent joint variables;
-* `moro.abc.q1`, `q2`, and related variables are appropriate for dynamic analyses;
-* using static SymPy symbols for joints in velocity-dependent operations can produce warnings and incorrect derivative terms.
+### Zero applied force
 
-The current implementation provides symbolic equations of motion and inverse-dynamics-style model evaluation, but it does not yet provide forward-dynamics integration.
+```python
+tau=None
+```
 
-In particular, `moro` does not currently integrate:
+means
+
+$$
+\tau=0.
+$$
+
+### Constant generalized force
+
+```python
+tau=[1.0, -0.5]
+```
+
+is applied throughout the simulation.
+
+### Callable generalized force
+
+```python
+def tau(t, q, qd):
+    return np.array([
+        2.0 * np.sin(t),
+        0.0,
+    ])
+```
+
+The callable receives `q` and `qd` as one-dimensional NumPy arrays.
+
+This also permits simple user-defined feedback laws:
+
+```python
+def control(t, q, qd):
+    return -Kp @ (q - q_ref) - Kd @ qd
+```
+
+This callable interface is not a dedicated controller framework.
+
+## Time-domain simulation
+
+Use `simulate()` to integrate
 
 $$
 M(q)\ddot q
@@ -785,17 +276,129 @@ C(q,\dot q)\dot q
 +
 G(q)
 =
-\tau
+\tau(t,q,\dot q).
 $$
 
-over time to obtain a trajectory $q(t)$ from applied torques and initial conditions.
+```python
+import numpy as np
+from moro.dynamics import simulate
 
-Numerical simulation, control, contact dynamics, collision forces, and physics-engine integration are also outside the current scope.
+t_eval = np.linspace(0.0, 5.0, 501)
 
-## See also
+solution = simulate(
+    robot,
+    (0.0, 5.0),
+    q0=[0.3, -0.2],
+    qd0=[0.0, 0.0],
+    tau=None,
+    t_eval=t_eval,
+)
+```
 
-* **Robot Modeling** — define the kinematic structure of a serial manipulator.
-* **Forward Kinematics** — compute the frame transformations used in dynamic calculations.
-* **Jacobians** — compute center-of-mass linear and angular Jacobians.
-* **Theory → Dynamics** — mathematical derivation of energies, inertia matrices, Coriolis terms, gravity terms, and Euler-Lagrange equations.
-* **API Reference → Robot** — complete reference for dynamic properties and methods.
+Moro uses `scipy.integrate.solve_ivp`; the default solver is `RK45`.
+
+Optional `rtol`, `atol` and `max_step` values are forwarded only when explicitly supplied.
+
+`t_eval` selects output times. It does not force the internal integration step size.
+
+## DynamicsSolution
+
+A successful or partially successful simulation returns a `DynamicsSolution`:
+
+```python
+solution.t
+solution.q
+solution.qd
+solution.qdd
+solution.success
+solution.message
+solution.method
+```
+
+The numerical arrays are time-major:
+
+```text
+t.shape   == (N,)
+q.shape   == (N, dof)
+qd.shape  == (N, dof)
+qdd.shape == (N, dof)
+```
+
+Derived properties are:
+
+```python
+solution.samples
+solution.duration
+solution.dof
+```
+
+`qdd` is reconstructed from the forward dynamic model at every returned state. It is not obtained by finite-differencing velocity samples.
+
+If SciPy returns a normal integration failure, Moro preserves the valid partial trajectory and sets `solution.success = False`. Invalid model evaluation, malformed force inputs and singular mass matrices remain exceptions.
+
+## Gravity-driven motion
+
+A simple free-motion simulation uses `tau=None`:
+
+```python
+solution = simulate(
+    robot,
+    (0.0, 2.0),
+    q0=[0.3, -0.2],
+    qd0=[0.0, 0.0],
+    tau=None,
+    t_eval=np.linspace(0.0, 2.0, 201),
+)
+```
+
+If gravity generates a nonzero generalized force, the robot will accelerate from rest.
+
+## From a prescribed trajectory to required generalized force
+
+The trajectory and dynamics modules intentionally remain separate.
+
+```python
+from moro.trajectory import joint_trajectory
+from moro.dynamics import inverse_dynamics
+
+traj = joint_trajectory(
+    q0,
+    qf,
+    t,
+    method="quintic",
+)
+
+tau_history = np.array([
+    inverse_dynamics(robot, q, qd, qdd)
+    for q, qd, qdd in zip(
+        traj.q,
+        traj.qd,
+        traj.qdd,
+    )
+])
+```
+
+This computes the generalized-force history required by the prescribed joint trajectory without introducing a trajectory-wide inverse-dynamics API.
+
+## Visualization
+
+Simulation output follows the same `(N, dof)` convention as joint trajectories, so it can be animated directly:
+
+```python
+from moro.visualization import RobotVisualizer
+
+viz = RobotVisualizer(robot)
+viz.animate(solution.q)
+```
+
+The dynamics module does not depend on visualization.
+
+The animation interval is still controlled by the visualization backend; nonuniform physical timing in `solution.t` is not reproduced automatically.
+
+## Joint limits and physical scope
+
+Numerical dynamics does **not** enforce `robot.joint_limits`.
+
+A simulated state may cross a configured limit because clipping is not a physically valid model of a mechanical stop.
+
+Moro 0.5.0 does not introduce contact dynamics, impacts, friction, actuator dynamics, torque saturation, constrained dynamics or a controller framework.

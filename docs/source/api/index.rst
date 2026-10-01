@@ -15,4 +15,5 @@ and the other pages in the User Guide.
    differential_kinematics
    inverse_kinematics
    trajectory
+   dynamics
    visualization

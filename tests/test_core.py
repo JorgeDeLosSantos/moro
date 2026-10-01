@@ -283,10 +283,14 @@ def test_coriolis_and_dynamic_model_static_joint_variables_use_explicit_time_der
         C = robot.coriolis_matrix()
     assert C == sp.Matrix([[0]])
 
-    with pytest.warns(UserWarning, match="dynamic_model"):
-        equations = robot.dynamic_model()
+    with pytest.warns(UserWarning, match="time-dependent"):
+        equations = robot.euler_lagrange_equations()
     assert len(equations) == 1
     assert equations[0].rhs == sp.symbols("tau_1")
+
+    with pytest.warns(UserWarning, match="time-dependent"):
+        matrix_model = robot.dynamic_model()
+    assert matrix_model.rhs == sp.Matrix([sp.symbols("tau_1")])
 
 
 def test_m_validates_index():
@@ -476,3 +480,24 @@ def test_christoffel_and_kinetic_energy_use_exact_rational_half():
     K = robot.link_kinetic_energy(1)
     assert sp.Rational(1, 2) in K.atoms(sp.Rational)
     assert not K.has(sp.Float)
+
+
+
+def test_dynamic_model_symbolic_api_split_and_deprecated_alias():
+    robot = Robot((0, 0, 0, q1),)
+    robot.masses = [1]
+    robot.cm_positions = [(1, 0, 0)]
+    robot.inertia_tensors = [sp.diag(0, 0, 1)]
+    robot.gravity = (0, -9.81, 0)
+
+    equations = robot.euler_lagrange_equations()
+    matrix_model = robot.dynamic_model()
+
+    assert isinstance(equations, list)
+    assert len(equations) == 1
+    assert isinstance(matrix_model, sp.Equality)
+
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        alias_model = robot.dynamic_model_matrix_form()
+
+    assert alias_model == matrix_model
