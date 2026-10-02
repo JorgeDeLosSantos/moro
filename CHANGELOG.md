@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-01
+
 ### Added
 
 * Expanded orientation support with all accepted proper-Euler and Tait-Bryan sequences, quaternion conversions, rotation-vector conversions, `vex()`, and descriptive rotation/HTM validation predicates.
