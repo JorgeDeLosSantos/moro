@@ -56,7 +56,7 @@ jobs:
 
       - name: Build Sphinx documentation
         run: |
-          sphinx-build -b html docs/source docs/build/html
+          sphinx-build -W -b html docs/source docs/build/html
 
       - name: Upload GitHub Pages artifact
         if: github.event_name != 'pull_request'

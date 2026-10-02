@@ -4,12 +4,14 @@
 
 ## Requirements
 
-`moro` requires Python 3.9 or newer.
+Moro 0.5.x requires **Python 3.11 or newer**.
 
 The main runtime dependencies are:
 
 * [SymPy](https://www.sympy.org/) for symbolic computation;
-* [Matplotlib](https://matplotlib.org/) for plotting and visualization.
+* [NumPy](https://numpy.org/) for numerical arrays and linear algebra;
+* [Matplotlib](https://matplotlib.org/) for plotting and visualization;
+* [SciPy](https://scipy.org/) for numerical time integration.
 
 These dependencies are installed automatically when `moro` is installed with `pip`.
 
@@ -45,10 +47,10 @@ This installs `moro` together with its required dependencies.
 
 ## Installing the development version
 
-If you want to try the latest changes that have not yet been included in a stable release, you can install the current development version directly from the `develop` branch of the GitHub repository:
+To install the current development state directly from GitHub:
 
 ```bash
-pip install git+https://github.com/JorgeDeLosSantos/moro.git@develop
+pip install git+https://github.com/JorgeDeLosSantos/moro.git
 ```
 
 Development versions may include new features, fixes, or API changes that are still being tested.
@@ -89,10 +91,10 @@ To update an existing stable installation to the latest version available on PyP
 pip install --upgrade moro
 ```
 
-If you installed the development version from GitHub and want to reinstall the latest state of the `develop` branch, you can use:
+If you installed the development version from GitHub and want to reinstall the latest repository state, use:
 
 ```bash
-pip install --upgrade --force-reinstall git+https://github.com/JorgeDeLosSantos/moro.git@develop
+pip install --upgrade --force-reinstall git+https://github.com/JorgeDeLosSantos/moro.git
 ```
 
 ## Troubleshooting
@@ -127,7 +129,7 @@ Check your Python version with:
 python --version
 ```
 
-`moro` requires Python 3.9 or newer.
+Moro 0.5.x requires Python 3.11 or newer.
 
 ### Problems after upgrading
 

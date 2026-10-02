@@ -73,6 +73,13 @@ benefit from symbolic kinematics and dynamics.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Release Notes
+
+   release-notes/0.5.0
+
+
+.. toctree::
+   :maxdepth: 2
    :caption: Development
 
    development/contributing
