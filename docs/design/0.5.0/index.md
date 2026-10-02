@@ -6,9 +6,9 @@ The roadmap in `docs/roadmap/0.5.0/` defines release scope, ordering, compatibil
 
 ## Status
 
-Detailed design is complete for all accepted functional increments.
+Detailed design and implementation are complete for all accepted Moro 0.5.0 increments.
 
-Implementation should now proceed against these documents. Scope or contract changes discovered during implementation should be recorded explicitly rather than introduced silently.
+The 0.5.x development line has completed integration, documentation, compatibility review, packaging smoke tests, and release hardening. The next phase is final release preparation.
 
 ## Detailed-design documents
 
@@ -21,11 +21,11 @@ Implementation should now proceed against these documents. Scope or contract cha
 | 0.5-E | Trajectory generation | [trajectory.md](trajectory.md) | Implemented |
 | 0.5-F | Numerical dynamics and simulation | [dynamics.md](dynamics.md) | Implemented |
 | 0.5-G | Workspace sampling | [workspace.md](workspace.md) | Implemented |
-| 0.5-H | Integration, documentation, and release hardening | Cross-cutting | Active |
+| 0.5-H | Integration, documentation, and release hardening | Cross-cutting | Implemented |
 
 ## Implementation sequence
 
-The preferred single-stream implementation order is:
+The completed implementation order is:
 
 ```text
 0.5-A  transformations
@@ -45,18 +45,18 @@ The preferred single-stream implementation order is:
 0.5-H  integration / release hardening
 ```
 
-This order minimizes rework:
+This order minimized rework:
 
-- full-pose IK depends on stable orientation primitives;
-- singularity/manipulability analysis reuses the differential-kinematics numerical Jacobian/SVD conventions;
-- trajectory is mathematically independent but benefits from stable IK and visualization conventions;
-- numerical dynamics is a larger isolated architectural increment;
-- workspace is comparatively independent and can remain near the end;
-- final integration verifies conventions across all modules.
+- full-pose IK depended on stable orientation primitives;
+- singularity/manipulability analysis reused the differential-kinematics numerical Jacobian/SVD conventions;
+- trajectory remained mathematically independent while benefiting from stable IK and visualization conventions;
+- numerical dynamics remained an isolated architectural increment;
+- workspace stayed comparatively independent;
+- final integration verified conventions across all modules.
 
 ## Cross-cutting contracts
 
-Several decisions span more than one feature and should remain consistent during implementation.
+Several decisions span more than one feature and remain release contracts for 0.5.0.
 
 ### Numerical array orientation
 
@@ -90,7 +90,7 @@ as the canonical geometric-twist ordering.
 
 `Robot` remains the main symbolic model.
 
-New numerical layers evaluate or simulate that model without replacing its symbolic construction:
+Numerical layers evaluate or simulate that model without replacing its symbolic construction:
 
 - differential kinematics preserves symbolic Jacobian inspection;
 - numerical IK evaluates symbolic robot geometry through supplied parameters;
@@ -101,9 +101,7 @@ New numerical layers evaluate or simulate that model without replacing its symbo
 
 Trajectory, dynamics, and workspace do not depend on visualization.
 
-Visualization should instead accept their stable numerical representations where appropriate.
-
-In particular, the accepted integration direction is to extend robot visualization so that numerical joint vectors/matrices may be supplied directly, while preserving the existing dictionary-based API.
+Visualization accepts their stable numerical representations where appropriate, including numerical joint vectors and time-major joint matrices, while preserving the existing dictionary-based API.
 
 ### Root-package policy
 
@@ -120,7 +118,7 @@ from moro.dynamics import simulate
 from moro.workspace import sample_workspace
 ```
 
-New helpers do not need automatic root-package re-export unless there is a specific compatibility or usability reason.
+New helpers are not automatically re-exported from the package root.
 
 ## Accepted compatibility changes
 
@@ -128,27 +126,38 @@ The most important intentional 0.5.0 compatibility changes are:
 
 - `Robot.dynamic_model()` changes from per-joint Euler-Lagrange equations to the standard matrix-form dynamic model;
 - the former behavior moves to `Robot.euler_lagrange_equations()`;
-- `Robot.dynamic_model_matrix_form()` may remain temporarily as a deprecated alias;
+- `Robot.dynamic_model_matrix_form()` remains temporarily as a deprecated alias;
 - descriptive rotation/HTM predicates supersede legacy transformation predicate names while preserving legacy Boolean behavior during deprecation;
-- SciPy becomes a required dependency because numerical dynamics and simulation are part of the main package.
+- NumPy and SciPy are direct runtime dependencies because numerical analysis and simulation are first-class package capabilities.
 
-These changes must be explicit in tests, documentation, CHANGELOG, and release notes.
+These changes are explicit in tests, documentation, CHANGELOG, and release notes.
 
-## Implementation discipline
+## Release-hardening evidence
 
-For each increment:
+0.5-H completed the cross-cutting definition of done:
 
-1. implement the accepted public contract;
-2. add focused unit and regression tests;
-3. add/update API and educational documentation;
-4. run the complete test suite;
-5. keep excluded functionality out of the increment;
-6. integrate only after the increment is internally coherent.
+- public imports and `__all__` declarations reviewed;
+- no unintended root-package API expansion;
+- accepted deprecations covered by regression tests;
+- `dynamic_model()` breaking change documented prominently;
+- runtime dependencies synchronized with packaging metadata;
+- time-major and Cartesian shape conventions covered across modules;
+- representative 0.4.x workflows retained through regression tests;
+- wheel and sdist build successfully;
+- clean wheel installation and packaged-resource smoke test pass;
+- Sphinx builds successfully with warnings treated as errors;
+- complete test suite passes on Python 3.11, 3.12, 3.13, and 3.14.
 
-If implementation evidence reveals that a detailed-design decision is impractical or mathematically incorrect, update the corresponding design document before normalizing the new behavior into the codebase.
+Final hardening validation recorded **872 passed, 2 skipped**.
 
 ## Planning state
 
-The Moro 0.5.0 functional implementation phase is complete for increments **0.5-A** through **0.5-G**.
+All accepted Moro 0.5.0 implementation increments **0.5-A through 0.5-H are complete**.
 
-The active increment is **0.5-H: integration, documentation, and release hardening**.
+The development line remains versioned as:
+
+```text
+0.5.0.dev0
+```
+
+until the dedicated release-preparation step updates release metadata, dates the changelog, revalidates the distribution, integrates the release line to `master`, and creates the final release tag.
