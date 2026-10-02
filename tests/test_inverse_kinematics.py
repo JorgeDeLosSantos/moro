@@ -9,8 +9,10 @@ import moro.inverse_kinematics as ik_module
 from moro.inverse_kinematics import (
     solve_position_ik,
     solve_position_trajectory,
+    solve_pose_ik,
     IKSolution,
     IKTrajectorySolution,
+    PoseIKSolution,
 )
 from moro.abc import q1, q2
 
@@ -1457,3 +1459,588 @@ class TestSolvePositionIK:
         pos_sol = [float(T_sol[0, 3]), float(T_sol[1, 3]), float(T_sol[2, 3])]
         err = np.linalg.norm(np.asarray(target) - np.asarray(pos_sol))
         assert err < 1e-6
+
+
+def end_effector_pose(robot, q_values, parameters=None):
+    """Evaluate the end-effector pose for a numerical joint configuration."""
+    substitutions = dict(zip(robot.qs, q_values))
+    if parameters is not None:
+        substitutions.update(parameters)
+    return sp.Matrix(robot.T.subs(substitutions))
+
+
+def pose_errors(robot, q_values, target, parameters=None):
+    """Return position/orientation error norms for a numerical configuration."""
+    from moro.transformations import rot2rotvec
+
+    achieved = end_effector_pose(robot, q_values, parameters=parameters)
+    target = sp.Matrix(target)
+
+    p_error = np.asarray(target[:3, 3] - achieved[:3, 3], dtype=float).reshape(3)
+    R_error = target[:3, :3] * achieved[:3, :3].T
+    r_error = np.asarray(rot2rotvec(R_error), dtype=float).reshape(3)
+
+    return np.linalg.norm(p_error), np.linalg.norm(r_error)
+
+
+class TestPoseIKSolution:
+    def _pose(self):
+        return sp.eye(4)
+
+    def test_creation_and_repr(self):
+        sol = PoseIKSolution(
+            q=[0.1, 0.2],
+            converged=True,
+            iterations=3,
+            position_error=0.0,
+            orientation_error=0.0,
+            method="lm",
+            position_residual=[0.0, 0.0, 0.0],
+            orientation_residual=[0.0, 0.0, 0.0],
+            target_pose=self._pose(),
+            achieved_pose=self._pose(),
+            message="Converged successfully.",
+        )
+
+        assert sol.q == [0.1, 0.2]
+        assert sol.converged is True
+        assert sol.position_error == 0.0
+        assert sol.orientation_error == 0.0
+        assert "PoseIKSolution" in repr(sol)
+        assert "position_error" in repr(sol)
+        assert "target_pose" not in repr(sol)
+
+    def test_residual_norm_invariants(self):
+        with pytest.raises(ValueError, match="position_error"):
+            PoseIKSolution(
+                q=[0.0],
+                converged=False,
+                iterations=1,
+                position_error=2.0,
+                orientation_error=0.0,
+                position_residual=[1.0, 0.0, 0.0],
+                orientation_residual=[0.0, 0.0, 0.0],
+                target_pose=self._pose(),
+                achieved_pose=self._pose(),
+            )
+
+    def test_converged_requires_pose_diagnostics(self):
+        with pytest.raises(ValueError, match="requires both residual"):
+            PoseIKSolution(
+                q=[0.0],
+                converged=True,
+                iterations=0,
+                position_error=0.0,
+                orientation_error=0.0,
+                target_pose=self._pose(),
+                achieved_pose=self._pose(),
+            )
+
+    @pytest.mark.parametrize("method", ["ccd", "bad"])
+    def test_rejects_invalid_method(self, method):
+        with pytest.raises(ValueError, match="method"):
+            PoseIKSolution(
+                q=[0.0],
+                converged=False,
+                iterations=0,
+                position_error=np.inf,
+                orientation_error=np.inf,
+                method=method,
+                target_pose=self._pose(),
+            )
+
+
+class TestSolvePoseIKValidation:
+    def _robot(self):
+        return Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+
+    @pytest.mark.parametrize("shape", [(3, 3), (4, 3), (3, 4)])
+    def test_rejects_wrong_target_shape(self, shape):
+        robot = self._robot()
+        target = np.zeros(shape)
+        with pytest.raises(ValueError, match="shape"):
+            solve_pose_ik(robot, target, q0=[0.0, 0.0])
+
+    def test_rejects_invalid_homogeneous_last_row(self):
+        robot = self._robot()
+        target = sp.eye(4)
+        target[3, 0] = 0.1
+        with pytest.raises(ValueError, match="homogeneous"):
+            solve_pose_ik(robot, target, q0=[0.0, 0.0])
+
+    def test_rejects_non_rotation_block(self):
+        robot = self._robot()
+        target = sp.eye(4)
+        target[0, 0] = 2.0
+        with pytest.raises(ValueError, match="homogeneous"):
+            solve_pose_ik(robot, target, q0=[0.0, 0.0])
+
+    def test_rejects_reflection(self):
+        robot = self._robot()
+        target = sp.eye(4)
+        target[0, 0] = -1
+        with pytest.raises(ValueError, match="homogeneous"):
+            solve_pose_ik(robot, target, q0=[0.0, 0.0])
+
+    @pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
+    def test_rejects_nonfinite_target(self, bad):
+        robot = self._robot()
+        target = np.eye(4)
+        target[0, 3] = bad
+        with pytest.raises(ValueError, match="finite"):
+            solve_pose_ik(robot, target, q0=[0.0, 0.0])
+
+    def test_rejects_symbolic_target(self):
+        robot = self._robot()
+        x = sp.symbols("x")
+        target = sp.eye(4)
+        target[0, 3] = x
+        with pytest.raises(ValueError, match="numerical"):
+            solve_pose_ik(robot, target, q0=[0.0, 0.0])
+
+    def test_rejects_ccd(self):
+        robot = self._robot()
+        with pytest.raises(ValueError, match="position-only"):
+            solve_pose_ik(robot, sp.eye(4), q0=[0.0, 0.0], method="ccd")
+
+    @pytest.mark.parametrize("name", ["position_weight", "orientation_weight"])
+    @pytest.mark.parametrize("value", [0, -1, np.inf, np.nan])
+    def test_rejects_invalid_weights(self, name, value):
+        robot = self._robot()
+        kwargs = {name: value}
+        with pytest.raises(ValueError):
+            solve_pose_ik(robot, sp.eye(4), q0=[0.0, 0.0], **kwargs)
+
+    @pytest.mark.parametrize("name", ["position_tol", "orientation_tol"])
+    @pytest.mark.parametrize("value", [0, -1, np.inf, np.nan])
+    def test_rejects_invalid_tolerances(self, name, value):
+        robot = self._robot()
+        kwargs = {name: value}
+        with pytest.raises(ValueError):
+            solve_pose_ik(robot, sp.eye(4), q0=[0.0, 0.0], **kwargs)
+
+
+class TestSolvePoseIK:
+    def test_initially_satisfied_target_returns_zero_iterations(self):
+        robot = Robot((1.0, 0, 0, q1, "r"), (1.0, 0, 0, q2, "r"))
+        q0 = [0.3, -0.2]
+        target = end_effector_pose(robot, q0)
+
+        sol = solve_pose_ik(robot, target, q0=q0)
+
+        assert sol.converged is True
+        assert sol.iterations == 0
+        assert sol.position_error <= 1e-12
+        assert sol.orientation_error <= 1e-12
+
+    @pytest.mark.parametrize("method", ["lm", "newton"])
+    def test_planar_3r_fk_to_pose_ik_roundtrip(self, method):
+        q3 = sp.symbols("q3", real=True)
+        robot = Robot(
+            (1.0, 0, 0, q1, "r"),
+            (0.8, 0, 0, q2, "r"),
+            (0.6, 0, 0, q3, "r"),
+        )
+        q_target = [0.4, -0.5, 0.7]
+        target = end_effector_pose(robot, q_target)
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.2, -0.2, 0.3],
+            method=method,
+            position_tol=1e-8,
+            orientation_tol=1e-8,
+            max_iter=300,
+        )
+
+        assert sol.converged is True
+        p_err, r_err = pose_errors(robot, sol.q, target)
+        assert p_err <= 1e-7
+        assert r_err <= 1e-7
+        assert sol.position_error == pytest.approx(p_err, abs=1e-10)
+        assert sol.orientation_error == pytest.approx(r_err, abs=1e-10)
+        assert sol.achieved_pose.shape == (4, 4)
+
+    def test_lower_dof_robot_can_reach_particular_full_pose(self):
+        robot = Robot((1.0, 0, 0, q1, "r"),)
+        q_target = [0.6]
+        target = end_effector_pose(robot, q_target)
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.2],
+            method="lm",
+            position_tol=1e-9,
+            orientation_tol=1e-9,
+            max_iter=200,
+        )
+
+        assert sol.converged is True
+        assert len(sol.q) == 1
+
+    def test_lower_dof_incompatible_pose_returns_nonconverged_solution(self):
+        robot = Robot((1.0, 0, 0, q1, "r"),)
+        target = sp.eye(4)
+        target[2, 3] = 1.0
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.0],
+            method="lm",
+            max_iter=50,
+            stagnation_iterations=3,
+        )
+
+        assert sol.converged is False
+        assert sol.achieved_pose is not None
+        assert sol.position_residual is not None
+        assert sol.orientation_residual is not None
+
+    def test_joint_limits_can_block_reachable_pose_without_raising(self):
+        robot = Robot((1.0, 0, 0, q1, "r"),)
+        target = end_effector_pose(robot, [1.0])
+        limits = [(-0.2, 0.2)]
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.0],
+            joint_limits=limits,
+            max_iter=50,
+            stagnation_iterations=3,
+        )
+
+        assert sol.converged is False
+        assert limits[0][0] <= sol.q[0] <= limits[0][1]
+
+    def test_q0_is_clipped_to_limits(self):
+        robot = Robot((1.0, 0, 0, q1, "r"),)
+        target = end_effector_pose(robot, [0.2])
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[10.0],
+            joint_limits=[(-0.2, 0.2)],
+        )
+
+        assert sol.converged is True
+        assert sol.iterations == 0
+        assert sol.q[0] == pytest.approx(0.2)
+
+    def test_symbolic_model_parameters_are_supported_without_mutation(self):
+        length = sp.symbols("length", positive=True)
+        robot = Robot((length, 0, 0, q1, "r"),)
+        original_T = robot.T
+        parameters = {length: 2.0}
+        target = end_effector_pose(robot, [0.7], parameters=parameters)
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.2],
+            parameters=parameters,
+            position_tol=1e-9,
+            orientation_tol=1e-9,
+        )
+
+        assert sol.converged is True
+        assert robot.T == original_T
+        assert length in robot.T.free_symbols
+
+    def test_missing_symbolic_parameter_is_rejected(self):
+        length = sp.symbols("length", positive=True)
+        robot = Robot((length, 0, 0, q1, "r"),)
+        target = sp.eye(4)
+
+        with pytest.raises(ValueError, match="no numerical value"):
+            solve_pose_ik(robot, target, q0=[0.0])
+
+    def test_weight_changes_do_not_change_convergence_definition(self):
+        q3 = sp.symbols("q3", real=True)
+        robot = Robot(
+            (1.0, 0, 0, q1, "r"),
+            (0.8, 0, 0, q2, "r"),
+            (0.6, 0, 0, q3, "r"),
+        )
+        target = end_effector_pose(robot, [0.5, -0.4, 0.6])
+
+        for wp, wr in [(10.0, 1.0), (1.0, 10.0)]:
+            sol = solve_pose_ik(
+                robot,
+                target,
+                q0=[0.2, -0.1, 0.2],
+                position_weight=wp,
+                orientation_weight=wr,
+                position_tol=1e-7,
+                orientation_tol=1e-7,
+                max_iter=300,
+            )
+            assert sol.converged is True
+            assert sol.position_error <= 1e-7
+            assert sol.orientation_error <= 1e-7
+
+    def test_prismatic_joint_pose_roundtrip(self):
+        robot = Robot((0, 0, q1, 0, "p"),)
+        target = end_effector_pose(robot, [0.75])
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.1],
+            method="newton",
+            position_tol=1e-10,
+            orientation_tol=1e-10,
+        )
+
+        assert sol.converged is True
+        assert sol.q[0] == pytest.approx(0.75, abs=1e-9)
+
+    def test_random_state_is_reproducible(self):
+        robot = Robot((1.0, 0, 0, q1, "r"),)
+        target = end_effector_pose(robot, [0.5])
+
+        sol1 = solve_pose_ik(robot, target, random_state=123, max_iter=1)
+        sol2 = solve_pose_ik(robot, target, random_state=123, max_iter=1)
+
+        assert sol1.q == pytest.approx(sol2.q)
+        assert sol1.position_error == pytest.approx(sol2.position_error)
+        assert sol1.orientation_error == pytest.approx(sol2.orientation_error)
+
+
+
+class TestPoseErrorMathematics:
+    def test_zero_pose_residual(self):
+        target = np.eye(4)
+
+        state = ik_module._evaluate_pose_state(
+            lambda *args: target,
+            np.array([0.0]),
+            target,
+            1.0,
+            1.0,
+        )
+
+        assert state["position_error"] == pytest.approx(0.0)
+        assert state["orientation_error"] == pytest.approx(0.0)
+
+    def test_pure_position_mismatch_has_zero_orientation_residual(self):
+        target = np.eye(4)
+        target[0, 3] = 0.5
+
+        state = ik_module._evaluate_pose_state(
+            lambda *args: np.eye(4),
+            np.array([0.0]),
+            target,
+            1.0,
+            1.0,
+        )
+
+        np.testing.assert_allclose(
+            state["position_residual"],
+            [0.5, 0.0, 0.0],
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            state["orientation_residual"],
+            [0.0, 0.0, 0.0],
+            atol=1e-12,
+        )
+
+    def test_pure_orientation_mismatch_has_zero_position_residual(self):
+        theta = 0.25
+        target = np.eye(4)
+        target[:3, :3] = np.array([
+            [np.cos(theta), -np.sin(theta), 0.0],
+            [np.sin(theta), np.cos(theta), 0.0],
+            [0.0, 0.0, 1.0],
+        ])
+
+        state = ik_module._evaluate_pose_state(
+            lambda *args: np.eye(4),
+            np.array([0.0]),
+            target,
+            1.0,
+            1.0,
+        )
+
+        np.testing.assert_allclose(
+            state["position_residual"],
+            [0.0, 0.0, 0.0],
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            state["orientation_residual"],
+            [0.0, 0.0, theta],
+            atol=1e-10,
+        )
+
+    def test_orientation_residual_base_frame_sign_convention(self):
+        theta = 0.2
+        R_target = np.array([
+            [np.cos(theta), -np.sin(theta), 0.0],
+            [np.sin(theta), np.cos(theta), 0.0],
+            [0.0, 0.0, 1.0],
+        ])
+
+        residual = ik_module._orientation_residual(
+            R_target,
+            np.eye(3),
+        )
+
+        np.testing.assert_allclose(
+            residual,
+            [0.0, 0.0, theta],
+            atol=1e-10,
+        )
+
+    def test_orientation_residual_near_pi_has_principal_angle_norm(self):
+        theta = np.pi - 1e-8
+        R_target = np.array([
+            [np.cos(theta), -np.sin(theta), 0.0],
+            [np.sin(theta), np.cos(theta), 0.0],
+            [0.0, 0.0, 1.0],
+        ])
+
+        residual = ik_module._orientation_residual(
+            R_target,
+            np.eye(3),
+        )
+
+        assert residual is not None
+        assert np.linalg.norm(residual) == pytest.approx(theta, abs=1e-7)
+
+
+class TestSolvePoseIKAcceptance:
+    def test_position_inside_tolerance_orientation_outside_does_not_stop_initially(self):
+        robot = Robot((0, 0, 0, q1, "r"),)
+        target = end_effector_pose(robot, [0.3])
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.0],
+            method="newton",
+            position_tol=1.0,
+            orientation_tol=1e-10,
+        )
+
+        assert sol.converged is True
+        assert sol.iterations > 0
+        assert sol.orientation_error <= 1e-10
+
+    def test_orientation_inside_tolerance_position_outside_does_not_stop_initially(self):
+        robot = Robot((0, 0, q1, 0, "p"),)
+        target = end_effector_pose(robot, [0.4])
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.0],
+            method="newton",
+            position_tol=1e-10,
+            orientation_tol=1.0,
+        )
+
+        assert sol.converged is True
+        assert sol.iterations > 0
+        assert sol.position_error <= 1e-10
+
+    def test_rank_deficient_jacobian_can_solve_compatible_pose(self):
+        robot = Robot(
+            (0, 0, 0, q1, "r"),
+            (0, 0, 0, q2, "r"),
+        )
+        target = end_effector_pose(robot, [0.2, 0.2])
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=[0.0, 0.0],
+            method="newton",
+            position_tol=1e-10,
+            orientation_tol=1e-10,
+            max_iter=20,
+        )
+
+        assert sol.converged is True
+        assert sol.orientation_error <= 1e-10
+
+    @staticmethod
+    def _spatial_6r():
+        q3, q4, q5, q6 = sp.symbols("q3 q4 q5 q6", real=True)
+        robot = Robot(
+            (0.0, sp.pi / 2, 0.4, q1, "r"),
+            (0.3, 0.0, 0.0, q2, "r"),
+            (0.2, -sp.pi / 2, 0.0, q3, "r"),
+            (0.0, sp.pi / 2, 0.25, q4, "r"),
+            (0.0, -sp.pi / 2, 0.0, q5, "r"),
+            (0.0, 0.0, 0.1, q6, "r"),
+        )
+        return robot
+
+    def test_representative_6dof_full_pose_roundtrip(self):
+        robot = self._spatial_6r()
+        q_target = np.array([0.25, -0.35, 0.4, 0.2, -0.25, 0.3])
+        q0 = q_target + np.array([-0.02, 0.02, -0.02, 0.02, -0.02, 0.02])
+        target = end_effector_pose(robot, q_target)
+
+        J_target = np.asarray(
+            robot.J.subs(dict(zip(robot.qs, q_target))),
+            dtype=float,
+        )
+        assert np.linalg.matrix_rank(J_target) == 6
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=q0,
+            method="newton",
+            position_tol=1e-8,
+            orientation_tol=1e-8,
+            max_iter=50,
+        )
+
+        assert sol.converged is True
+        assert sol.position_error <= 1e-8
+        assert sol.orientation_error <= 1e-8
+
+    def test_redundant_7dof_full_pose_roundtrip(self):
+        q3, q4, q5, q6, q7 = sp.symbols(
+            "q3 q4 q5 q6 q7",
+            real=True,
+        )
+        robot = Robot(
+            (0.0, sp.pi / 2, 0.35, q1, "r"),
+            (0.25, 0.0, 0.0, q2, "r"),
+            (0.2, -sp.pi / 2, 0.0, q3, "r"),
+            (0.0, sp.pi / 2, 0.2, q4, "r"),
+            (0.0, -sp.pi / 2, 0.0, q5, "r"),
+            (0.1, sp.pi / 2, 0.1, q6, "r"),
+            (0.0, 0.0, 0.1, q7, "r"),
+        )
+        q_target = np.array([
+            0.2, -0.25, 0.3, 0.15, -0.2, 0.25, -0.1
+        ])
+        q0 = q_target + np.array([
+            -0.01, 0.01, -0.01, 0.01, -0.01, 0.01, -0.01
+        ])
+        target = end_effector_pose(robot, q_target)
+
+        sol = solve_pose_ik(
+            robot,
+            target,
+            q0=q0,
+            method="lm",
+            position_tol=1e-8,
+            orientation_tol=1e-8,
+            max_iter=100,
+        )
+
+        assert sol.converged is True
+        assert len(sol.q) == 7
+        assert sol.position_error <= 1e-8
+        assert sol.orientation_error <= 1e-8

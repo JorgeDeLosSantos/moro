@@ -1,0 +1,93 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+
+  pull_request:
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+
+    env:
+      MPLBACKEND: Agg
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pytest ipython
+
+      - name: Run test suite
+        run: python -m pytest -q
+
+  package-smoke:
+    name: Build and install distribution
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Install wheel in a clean virtual environment
+        run: |
+          python -m venv /tmp/moro-package-smoke
+          /tmp/moro-package-smoke/bin/python -m pip install --upgrade pip
+          /tmp/moro-package-smoke/bin/python -m pip install dist/*.whl
+
+      - name: Smoke test installed package
+        run: |
+          /tmp/moro-package-smoke/bin/python - <<'PY'
+          import moro
+          from importlib.resources import files
+          from moro.differential_kinematics import solve_velocity_ik
+          from moro.inverse_kinematics import solve_pose_ik
+          from moro.trajectory import joint_trajectory
+          from moro.dynamics import simulate
+          from moro.workspace import sample_workspace
+          from moro.visualization import plot_workspace
+
+          assert moro.__version__ == "0.5.0"
+          template = files("moro.visualization.templates").joinpath("threejs_viewer.html")
+          assert template.is_file()
+          print("Moro distribution smoke test passed.")
+          PY

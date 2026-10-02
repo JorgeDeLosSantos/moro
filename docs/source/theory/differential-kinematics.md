@@ -480,6 +480,235 @@ where $\dot{\vec x}$ represents the geometric velocity composed of linear and an
 
 This local linear approximation is one of the main reasons why the Jacobian plays a central role in robot motion analysis and numerical inverse kinematics.
 
+## Task Jacobians in Moro
+
+For many applications the full six-component twist is not the relevant task. Moro therefore defines a task Jacobian by selecting rows from the end-effector geometric Jacobian.
+
+The canonical component ordering is
+
+$$
+(v_x,v_y,v_z,\omega_x,\omega_y,\omega_z).
+$$
+
+If a task selects components indexed by a row set $\mathcal I$, then
+
+$$
+J_{task}=J[\mathcal I,:].
+$$
+
+Task selection does not change the underlying geometric convention: all selected linear and angular velocity components remain expressed in the base frame $\{0\}$.
+
+Moro provides the presets `linear`, `angular`, and `twist`, and also accepts explicit ordered subsets such as `("vx", "vy", "wz")`. Explicit order is part of the task definition.
+
+## Forward Cartesian velocity
+
+For a selected task, forward differential kinematics is
+
+$$
+\boxed{
+\dot x_{task}=J_{task}(q)\dot q.
+}
+$$
+
+This operation is direct: no inverse or optimization is involved. In Moro, `cartesian_velocity()` preserves exact SymPy arithmetic when all symbols have been resolved.
+
+## Velocity-level inverse kinematics
+
+The inverse velocity problem seeks a joint velocity $\dot q$ that realizes a desired task velocity $\dot x_d$:
+
+$$
+J_{task}(q)\dot q\approx\dot x_d.
+$$
+
+Because $J_{task}$ may be square, rectangular, redundant, overdetermined, or rank deficient, Moro uses SVD-based generalized inverse methods rather than an ordinary matrix inverse.
+
+### Moore--Penrose pseudoinverse
+
+The default solver uses
+
+$$
+\boxed{
+\dot q=J^\dagger\dot x_d.
+}
+$$
+
+For
+
+$$
+J=U\Sigma V^T,
+$$
+
+the pseudoinverse is formed using reciprocal nonzero singular values above the numerical rank threshold.
+
+For redundant systems, the pseudoinverse returns the minimum-norm joint velocity. For overdetermined systems, it returns the least-squares solution.
+
+Rank deficiency is not itself an error: a requested velocity may still lie in the attainable task subspace.
+
+### Damped least squares
+
+Near singular configurations, pseudoinverse solutions can require very large joint velocities. Moro also provides damped least squares:
+
+$$
+\boxed{
+J_\lambda^\dagger
+=
+V\,\mathrm{diag}\!\left(
+\frac{\sigma_i}{\sigma_i^2+\lambda^2}
+\right)U^T,
+}
+$$
+
+with $\lambda>0$ supplied explicitly by the user.
+
+Damping reduces amplification of small singular values, trading exact task tracking for smaller and numerically better-behaved joint velocities.
+
+### Residual and success
+
+After solving, Moro defines the achieved task velocity as
+
+$$
+\dot x_a=J\dot q,
+$$
+
+and the residual as
+
+$$
+\boxed{
+r=\dot x_d-\dot x_a.
+}
+$$
+
+The solver reports success when
+
+$$
+\|r\|_2\leq\texttt{tol}.
+$$
+
+Thus, `success` is a task-achievement statement. It is deliberately independent from rank and condition number.
+
+### Joint-velocity saturation
+
+Optional joint-velocity limits are applied component-wise after the unconstrained solution:
+
+$$
+\dot q_i=\operatorname{clip}(\dot q_i^\star,\dot q_{i,min},\dot q_{i,max}).
+$$
+
+After clipping, the achieved velocity and residual are recomputed from the returned joint velocity. Moro 0.5.0 does not solve a constrained least-squares redistribution problem after saturation.
+
+## Numerical singularity and manipulability metrics
+
+Moro 0.5.0 analyzes local kinematic capability from the **selected task Jacobian**, not necessarily from all six rows of the geometric Jacobian.
+
+For
+
+$
+J_{task}\in\mathbb R^{m\times n},
+$
+
+the compact singular-value decomposition is
+
+$
+J_{task}=U\Sigma V^T,
+$
+
+with
+
+$
+\sigma_1\ge\sigma_2\ge\cdots\ge\sigma_r\ge0,
+\qquad r=\min(m,n).
+$
+
+The same SVD policy is shared by velocity inverse kinematics and all public singularity/manipulability functions.
+
+### Singular values and numerical rank
+
+`singular_values()` returns the compact spectrum as a SymPy column matrix. No zero padding is added.
+
+With automatic rank classification, Moro uses
+
+$
+\tau=\max(m,n)\,\epsilon\,\sigma_{max}.
+$
+
+The numerical rank is
+
+$
+\operatorname{rank}(J)=\#\{\sigma_i>\tau\}.
+$
+
+`jacobian_rank(..., tol=...)` and `is_singular(..., tol=...)` may instead use a user-supplied positive absolute singular-value threshold.
+
+### Task-dependent singularity
+
+Moro classifies the selected task as singular when
+
+$
+\boxed{
+\operatorname{rank}(J_{task})<\min(m,n).
+}
+$
+
+This definition applies to square, redundant, and overdetermined Jacobians. Singularity is therefore a property of the chosen local task mapping, not an absolute label independent of task.
+
+### Condition number
+
+For a numerically full-rank selected Jacobian,
+
+$
+\kappa(J)=\frac{\sigma_{max}}{\sigma_{min}}.
+$
+
+If the automatic rank policy classifies the matrix as rank deficient, `condition_number()` returns infinity.
+
+```{note} id="condition-vs-explicit-rank-tol"
+`condition_number()` always uses the automatic internal threshold. Therefore `is_singular(..., tol=1e-4)` can be `True` while `condition_number()` remains large but finite.
+```
+
+For a regular one-dimensional task there is only one singular value, so the condition number is exactly one. This does **not** imply high absolute motion capability.
+
+### Yoshikawa velocity manipulability
+
+For an explicitly selected task, Moro exposes the Yoshikawa velocity manipulability
+
+$
+w(q)=\sqrt{\det(JJ^T)}.
+$
+
+When $m\le n$, the implementation uses the singular values directly:
+
+$
+\boxed{
+w=\prod_{i=1}^{m}\sigma_i.
+}
+$
+
+If the task is rank deficient under the automatic threshold, Moro returns exactly `0.0` rather than a small roundoff-dependent positive value.
+
+When $m>n$, $JJ^T$ is necessarily singular, so the $m$-dimensional Yoshikawa volume is also zero:
+
+$
+m>n\quad\Rightarrow\quad w=0.
+$
+
+This does **not** imply that `is_singular()` must be true. An $m\times n$ Jacobian with $m>n$ may still have full column rank $n=\min(m,n)$.
+
+### Units and scale
+
+Manipulability is scale sensitive. Translational rows, angular rows, revolute coordinates, and prismatic coordinates generally carry different units.
+
+Moro 0.5.0 does not introduce characteristic-length normalization or automatic weighting. Reduced translational or angular tasks are therefore often easier to interpret physically than a mixed full-twist manipulability value.
+
+### Metrics answer different questions
+
+| Metric | Main question |
+|---|---|
+| rank / `is_singular()` | Has the selected task lost independent local directions? |
+| condition number | How anisotropic or sensitive is the local mapping? |
+| manipulability | What is the scale of the velocity-volume generated by the task Jacobian? |
+
+A large condition number is not identical to singularity, and zero manipulability is not globally equivalent to `is_singular=True` because of the $m>n$ case.
+
 ## Jacobian rank
 
 The rank of the Jacobian indicates the number of independent instantaneous Cartesian velocity directions that the robot can generate.

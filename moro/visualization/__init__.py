@@ -6,6 +6,7 @@ from .matplotlib_backend import MatplotlibBackend
 from .style import VisualizationStyle
 from .threejs_backend import ThreeJSBackend
 from .visualizer import RobotVisualizer
+from .workspace import plot_workspace
 
 # Private helpers remain importable from ``moro.visualization`` temporarily so
 # existing internal tests do not need to change during the package migration.
@@ -27,4 +28,5 @@ __all__ = [
     "SceneData",
     "FrameData",
     "VisualizationStyle",
+    "plot_workspace",
 ]

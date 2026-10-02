@@ -269,6 +269,33 @@ For the purposes of Moro, this notation is used to identify a valid rigid-body t
 
 A deeper treatment of Lie groups and Lie algebras is outside the scope of this section.
 
+## Validating rigid transformations in Moro
+
+Moro 0.5.0 distinguishes between a matrix that merely has shape $4\times4$ and a matrix that is a valid rigid transformation in $SE(3)$.
+
+The public predicate
+
+```python
+is_homogeneous_transform(T, tol=1e-9)
+```
+
+checks that
+
+- the matrix has shape `(4, 4)`,
+- the upper-left block belongs to $SO(3)$,
+- the final row is $[0,0,0,1]$,
+- fully numerical entries are real.
+
+For symbolic matrices the predicate uses ternary semantics:
+
+```text
+True   -> membership can be established
+False  -> invalidity can be established
+None   -> symbolic membership is indeterminate
+```
+
+This is intentionally different from the legacy Boolean predicates in `moro.util`, which are deprecated and collapse indeterminate symbolic cases to `False` for compatibility.
+
 ## Composition of homogeneous transformations
 
 Homogeneous transformations compose according to their intermediate reference frames.
@@ -426,12 +453,14 @@ Inverting a homogeneous transformation does **not** generally consist of simply 
 
 The translation must also be expressed in the new reference frame:
 
-$$
+$
 \vec{p}_{\mathrm{inv}}
 =
 -R^T\vec{p}.
-$$
+$
 ```
+
+In Moro 0.5.0, `invhtm(T, tol=...)` validates that `T` is a rigid transformation in $SE(3)$ before applying this structured inverse. A matrix that is merely $4\times4$ but does not represent a valid rigid pose is rejected.
 
 ## Pure translations
 
@@ -543,9 +572,7 @@ R_z(\theta) & 0\\
 \end{bmatrix}.
 $$
 
-In Moro, `htmrot(theta, axis)` constructs the homogeneous representation of an elementary rotation, while `rot2htm(R)` embeds a general $3\times3$ rotation block into a homogeneous matrix.
-
-The mathematical discussion assumes that $R$ represents a valid rotation matrix. Validation details belong to the corresponding API documentation.
+In Moro, `htmrot(theta, axis)` constructs the homogeneous representation of an elementary rotation, while `rot2htm(R)` embeds a general $3\times3$ matrix block into homogeneous form. Constructors and extractors remain intentionally structural; use `is_homogeneous_transform()` when geometric membership in $SE(3)$ must be established.
 
 ## Fixed and moving transformations
 

@@ -12,5 +12,9 @@ and the other pages in the User Guide.
 
    core
    transformations
+   differential_kinematics
    inverse_kinematics
+   trajectory
+   dynamics
+   workspace
    visualization

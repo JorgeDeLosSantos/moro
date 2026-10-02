@@ -987,25 +987,36 @@ class Robot:
         gv = [nsimplify(pot.diff(k)) for k in self.qs]
         return Matrix(gv)
     
-    def dynamic_model_matrix_form(self):
+    def dynamic_model(self):
         """
-        Return the dynamic model of the robot in matrix form:
+        Return the symbolic manipulator equation in matrix form.
 
         .. math::
-            M(q) \\ddot{{q}} + C(q,\\dot{{q}}) \\dot{{q}} + G(q) = \\tau
+            M(q) \\ddot{q} + C(q,\\dot{q}) \\dot{q} + G(q) = \\tau
 
-        where :math:`M(q)` is the inertia matrix, :math:`C(q,q')` is the Coriolis matrix, 
-        :math:`G(q)` is the gravity torque vector, and :math:`\\tau` is the vector of joint torques.
-
+        Returns
+        -------
+        sympy.core.relational.Equality
+            Symbolic matrix equation of motion.
         """
         M = self.inertia_matrix()
         C = self.coriolis_matrix()
         G = self.gravity_vector()
-        qdd = Matrix([q.diff(t,2) for q in self.qs])
+        qdd = Matrix([q.diff(t, 2) for q in self.qs])
         qd = Matrix([q.diff(t) for q in self.qs])
-        tau = Matrix([ symbols(f"tau_{i+1}") for i in range(self.dof)])
-        return Eq(MatAdd( MatMul(M,qdd), MatMul(C,qd),  G) , tau)
-            
+        tau = Matrix([symbols(f"tau_{i+1}") for i in range(self.dof)])
+        return Eq(MatAdd(MatMul(M, qdd), MatMul(C, qd), G), tau)
+
+    def dynamic_model_matrix_form(self):
+        """Deprecated alias of :meth:`dynamic_model`."""
+        warnings.warn(
+            "dynamic_model_matrix_form() is deprecated in Moro 0.5.0; "
+            "use dynamic_model() for the matrix manipulator equation.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.dynamic_model()
+
     def link_kinetic_energy(self,i):
         """
         Returns the kinetic energy of i-th link.
@@ -1088,29 +1099,37 @@ class Robot:
         L = K - P
         return nsimplify(L)[0]
 
-    def dynamic_model(self):
+    def euler_lagrange_equations(self):
         """
-        Returns the dynamic model of the robot 
-        using the Euler-Lagrange formulation. The returned value is a list of equations,
-        one for each joint, of the form:
+        Return the per-joint Euler-Lagrange equations.
 
-        .. math::   
-            \\frac{d}{dt} \\left( \\frac{\\partial L}{\\partial \\dot{{q}}_i} \\right) - \\frac{\\partial L}{\\partial q_i} = \\tau_i
-        
-        where :math:`\\mathcal{L}` is the Lagrangian of the system, defined as :math:`\\mathcal{L} = \\mathcal{K} - \\mathcal{P}`, where :math:`\\mathcal{K}` is the kinetic energy and :math:`\\mathcal{P}` is the potential energy.
+        Each returned equation has the form
+
+        .. math::
+            \\frac{d}{dt}
+            \\left(
+            \\frac{\\partial L}{\\partial \\dot{q}_i}
+            \\right)
+            -
+            \\frac{\\partial L}{\\partial q_i}
+            =
+            \\tau_i.
         """
-        self._warn_static_joint_variables("dynamic_model")
+        self._warn_static_joint_variables("euler_lagrange_equations")
         L = self.lagrangian()
         equations = []
         for i in range(self.dof):
             q = self.qs[i]
             qp = self.qs[i].diff(t)
             dL_dqp = 0 if qp == 0 else L.diff(qp)
-            equations.append( Eq( trigsimp(sp.diff(dL_dqp, t) - L.diff(q) ), symbols(f"tau_{i+1}") ) ) 
-            
+            equations.append(
+                Eq(
+                    trigsimp(sp.diff(dL_dqp, t) - L.diff(q)),
+                    symbols(f"tau_{i+1}"),
+                )
+            )
         return equations
-    
-    
+
     def _set_default_joint_limits(self):
         joint_limits = []
         for k in range(self.dof):

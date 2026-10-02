@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-01
+
+### Added
+
+* Expanded orientation support with all accepted proper-Euler and Tait-Bryan sequences, quaternion conversions, rotation-vector conversions, `vex()`, and descriptive rotation/HTM validation predicates.
+* New differential-kinematics API with `task_jacobian()`, `cartesian_velocity()`, `solve_velocity_ik()`, and `VelocityIKSolution`.
+* New singularity and local-capability helpers: `singular_values()`, `jacobian_rank()`, `condition_number()`, `is_singular()`, and `manipulability()`.
+* Full-pose inverse kinematics through `solve_pose_ik()` and `PoseIKSolution`, while preserving the existing position-only IK workflows.
+* New `moro.trajectory` module with linear, cubic, and quintic point-to-point trajectories, `JointTrajectory`, and `PositionTrajectory`.
+* Numerical joint-vector and joint-matrix input support in `RobotVisualizer.plot()` and `RobotVisualizer.animate()`.
+* New `moro.dynamics` module with `inverse_dynamics()`, `forward_dynamics()`, `state_derivative()`, `simulate()`, and `DynamicsSolution`.
+* Numerical forward dynamics based on `numpy.linalg.solve()` and time-domain simulation based on `scipy.integrate.solve_ivp`.
+* Support for zero, constant, time-varying, and state-feedback generalized-force inputs through the `tau` simulation interface.
+* New `moro.workspace` module with `Workspace` and reproducible sampled reachable-workspace analysis through `sample_workspace()`.
+* Matplotlib workspace visualization through `plot_workspace()` with automatic axis-aligned planar detection and explicit `xy`, `xz`, `yz`, and `3d` projections.
+* New user-guide, theory, API-reference, and worked-example documentation for differential kinematics, singularity/manipulability analysis, full-pose IK, trajectory generation, numerical dynamics, and workspace sampling.
+
+### Changed
+
+* **Breaking:** `Robot.dynamic_model()` now returns the symbolic matrix manipulator equation `M(q) qdd + C(q, qd) qd + G(q) = tau`.
+* The previous per-joint Euler-Lagrange result of `dynamic_model()` is now provided by `Robot.euler_lagrange_equations()`.
+* `Robot.dynamic_model_matrix_form()` remains temporarily available as a deprecated alias of `dynamic_model()`.
+* Legacy transformation predicates `is_SO3()`, `is_SE3()`, `isrot()`, and `ishtm()` are deprecated in favor of `is_rotation_matrix()` and `is_homogeneous_transform()` while preserving their historical Boolean behavior.
+* New time-series APIs use time-major arrays with shape `(N, dof)`; Cartesian sampled/trajectory positions use shape `(N, 3)` even for planar cases.
+* `RobotVisualizer` preserves mapping-based configuration input and additionally accepts numerical joint vectors/matrices ordered by `robot.qs`.
+* Python support for Moro 0.5.x is Python 3.11 and newer.
+* NumPy and SciPy are explicit required dependencies for the numerical APIs introduced in 0.5.0.
+
+### Compatibility notes
+
+* Users who relied on the Moro 0.4.x meaning of `Robot.dynamic_model()` should migrate to `Robot.euler_lagrange_equations()`.
+* `Robot.dynamic_model_matrix_form()` is provided only as a temporary compatibility alias and emits `DeprecationWarning`.
+* The legacy transformation predicates remain callable during the deprecation period and continue returning plain `True`/`False`; the new descriptive predicates may return `None` when symbolic membership is indeterminate.
+* New 0.5.0 feature APIs are intentionally module-oriented and are not automatically re-exported from the package root.
+
 ## [0.4.0] - 2026-08-20
 
 ### Added
