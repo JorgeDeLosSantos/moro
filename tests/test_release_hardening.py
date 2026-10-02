@@ -46,7 +46,7 @@ def test_package_and_project_versions_are_synchronized():
 
     assert moro.__version__ == version_module.__version__
     assert project["version"] == moro.__version__
-    assert moro.__version__ == "0.5.0.dev0"
+    assert moro.__version__ == "0.5.0"
 
 
 def test_supported_python_and_direct_runtime_dependencies_are_release_ready():
