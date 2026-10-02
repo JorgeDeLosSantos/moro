@@ -86,7 +86,7 @@ jobs:
           from moro.workspace import sample_workspace
           from moro.visualization import plot_workspace
 
-          assert moro.__version__ == "0.5.0.dev0"
+          assert moro.__version__ == "0.5.0"
           template = files("moro.visualization.templates").joinpath("threejs_viewer.html")
           assert template.is_file()
           print("Moro distribution smoke test passed.")
