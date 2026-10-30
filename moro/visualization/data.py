@@ -1,6 +1,7 @@
 """Numerical data containers used by the visualization backends."""
 
 from dataclasses import dataclass, field
+import math
 from typing import Literal
 
 import numpy as np
@@ -61,3 +62,23 @@ class SceneData:
     frames: list[FrameData]
     dimension: float
     dh_segments: list[DHSegmentData] = field(default_factory=list)
+
+    @property
+    def characteristic_length(self) -> float | None:
+        """Sum of the evaluated absolute DH translation lengths.
+
+        Returns `None` when geometric segments are unavailable (e.g. a
+        legacy manually constructed scene). Returns `0.0` for explicitly
+        evaluated but degenerate DH geometry. No absolute unit-dependent
+        minimum is imposed, and the result follows mutations to segments.
+        """
+        if not self.dh_segments:
+            return None
+
+        length = math.fsum(
+            math.dist(segment.start, segment.end)
+            for segment in self.dh_segments
+        )
+        if not math.isfinite(length):
+            raise ValueError("DH segments must have finite geometric lengths.")
+        return length
