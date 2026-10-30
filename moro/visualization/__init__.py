@@ -2,6 +2,7 @@
 
 from .data import DHSegmentData, FrameData, SceneData
 from .evaluation import evaluate_robot
+from .scaling import resolve_reference_length
 from .matplotlib_backend import MatplotlibBackend
 from .style import VisualizationStyle
 from .threejs_backend import ThreeJSBackend
@@ -28,6 +29,7 @@ __all__ = [
     "SceneData",
     "FrameData",
     "DHSegmentData",
+    "resolve_reference_length",
     "VisualizationStyle",
     "plot_workspace",
 ]

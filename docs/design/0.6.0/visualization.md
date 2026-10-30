@@ -190,3 +190,60 @@ Numerical comparisons should use an appropriate absolute/relative tolerance; the
 ## 6. Follow-on design note
 
 V2 will revisit the proposed scale `L_c = sum_i(|a_i|+|d_i|)`, its degeneracy rules, and stability across animation sequences. V3 will design `VisualizationLayout` / `resolve_layout()`. These formulas and APIs are **not approved as final** by this V1 document.
+
+
+## 7. V2 — Scale metrics (implemented, backend adoption deferred)
+
+### Distinct concepts
+
+- **Characteristic length** is a geometric, unit-covariant measure of the evaluated DH chain.
+- **Reference length** is a single scale chosen across a plot or animation to keep visual dimensions stable.
+- **Spatial bounds** describe the region occupied by frames, joints, DH segments, and optional trajectories; they belong to V3–V4, not V2.
+
+### Geometry metric
+
+For evaluated DH segments `s`, in fixed `d_i, a_i` order:
+
+\[
+L_c = \sum_s \lVert s.end - s.start \rVert_2
+    = \sum_{i=1}^n(|d_i| + |a_i|).
+\]
+
+`SceneData.characteristic_length` is a read-only computed property:
+
+- Returns a nonnegative finite `float` when `dh_segments` is not empty.
+- Returns exactly `0.0` for available but entirely degenerate geometry.
+- Returns `None` if geometric segments are **unavailable**, including scenes manually constructed with the legacy constructor and default empty `dh_segments`.
+- It is not cached: recomputation honors subsequent changes to mutable segment endpoints.
+- Invalid, nonfinite segment geometry raises `ValueError`, rather than introducing a floor or silently ignoring data.
+
+This metric is intentionally **not** the physical reach, swept volume, or the sum of actual solid link lengths. It describes the evaluated DH translations and remains meaningful for folded configurations whose end-effector position is close to the base.
+
+### Global animation reference
+
+```python
+from moro.visualization import resolve_reference_length
+
+reference = resolve_reference_length(scenes)
+```
+
+`resolve_reference_length(scenes: Iterable[SceneData]) -> float | None` returns the maximum available `characteristic_length` in the provided iterable. Scenes without evaluated DH geometry (`None`) are skipped:
+
+- If at least one scene has geometry, the result is its largest nonnegative length, including `0.0` when all have zero length.
+- If no scene has geometry, return `None`.
+- The iterable is consumed once, permitting a generator.
+- A finite result is mandatory.
+
+For a single evaluated scene, the chosen reference is that scene's characteristic length. For a **precomputed** animation, the reference stays constant for every frame. A caller must not recompute a separate reference per frame during rendering.
+
+### Degenerate and legacy scenes
+
+`0.0` and `None` must not be confused. V2 adds no unit-specific floor and does not alter the legacy `SceneData.dimension` calculation.
+
+V3 will decide how to resolve an explicit user `reference_length`, an automatic reference, and an eventual **visual-only** fallback for fully degenerate or legacy scenes. This fallback must not change the geometrical quantity `L_c`.
+
+### Scope and compatibility
+
+- V2 adds `SceneData.characteristic_length` and the reusable `resolve_reference_length` helper in `moro/visualization/scaling.py`, exported from `moro.visualization`.
+- No camera, scene bounding boxes, backend defaults, Matplotlib marker sizes, Three.js cylinder radii, `SceneData.dimension`, or JavaScript payloads change in V2.
+- Dedicated regression tests cover proportional unit conversion, folding, prismatic motion, empty/legacy scenes, negative lengths, mutation, and nonfinite coordinates.
