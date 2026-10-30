@@ -1,6 +1,6 @@
 """Visualization tools for serial robots."""
 
-from .data import FrameData, SceneData
+from .data import DHSegmentData, FrameData, SceneData
 from .evaluation import evaluate_robot
 from .matplotlib_backend import MatplotlibBackend
 from .style import VisualizationStyle
@@ -27,6 +27,7 @@ __all__ = [
     "evaluate_robot",
     "SceneData",
     "FrameData",
+    "DHSegmentData",
     "VisualizationStyle",
     "plot_workspace",
 ]

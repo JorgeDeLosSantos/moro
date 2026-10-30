@@ -1,11 +1,71 @@
 """Convert symbolic robot configurations into numerical scene data."""
 
 import numpy as np
+import sympy as sp
 
 from moro.core import Robot
 from moro.util import sympy_matrix_to_numpy_float
 
-from .data import FrameData, SceneData
+from .data import DHSegmentData, FrameData, SceneData
+
+
+def _evaluate_dh_translation(value, num_vals: dict, row_index: int, name: str) -> float:
+    """Evaluate a signed DH translation to a finite real scalar."""
+    try:
+        result = float(sp.sympify(value).subs(num_vals))
+        if not np.isfinite(result):
+            raise ValueError("non-finite DH translation")
+    except (TypeError, ValueError, OverflowError, AttributeError, sp.SympifyError) as exc:
+        raise ValueError(
+            f"DH row {row_index} parameter '{name}' must evaluate "
+            "to a finite real number."
+        ) from exc
+    return result
+
+
+def _build_dh_segments(
+    robot: Robot,
+    num_vals: dict,
+    frames: list[FrameData],
+) -> list[DHSegmentData]:
+    """Build the signed d/a translation segments from evaluated DH frames.
+
+    Endpoints are independent copies in base/world coordinates. The helper
+    does not recompute homogeneous transformations.
+    """
+    segments: list[DHSegmentData] = []
+
+    for i, (a_i, _, d_i, _) in enumerate(robot.dh_parameters, start=1):
+        # Check both translations, even though the final frame already
+        # determines the endpoint of the a-segment.
+        _evaluate_dh_translation(a_i, num_vals, i, "a")
+        d_value = _evaluate_dh_translation(d_i, num_vals, i, "d")
+
+        previous_frame = frames[i - 1]
+        current_frame = frames[i]
+
+        p_prev = np.array(previous_frame.position, dtype=float, copy=True)
+        p_mid = p_prev + d_value * previous_frame.z
+        p_end = np.array(current_frame.position, dtype=float, copy=True)
+
+        segments.append(
+            DHSegmentData(
+                row_index=i,
+                kind="d",
+                start=p_prev.copy(),
+                end=p_mid.copy(),
+            )
+        )
+        segments.append(
+            DHSegmentData(
+                row_index=i,
+                kind="a",
+                start=p_mid.copy(),
+                end=p_end.copy(),
+            )
+        )
+
+    return segments
 
 
 def evaluate_robot(robot: Robot, num_vals: dict) -> SceneData:
@@ -22,7 +82,8 @@ def evaluate_robot(robot: Robot, num_vals: dict) -> SceneData:
     Returns
     -------
     SceneData
-        Numerical joint positions and frame transformations ready to render.
+        Numerical joint positions, frame transformations and ordered
+        DH translation segments in the base frame, ready for rendering.
     """
     joints: list[np.ndarray] = []
     frames: list[FrameData] = []
@@ -47,4 +108,5 @@ def evaluate_robot(robot: Robot, num_vals: dict) -> SceneData:
         joints=joints,
         frames=frames,
         dimension=dimension,
+        dh_segments=_build_dh_segments(robot, num_vals, frames),
     )
