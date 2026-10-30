@@ -16,8 +16,8 @@ from moro.visualization import (
 
 def test_characteristic_length_planar_rr_and_units():
     q1, q2 = symbols("q1 q2")
-    meters = Robot((0.4, 0, 0, q1), (0.3, 0, q2, "r"))
-    millimeters = Robot((400, 0, 0, q1), (300, 0, q2, "r"))
+    meters = Robot((0.4, 0, 0, q1), (0.3, 0, 0, q2, "r"))
+    millimeters = Robot((400, 0, 0, q1), (300, 0, 0, q2, "r"))
     folded = {q1: 0, q2: np.pi}
     assert evaluate_robot(meters, folded).characteristic_length == pytest.approx(0.7)
     assert evaluate_robot(millimeters, folded).characteristic_length == pytest.approx(700)
