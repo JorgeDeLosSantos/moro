@@ -1,0 +1,192 @@
+# Moro 0.6.0 — Visualization design
+
+**Status:** V1 geometry contract approved for implementation. V2–V5 remain to be specified.
+
+**Target branch:** `feat/0.6.0-dh-geometry` (from `develop`).
+
+## Purpose and boundaries
+
+Moro currently evaluates DH frame origins and draws a straight connection between successive origins. For spatial manipulators, this connection may not show the separate translations described by the classic Denavit–Hartenberg convention.
+
+**V1** adds numerically evaluated DH translation segments to scene data, independent of any rendering backend. It does **not** introduce CAD geometry, change the robot model, infer the physical positions of actuators, or change what either backend draws. It must preserve the existing `RobotVisualizer` API, including its current default backend.
+
+Later increments will address characteristic length, shared visualization layout, framing, rendering, and eventual adoption of Three.js as the default. Those decisions are *not* part of V1.
+
+## 1. Geometry and notation
+
+For DH row `i`, Moro uses the classic convention:
+
+\[
+T_i^{i-1} = R_z(\theta_i)\,T_z(d_i)\,T_x(a_i)\,R_x(\alpha_i).
+\]
+
+Let `F_i` be the evaluated frame `i`, `p_i` its origin in the base/world frame, `z_{i-1}` the positive Z direction of `F_{i-1}`, and `x_i` the positive X direction of `F_i`. The intermediate point is
+
+\[
+p_{d_i} = p_{i-1} + d_i z_{i-1}.
+\]
+
+The expected position identity is
+
+\[
+p_i = p_{d_i} + a_i x_i.
+\]
+
+The rotation `R_x(\alpha_i)` does not change the X direction, so using `F_i.x` for the `a_i` translation is consistent with the classic DH convention. All returned positions are expressed in the base/world frame, not in local joint coordinates.
+
+The two evaluated segments for row `i` are, in **fixed order**:
+
+1. `kind="d"`: from `p_{i-1}` to `p_{d_i}`;
+2. `kind="a"`: from `p_{d_i}` to `p_i`.
+
+The endpoints carry signed direction: negative DH parameters reverse the corresponding segment, while the Euclidean segment length is its absolute parameter value. The two segments do **not** imply a physical link or an actuator placement.
+
+## 2. Numerical scene data contract
+
+Place the following dataclasses in `moro/visualization/data.py`.
+
+~~~python
+from dataclasses import dataclass, field
+from typing import Literal
+import numpy as np
+
+@dataclass(slots=True)
+class DHSegmentData:
+    """One numerically evaluated DH translation contribution."""
+    row_index: int
+    kind: Literal["d", "a"]
+    start: np.ndarray
+    end: np.ndarray
+
+@dataclass(slots=True)
+class SceneData:
+    """Numerically evaluated data for one robot configuration."""
+    joints: list[np.ndarray]
+    frames: list[FrameData]
+    dimension: float
+    dh_segments: list[DHSegmentData] = field(default_factory=list)
+~~~
+
+Field contracts:
+
+| Field | Meaning |
+|---|---|
+| `row_index` | 1-based DH row index; in `[1, robot.dof]` |
+| `kind` | One of `"d"` or `"a"` |
+| `start` / `end` | Independent finite real NumPy arrays with shape `(3,)`, in world coordinates |
+| `dh_segments` | Ordered flat list `[d1, a1, ..., dn, an]`; length `2 * robot.dof` for evaluated robots |
+
+Keep both zero-length segments when a row has `d_i = 0` or `a_i = 0`. This preserves one-to-one correspondence with DH rows and simplifies later layout calculations. Renderers may choose to omit zero-length primitives when rendering is introduced in a later increment.
+
+These data objects remain lightweight containers: they are not full geometric entities or validation frameworks. `evaluate_robot()` is responsible for producing values that meet the contract. A manually constructed `SceneData` remains valid without supplying `dh_segments`; an independently instantiated `DHSegmentData` is expected to satisfy the documented contract.
+
+Make `DHSegmentData` importable from `moro.visualization` by exporting it in `moro/visualization/__init__.py`.
+
+### Compatibility policy
+
+- Preserve `SceneData(joints, frames, dimension)`, including positional construction and named construction.
+- Keep `dimension` and its existing calculation unchanged in V1; its redesign belongs to V2.
+- Do not rename or reinterpret `joints` now: the existing field stores DH frame origins (including base), not necessarily physical joint locations.
+- Do not change `FrameData`, backend defaults, serialized Three.js payloads, camera logic, or rendered appearance in V1.
+- Adding `dh_segments` must not break existing tests that build `SceneData` manually.
+
+## 3. Evaluation algorithm and responsibilities
+
+Continue to evaluate all frame transforms once through the existing `evaluate_robot(robot, num_vals)` path. After the `frames` list has been built, call the private helper:
+
+~~~python
+def _build_dh_segments(
+    robot: Robot,
+    num_vals: dict,
+    frames: list[FrameData],
+) -> list[DHSegmentData]:
+    ...
+~~~
+
+For each `i = 1, ..., robot.dof`:
+
+1. Read the original row `(a_i, alpha_i, d_i, theta_i)` from `robot.dh_parameters[i - 1]`.
+2. Evaluate `a_i` and `d_i` to finite real scalars by applying `num_vals`. Use a consistent scalar conversion path for plain Python numbers, NumPy scalars, and SymPy numbers/expressions.
+3. Take `p_prev = frames[i-1].position` and `z_prev = frames[i-1].z`.
+4. Calculate `p_mid = p_prev + d_i * z_prev`.
+5. Take `p_end = frames[i].position` and append `DHSegmentData(i, "d", p_prev, p_mid)` followed by `DHSegmentData(i, "a", p_mid, p_end)`.
+6. Make independent float-array copies for every stored endpoint; do not expose views of `FrameData.T`.
+
+Only the signed `d_i` scalar is needed to locate `p_mid`; `a_i` is still evaluated to require a well-defined finite DH translation and to support the mathematical invariant in tests. The final endpoint should be taken from the evaluated frame to avoid unnecessary independent transform evaluation.
+
+**No extra symbolic matrix multiplication** is required. Do not re-evaluate the complete DH transformation inside the helper.
+
+### Validation and errors
+
+- Require finite real results for each evaluated `a_i` and `d_i`, not unresolved symbols, complex results, `nan`, or `inf`.
+- Raise a contextual `ValueError` naming the DH row and parameter when scalar evaluation fails.
+- Preserve the existing error behavior for invalid or nonnumerical full frame transforms unless a directly related V1 regression necessitates a focused correction.
+- Do not add a global magnitude threshold or a fixed geometric minimum in V1.
+- Do not apply rounding to force geometrically small values to zero. Approximate floating-point equality belongs in tests.
+
+The internal helper may use a small private scalar-evaluation helper if it reduces duplication. Do not create a public validation or geometry subsystem for V1.
+
+### Substitution details
+
+The same mapping `num_vals` used to evaluate `robot.T_i0(i)` must be applied to DH scalars. Plain numeric constants should work without requiring an explicit `.subs()` method on the original value (e.g., use `sympy.sympify(value).subs(num_vals)`).
+
+If a DH parameter cannot be resolved to a finite real number, the evaluation fails explicitly rather than silently omitting its geometric contribution.
+
+## 4. Mathematical invariants and tests
+
+Add focused tests in `tests/test_visualization.py` or in a dedicated V1 test module without rewriting unrelated visualization tests.
+
+For each row, up to floating-point tolerance:
+
+\[
+p_{d_i} - p_{i-1} = d_i z_{i-1},\quad
+p_i - p_{d_i} = a_i x_i.
+\]
+
+Also verify:
+
+- Exactly two segments per DH row and stable `d`-then-`a` ordering;
+- Indexes start at one and match the rows;
+- Endpoint shape `(3,)`, finite values, world-coordinate interpretation, and no shared mutable endpoint views;
+- Segment lengths `|d_i|` and `|a_i|`;
+- Continuity: the `d` endpoint equals the `a` start; the `a` endpoint equals the next row's `d` start;
+- Zero lengths are retained as explicit degenerate segments;
+- Signed negative parameter orientation;
+- `SceneData` legacy three-argument construction and default empty `dh_segments`;
+- Existing serialization and visualization behavior remain unchanged during V1.
+
+**Representative robot cases:**
+
+1. Planar RR, with `d_i = 0` and nonzero `a_i`.
+2. Spatial RRR with nonzero twist (`alpha_i`), nonzero `a_i`, and nonzero `d_i`.
+3. RRP or SCARA with a prismatic `d_i` that varies by configuration.
+4. Fully or partly folded configurations, including coincident DH origins.
+5. Symbolic link/offset parameters resolved numerically through `num_vals`.
+6. Negative offsets and lengths; zero/degenerate configurations.
+7. Unresolved, nonreal, or nonfinite DH translation scalar inputs produce contextual errors.
+
+Numerical comparisons should use an appropriate absolute/relative tolerance; the tests must not require bitwise equality between independently evaluated symbolic/numeric expressions.
+
+## 5. Increment boundaries and acceptance criteria
+
+**This PR should contain:**
+
+- `moro/visualization/data.py`: `DHSegmentData` and optional `SceneData.dh_segments` field.
+- `moro/visualization/evaluation.py`: evaluation helper and scene population.
+- `moro/visualization/__init__.py`: public export.
+- Focused tests and relevant API documentation.
+
+**Leave for V2/V3/V4/V5:**
+
+- Characteristic length `L_c` and layout resolution;
+- Kinematic and visual bounding boxes;
+- Stable per-animation sizes and camera framing;
+- Matplotlib/Three.js rendering of DH segments and JavaScript payload changes;
+- Default backend change to Three.js;
+- Advanced joint semantics, joint labels, link body geometry, CAD representations.
+
+**V1 is accepted when** the new segment data are numerically and geometrically correct, the representative tests pass, and existing scene creation, backends, animation, and public calls retain their current behavior. Follow the normal review/CI process before merging into `develop`.
+
+## 6. Follow-on design note
+
+V2 will revisit the proposed scale `L_c = sum_i(|a_i|+|d_i|)`, its degeneracy rules, and stability across animation sequences. V3 will design `VisualizationLayout` / `resolve_layout()`. These formulas and APIs are **not approved as final** by this V1 document.
