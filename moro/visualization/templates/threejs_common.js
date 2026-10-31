@@ -680,6 +680,18 @@ window.MoroThreeJS = (function() {
         }
     }
 
+    function orientJointSolid(mesh, solid) {
+        // Explicit roll orientation: local X follows the preceding DH
+        // frame X, local Y the joint's motion axis, and local Z completes
+        // a right-handed basis. This aligns prism faces with the guides.
+        var x = new THREE.Vector3().fromArray(solid.transverse).normalize();
+        var y = new THREE.Vector3().fromArray(solid.axis).normalize();
+        var z = new THREE.Vector3().crossVectors(x, y).normalize();
+        mesh.quaternion.setFromRotationMatrix(
+            new THREE.Matrix4().makeBasis(x, y, z)
+        );
+    }
+
     function createJointSolidMeshes(robotGroup, data, style) {
         // Python resolves dimensions and world-space motion axes. These
         // cylinders and boxes are idealized motion symbols, not CAD parts.
@@ -703,10 +715,7 @@ window.MoroThreeJS = (function() {
             mesh.userData.jointIndex = solid.index;
             mesh.userData.jointKind = solid.kind;
             mesh.position.fromArray(solid.origin);
-            mesh.quaternion.setFromUnitVectors(
-                new THREE.Vector3(0, 1, 0),
-                new THREE.Vector3().fromArray(solid.axis).normalize()
-            );
+            orientJointSolid(mesh, solid);
             robotGroup.add(mesh);
             meshes.push(mesh);
         });
@@ -725,10 +734,7 @@ window.MoroThreeJS = (function() {
                 throw new Error('Inconsistent joint solid identity.');
             }
             mesh.position.fromArray(solid.origin);
-            mesh.quaternion.setFromUnitVectors(
-                new THREE.Vector3(0, 1, 0),
-                new THREE.Vector3().fromArray(solid.axis).normalize()
-            );
+            orientJointSolid(mesh, solid);
         });
     }
 
