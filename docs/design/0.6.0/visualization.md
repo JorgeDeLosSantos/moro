@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Visualization design
 
-**Status:** V1–V4-A integrated into `develop`; V4-B backend integration in review; V5 pending.
+**Status:** V1–V4-B integrated into `develop`; V5-A DH rendering in review; V5-B and V5-C pending.
 
-**Current integration branch:** `feat/0.6.0-framing-backends` (from `develop`).
+**Current integration branch:** `feat/0.6.0-dh-rendering` (from `develop`).
 
 ## Purpose and boundaries
 
@@ -410,3 +410,90 @@ Camera type switching retains the same control target; the synchronized projecti
 Tests cover offset geometry, a common world-scale framing per animation, consistency across m/mm, explicit framing and style overrides, Matplotlib equal-axis limits and stable frames, and serialized Three.js payloads. The V4-B JavaScript helper must also be verified at representative wide and tall aspect ratios.
 
 The visible-geometry bounds of V4-A are conservative approximations. Exact projected marker padding, complex viewport resizing, non-Cartesian geometries, and future continuous swept-volume bounds are not included here. Review in actual Jupyter/Colab views before treating appearance as finalized. V5 will address remaining display polish and the default backend.
+
+## 12. V5-A — Render evaluated classic-DH geometry
+
+### Objective and scope
+
+V5-A closes the gap between V1's evaluated DH geometry and the actual
+rendered link paths. The numerical evaluator remains the **single authority**
+for the ordered translation contributions `(d_i, a_i)`; each endpoint is in
+base/world coordinates. Neither a CAD solid nor an actuator location is
+inferred from these segments.
+
+V5-A does **not** change the joint markers, robot kinematic model,
+`VisualizationStyle` fields, camera framing, `SceneData.dimension`,
+`RobotVisualizer` API, or the default backend. V5-B handles joint
+symbols; V5-C handles the default backend switch and release cleanup.
+
+### Serialization
+
+`threejs_backend._scene_to_payload(scene)` preserves its original
+`{"joints", "frames", "dimension"}` keys for legacy scenes that have no DH
+segments. For scenes with evaluated DH geometry, append a
+`"dh_segments"` array containing, in their original order:
+
+```json
+{"row_index": 1, "kind": "d", "start": [0, 0, 0], "end": [0, 0, 1]}
+```
+
+Each entry contains the 1-based DH row index, `"d"` or `"a"` contribution,
+and two 3D numerical endpoints. This array retains **zero-length** segments:
+a collapsed prismatic offset must not alter animation mesh topology or
+change the identity of a DH row.
+
+The same `_scene_to_payload` helper is used for a static view and for each
+sample of an animation. V3's global layout and V4's global framing payloads
+are unchanged.
+
+### Matplotlib
+
+When `scene.dh_segments` is available and `show_links=True`, render one
+`Line3D` for each nonzero evaluated contribution, directly between its
+start and end. Zero-length segments remain in the numerical scene, but do
+not add empty plotted lines. `show_links=False` suppresses them.
+
+For manually constructed legacy scenes without DH segments, preserve the
+existing direct joint-to-joint polyline. Axis labels, joints, frames,
+trajectory, global animation framing, and style overrides are unchanged.
+Redrawing each animation frame uses that frame's evaluated DH segments.
+
+### Three.js
+
+Static scenes create one cylinder from each **nonzero** evaluated DH
+segment and use the Python-supplied endpoints directly. An exact zero
+length produces no cylinder, regardless of the robot's units.
+
+Animations allocate **one persistent mesh per evaluated DH segment**, even
+for zero-length contributions. The update step reads each frame's
+endpoints and updates the mesh's position, direction, length and visibility.
+A degenerate segment is hidden, rather than removed; it becomes visible
+again when a prismatic displacement increases.
+
+The animation topology validator rejects changes in the existence, count,
+ordering, `row_index`, or `kind` of DH segments between frames (in
+addition to the existing joint/frame-count checks). Geometric segment
+lengths may change freely.
+
+When `dh_segments` is unavailable, retain the previous legacy geometry
+fallback, including the existing corner reconstruction. This calculation
+must not be used for new evaluated scenes. The former 1e-6 **absolute
+world-unit** cutoff for static and animated cylinders is removed; positive,
+finite link lengths are never rejected merely for being small.
+
+### Acceptance criteria
+
+1. RR planar robots render the two nonzero `a` contributions without
+   spurious `d=0` geometry.
+2. Spatial robots with nonzero positive or negative DH translations
+   render exactly the ordered `d` and `a` segments rather than one
+   diagonal between origins.
+3. RP/RRP animations preserve mesh topology as a prismatic `d`
+   contribution crosses zero; a hidden mesh must reappear.
+4. Realizing an otherwise identical robot in m or mm changes link sizes
+   proportionally but not visibility.
+5. Legacy scenes with no evaluated DH geometry continue to work without
+   a new required field.
+6. The Python 3.11–3.14 test matrix, packaging and Sphinx documentation
+   builds remain green. Confirm actual appearance in Jupyter/Colab before
+   integrating when possible.
