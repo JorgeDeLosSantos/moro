@@ -10,6 +10,7 @@ import numpy as np
 
 from .data import SceneData
 from .layout import VisualizationLayout
+from .joint_symbols import _joint_plane
 from .style import VisualizationStyle
 
 
@@ -44,12 +45,22 @@ def build_joint_solids(
 
     solids: list[dict] = []
     for joint in scene.joint_data:
+        # Keep the prism faces aligned with the same transverse DH frame X
+        # direction used for the schematic slider guides. The axis alone
+        # cannot determine a cuboid's roll orientation.
+        reference = (
+            scene.frames[joint.index - 1].x
+            if len(scene.frames) >= joint.index
+            else None
+        )
+        transverse, _ = _joint_plane(joint.axis, reference)
         if joint.kind == "r":
             solid = {
                 "index": joint.index,
                 "kind": "r",
                 "origin": np.asarray(joint.origin, dtype=float).tolist(),
                 "axis": np.asarray(joint.axis, dtype=float).tolist(),
+                "transverse": transverse.tolist(),
                 "radius": radius * 0.72,
                 "length": radius * 2.0,
             }
@@ -59,6 +70,7 @@ def build_joint_solids(
                 "kind": "p",
                 "origin": np.asarray(joint.origin, dtype=float).tolist(),
                 "axis": np.asarray(joint.axis, dtype=float).tolist(),
+                "transverse": transverse.tolist(),
                 "width": radius * 1.35,
                 "depth": radius * 1.35,
                 "length": radius * 2.6,
