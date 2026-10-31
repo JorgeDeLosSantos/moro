@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Visualization design
 
-**Status:** V1–V3-B integrated into `develop`; V4-A core implementation in review; V4-B and V5 pending.
+**Status:** V1–V4-A integrated into `develop`; V4-B backend integration in review; V5 pending.
 
-**Current integration branch:** `feat/0.6.0-framing-core` (from `develop`).
+**Current integration branch:** `feat/0.6.0-framing-backends` (from `develop`).
 
 ## Purpose and boundaries
 
@@ -359,3 +359,54 @@ This provides scale covariance for properly evaluated DH geometry and stable fra
 ### V4-B boundary
 
 V4-B will apply the framing to Matplotlib's three axis limits and aspect ratio, and to Three.js perspective/orthographic camera target, visible height/distance, clipping planes, reset and view switches. The current V3-B Matplotlib marker-area adapter still uses a nominal view span; V4-B should tie it to the actual fitted view. Any exact screen-pixel padding needed for user-supplied marker sizes belongs in the backend adapters, not in geometric AABBs.
+
+## 11. V4-B — Backend framing adapters
+
+### Purpose
+
+Apply the Python-resolved `SceneFraming` from V4-A consistently to Matplotlib and Three.js, without changing `evaluate_robot()`, the legacy `SceneData.dimension`, the robot API, the default backend, or the geometry of rendered links.
+
+All rendered scenes are framed from their **visible evaluated geometry**. Animations share one global `VisualizationLayout` and `SceneFraming` across all sampled frames; neither visual size nor camera target is recomputed per frame. The framing describes samples, **not** a guaranteed continuous swept volume between samples.
+
+### Matplotlib
+
+`MatplotlibBackend.render` and `MatplotlibBackend.animate` accept optional `framing: SceneFraming` after the existing `layout` argument. When omitted, they call `resolve_framing(..., layout=layout, style=style)`; animations resolve it **once** before constructing the `FuncAnimation`.
+
+The common `_apply_framing(ax, framing)` sets symmetric numerical limits about `framing.center` along X, Y and Z, each with `framing.half_extent`, and `ax.set_box_aspect((1,1,1))`. The animation initializer and per-frame redraw reapply the same limits after clearing. `frame_scale` retains its V3-B world-space meaning.
+
+Automatic Matplotlib point-squared scatter-marker sizes now use the **actual common visible span** `2 * framing.half_extent`, instead of the provisional V3-B nominal length. Explicit user `joint_size`/`base_size` overrides still map to `s=size*100` in points². Since Matplotlib's markers are display-space primitives, their projected size remains approximate under perspective, zoom or viewport resizing.
+
+### Three.js
+
+`ThreeJSBackend.render`/`animate` likewise accept optional `framing: SceneFraming` and compute it after `layout` when omitted. A single top-level `framing` dictionary is serialized along with `layout`:
+
+- `minimum` and `maximum`: world-space AABB corners;
+- `center`: target point for `OrbitControls` and all preset views;
+- `half_extent`: cubic half-extent available to backends;
+- `fit_radius`: conservatively enclosing sphere radius including margin.
+
+Individual scene payloads from `_scene_to_payload` are **unchanged**.
+
+`threejs_common.js::resolveCameraFit(framing, aspect, fovDegrees)` computes the projection-specific fit. Let `R` be the Python-resolved `fit_radius`, `a` the viewport width/height aspect ratio, and `phi_v` the vertical perspective FOV (50°). Then:
+
+```text
+phi_h = 2 * atan(tan(phi_v / 2) * a)
+phi_min = min(phi_h, phi_v)
+distance = R / sin(phi_min / 2)
+ortho_half_height = R / min(1, a)
+ortho_half_width = a * ortho_half_height
+near = 0.1 * (distance - R)
+far = distance + 4 * R
+```
+
+The orthographic camera uses symmetrical front/back clipping planes `[-far, far]`. These choices are provisional, conservative and **unit covariant** (m and mm); no absolute floor such as 0.01, 1 or 1000 is introduced in the new path. The old `createCameras` path remains available only for legacy JavaScript callers without a framing payload.
+
+Both the static and animation templates use `framing.center` as the initial and reset view target. The camera positions for front, top and isometric views use the fitted distance; top view uses the valid camera `up=[0,1,0]` so the world remains Z-up. Grid sizing remains centered at the world origin and uses bounds for a sufficiently large footprint without contributing to the camera fitting volume. Lighting follows the fitted center to work with offset robots.
+
+Camera type switching retains the same control target; the synchronized projection path is shared by static and animation views. The reset action restores the original fitted projection, zoom and isometric orientation, preserving the currently selected camera type.
+
+### Validation and limitations
+
+Tests cover offset geometry, a common world-scale framing per animation, consistency across m/mm, explicit framing and style overrides, Matplotlib equal-axis limits and stable frames, and serialized Three.js payloads. The V4-B JavaScript helper must also be verified at representative wide and tall aspect ratios.
+
+The visible-geometry bounds of V4-A are conservative approximations. Exact projected marker padding, complex viewport resizing, non-Cartesian geometries, and future continuous swept-volume bounds are not included here. Review in actual Jupyter/Colab views before treating appearance as finalized. V5 will address remaining display polish and the default backend.
