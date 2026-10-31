@@ -79,18 +79,30 @@ window.MoroThreeJS = (function() {
         window.__moroThreeReadyPromise.then(onReady).catch(onError);
     }
 
-    function resolveStyle(style, sceneScale) {
+    function resolveStyle(style, sceneScale, layout) {
+        // The Python backend resolves world-space sizes once per animation.
+        // Legacy standalone payloads without a layout keep their old fallback.
+        function autoSize(key, legacyFallback) {
+            if (layout && layout[key] != null) {
+                var value = Number(layout[key]);
+                if (Number.isFinite(value) && value > 0) {
+                    return value;
+                }
+            }
+            return legacyFallback;
+        }
+
         return {
-            frameScale: style.frame_scale !== null
+            frameScale: style.frame_scale != null
                 ? Number(style.frame_scale)
-                : Math.max(sceneScale / 6, 1.0),
-            jointRadius: style.joint_size !== null
+                : autoSize('frame_length', Math.max(sceneScale / 6, 1.0)),
+            jointRadius: style.joint_size != null
                 ? Number(style.joint_size)
-                : Math.max(sceneScale * 0.02, 0.4),
-            baseRadius: style.base_size !== null
+                : autoSize('joint_radius', Math.max(sceneScale * 0.02, 0.4)),
+            baseRadius: style.base_size != null
                 ? Number(style.base_size)
-                : Math.max(sceneScale * 0.03, 0.6),
-            linkRadius: Math.max(sceneScale * 0.015, 0.3)
+                : autoSize('base_radius', Math.max(sceneScale * 0.03, 0.6)),
+            linkRadius: autoSize('link_radius', Math.max(sceneScale * 0.015, 0.3))
                 * (Number(style.link_linewidth) / 3)
         };
     }

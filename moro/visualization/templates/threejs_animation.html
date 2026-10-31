@@ -141,6 +141,7 @@ __COMMON_SCRIPT__
             var animationData = __ANIMATION_DATA__;
             var framesData = animationData.frames;
             var style = animationData.style;
+            var layout = animationData.layout;
             var trajectoryData = animationData.trajectory || [];
             var container = document.getElementById('container-__UNIQUE_ID__');
             var slider = document.getElementById('slider-__UNIQUE_ID__');
@@ -177,7 +178,7 @@ __COMMON_SCRIPT__
             );
             var sceneCenter = animationBounds.center;
             var dim = animationBounds.dimension * 1.15;
-            var resolvedStyle = window.MoroThreeJS.resolveStyle(style, dim);
+            var resolvedStyle = window.MoroThreeJS.resolveStyle(style, dim, layout);
             var resolvedTrajectoryStyle =
                 window.MoroThreeJS.resolveTrajectoryStyle(style);
 

@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Visualization design
 
-**Status:** V1 geometry contract approved for implementation. V2–V5 remain to be specified.
+**Status:** V1, V2 and V3-A integrated into `develop`; V3-B implementation in review; V4–V5 pending.
 
-**Target branch:** `feat/0.6.0-dh-geometry` (from `develop`).
+**Current integration branch:** `feat/0.6.0-layout-backends` (from `develop`).
 
 ## Purpose and boundaries
 
@@ -267,3 +267,46 @@ The resolver requires a nonempty sequence and computes the reference once for al
 Backend adaptation, especially Matplotlib's points-squared markers versus Three.js world-space sphere radii, remains in **V3-B**. Explicit `VisualizationStyle` overrides, link linewidth semantics, serialization, geometry rendering, and camera framing are deliberately unchanged in V3-A. Subsequent work should avoid recalculating nominal scale independently in JavaScript.
 
 V3-A acceptance requires scale homogeneity for nonfallback inputs, constant animation layouts, correct precedence and invalid input handling, and no regressions in existing backend behavior.
+
+
+## 9. V3-B — Backend layout adapters
+
+V3-B **consumes** the world-space `VisualizationLayout` built in V3-A without changing the DH evaluator or introducing camera/bounding-box logic.
+
+### Three.js
+
+Both `ThreeJSBackend.render(scene)` and `ThreeJSBackend.animate(scenes)` calculate a layout in Python when one is not supplied. Animation resolves a single layout from the entire sequence. The resulting JSON includes one top-level `layout` with `reference_length`, `frame_length`, `joint_radius`, `base_radius`, and `link_radius`. The legacy `_scene_to_payload` result is unchanged.
+
+`threejs_common.js::resolveStyle(style, sceneScale, layout)` uses the Python layout values **for automatic sizes**:
+
+- Automatic axis length: `layout.frame_length`.
+- Automatic joint/base sphere radii: `layout.joint_radius` and `layout.base_radius`.
+- Automatic link cylinder radius: `layout.link_radius * style.link_linewidth / 3`.
+
+Explicit `frame_scale`, `joint_size`, and `base_size` retain their previous meaning as world-space sizes; explicit `link_linewidth` continues to multiply the base link radius. JavaScript retains its legacy sizing fallback only when no usable layout is serialized (for compatibility with older hand-built template payloads).
+
+### Matplotlib
+
+`MatplotlibBackend.render()` resolves one layout for a static scene, while `MatplotlibBackend.animate()` resolves it **once for all animation frames** and passes the same object through each redraw.
+
+- Automatic `frame_scale` uses `layout.frame_length` as the `ax.quiver(length=...)` world length.
+- Automatic joint and base marker areas use the respective world-space layout radii, converted into Matplotlib `scatter(s=...)` points-squared. The conversion uses the shorter axes-viewport dimension and a **nominal** visible span of three reference lengths.
+- Explicit `joint_size`/`base_size` preserve the historical `s=size*100` in points-squared; explicit `frame_scale` preserves world units. `link_linewidth` remains in Matplotlib points.
+
+The nominal span is an **interim display adapter**, not an exact perspective projection. Exact world-to-screen sizing under zoom/resizing, camera framing, consistent world scale for very small robots, and full bounding boxes belong to V4. Therefore V3-B does not promise identical pixel size under arbitrary camera zoom or viewport changes.
+
+Both backends accept an optional `layout: VisualizationLayout` parameter to support explicit user-selected scales from `resolve_layout(..., reference_length=...)`. Existing calls remain valid.
+
+### Non-goals
+
+V3-B intentionally does **not** change:
+
+- Existing `SceneData.dimension` or geometry payload fields;
+- The `RobotVisualizer` default backend;
+- Joint/link geometry placement (DH-segment drawing belongs to a later increment);
+- Matplotlib axis limits or Three.js camera/grid/world-axis sizing;
+- Trajectory rendering or colors.
+
+### Regression expectations
+
+Test unit conversion proportionality, explicit override compatibility, shared animation layout, Three.js JSON serialization, existing visualization behavior, and the Python 3.11–3.14 CI matrix. V3-B should be merged only after all required checks pass.

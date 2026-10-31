@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 
 from .data import SceneData
+from .layout import VisualizationLayout, resolve_layout
 from .style import VisualizationStyle
 
 
@@ -87,6 +88,17 @@ def _scene_to_payload(scene_data: SceneData) -> dict:
     }
 
 
+def _layout_to_payload(layout: VisualizationLayout) -> dict:
+    """Serialize pre-resolved geometric sizes in robot linear units."""
+    return {
+        "reference_length": float(layout.reference_length),
+        "frame_length": float(layout.frame_length),
+        "joint_radius": float(layout.joint_radius),
+        "base_radius": float(layout.base_radius),
+        "link_radius": float(layout.link_radius),
+    }
+
+
 def _scenes_to_payload(scene_data_list: list[SceneData]) -> list[dict]:
     """Convert multiple scenes into JSON-serializable dictionaries."""
     return [_scene_to_payload(scene) for scene in scene_data_list]
@@ -144,6 +156,7 @@ class ThreeJSBackend:
         width: int = 800,
         height: int = 600,
         style: VisualizationStyle | None = None,
+        layout: VisualizationLayout | None = None,
     ):
         """Return an interactive Three.js view as ``IPython.display.HTML``."""
         from IPython.display import HTML
@@ -151,8 +164,12 @@ class ThreeJSBackend:
         if style is None:
             style = VisualizationStyle()
 
+        if layout is None:
+            layout = resolve_layout([scene_data])
+
         payload = _scene_to_payload(scene_data)
         payload["style"] = _style_to_payload(style)
+        payload["layout"] = _layout_to_payload(layout)
 
         html = _render_html_template(
             "threejs_viewer.html",
@@ -171,6 +188,7 @@ class ThreeJSBackend:
         width: int = 800,
         height: int = 600,
         style: VisualizationStyle | None = None,
+        layout: VisualizationLayout | None = None,
     ):
         """Return an interactive Three.js animation as ``IPython.display.HTML``."""
         from IPython.display import HTML
@@ -183,10 +201,14 @@ class ThreeJSBackend:
         if style is None:
             style = VisualizationStyle()
 
+        if layout is None:
+            layout = resolve_layout(scene_data_list)
+
         frames_payload = _scenes_to_payload(scene_data_list)
         animation_payload = {
             "frames": frames_payload,
             "style": _style_to_payload(style),
+            "layout": _layout_to_payload(layout),
             "trajectory": _extract_end_effector_trajectory(scene_data_list),
         }
 
