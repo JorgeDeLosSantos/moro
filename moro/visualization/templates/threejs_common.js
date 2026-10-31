@@ -551,7 +551,9 @@ window.MoroThreeJS = (function() {
         var direction = new THREE.Vector3().subVectors(end, start);
         var length = direction.length();
 
-        if (length < 1e-6) {
+        // No absolute length cutoff: 1e-9 meters and 1e-6 millimeters
+        // must render equivalently when the scene is rescaled.
+        if (!Number.isFinite(length) || length === 0) {
             return null;
         }
 
@@ -623,9 +625,8 @@ window.MoroThreeJS = (function() {
         var d = (uDotW - uDotV * vDotW) / det;
         var a = (vDotW - uDotV * uDotW) / det;
 
-        // Split only when both portions are significant (absolute threshold),
-        // consistent with the 1e-6 convention used elsewhere in this file.
-        if (Math.abs(d) < 1e-6 || Math.abs(a) < 1e-6) {
+        // An absent contribution is degenerate regardless of model units.
+        if (d === 0 || a === 0) {
             return null;
         }
 
@@ -655,53 +656,72 @@ window.MoroThreeJS = (function() {
                 side: THREE.DoubleSide
             });
 
-            for (var i = 0; i < joints.length - 1; i++) {
-                var start = new THREE.Vector3().fromArray(joints[i]);
-                var end = new THREE.Vector3().fromArray(joints[i + 1]);
-
-                var corner = null;
-                if (frames[i] && frames[i + 1]) {
-                    corner = computeLinkCorner(
-                        start,
-                        end,
-                        new THREE.Vector3().fromArray(frames[i].z),
-                        new THREE.Vector3().fromArray(frames[i + 1].x)
-                    );
-                }
-
-                if (corner !== null) {
-                    var offsetCylinder = createCylinderBetweenPoints(
-                        start,
-                        corner,
-                        resolvedStyle.linkRadius,
-                        8,
-                        linkMat
-                    );
-                    var lengthCylinder = createCylinderBetweenPoints(
-                        corner,
-                        end,
-                        resolvedStyle.linkRadius,
-                        8,
-                        linkMat
-                    );
-
-                    if (offsetCylinder !== null) {
-                        robotGroup.add(offsetCylinder);
-                    }
-                    if (lengthCylinder !== null) {
-                        robotGroup.add(lengthCylinder);
-                    }
-                } else {
+            var dhSegments = data.dh_segments;
+            if (Array.isArray(dhSegments) && dhSegments.length > 0) {
+                // Python is the single source of truth for classic DH
+                // geometry: (d_i, a_i) endpoints are already evaluated.
+                dhSegments.forEach(function(segment) {
                     var link = createCylinderBetweenPoints(
-                        start,
-                        end,
+                        new THREE.Vector3().fromArray(segment.start),
+                        new THREE.Vector3().fromArray(segment.end),
                         resolvedStyle.linkRadius,
                         8,
                         linkMat
                     );
-
                     if (link !== null) {
                         robotGroup.add(link);
+                    }
+                });
+            } else {
+                // Fallback for hand-built scenes without DH metadata.
+                for (var i = 0; i < joints.length - 1; i++) {
+                    var start = new THREE.Vector3().fromArray(joints[i]);
+                    var end = new THREE.Vector3().fromArray(joints[i + 1]);
+
+                    var corner = null;
+                    if (frames[i] && frames[i + 1]) {
+                        corner = computeLinkCorner(
+                            start,
+                            end,
+                            new THREE.Vector3().fromArray(frames[i].z),
+                            new THREE.Vector3().fromArray(frames[i + 1].x)
+                        );
+                    }
+
+                    if (corner !== null) {
+                        var offsetCylinder = createCylinderBetweenPoints(
+                            start,
+                            corner,
+                            resolvedStyle.linkRadius,
+                            8,
+                            linkMat
+                        );
+                        var lengthCylinder = createCylinderBetweenPoints(
+                            corner,
+                            end,
+                            resolvedStyle.linkRadius,
+                            8,
+                            linkMat
+                        );
+
+                        if (offsetCylinder !== null) {
+                            robotGroup.add(offsetCylinder);
+                        }
+                        if (lengthCylinder !== null) {
+                            robotGroup.add(lengthCylinder);
+                        }
+                    } else {
+                        var link = createCylinderBetweenPoints(
+                            start,
+                            end,
+                            resolvedStyle.linkRadius,
+                            8,
+                            linkMat
+                        );
+
+                        if (link !== null) {
+                            robotGroup.add(link);
+                        }
                     }
                 }
             }
@@ -779,9 +799,33 @@ window.MoroThreeJS = (function() {
             ? data.frames.length
             : 0;
 
+        var referenceSegments = referenceData.dh_segments;
+        var actualSegments = data.dh_segments;
+        var expectedDH = Array.isArray(referenceSegments) &&
+            referenceSegments.length > 0;
+        var actualDH = Array.isArray(actualSegments) &&
+            actualSegments.length > 0;
+        var dhMismatch = expectedDH !== actualDH;
+
+        if (expectedDH && actualDH) {
+            dhMismatch = referenceSegments.length !== actualSegments.length;
+            if (!dhMismatch) {
+                for (var k = 0; k < referenceSegments.length; k++) {
+                    if (
+                        referenceSegments[k].row_index !== actualSegments[k].row_index ||
+                        referenceSegments[k].kind !== actualSegments[k].kind
+                    ) {
+                        dhMismatch = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (
             expectedJointCount !== actualJointCount ||
-            expectedFrameCount !== actualFrameCount
+            expectedFrameCount !== actualFrameCount ||
+            dhMismatch
         ) {
             throw new Error(
                 'Inconsistent robot topology between animation frames.'
@@ -815,16 +859,18 @@ window.MoroThreeJS = (function() {
                 1,
                 8
             );
-
-            for (var i = 0; i < joints.length - 1; i++) {
-                // Two segments per link geometry: one for the DH offset (d)
-                // and one for the DH length (a). A degenerated segment simply
-                // stays hidden while it is not part of the current link.
-                var linkMeshOffset = new THREE.Mesh(linkGeometry, linkMaterial);
-                var linkMeshLength = new THREE.Mesh(linkGeometry, linkMaterial);
-                robotGroup.add(linkMeshOffset);
-                robotGroup.add(linkMeshLength);
-                linkMeshes.push(linkMeshOffset, linkMeshLength);
+            var dhSegments = data.dh_segments;
+            var usesDH = Array.isArray(dhSegments) && dhSegments.length > 0;
+            // Retain two reusable meshes per legacy link, or one per
+            // evaluated DH contribution. Degenerate segments keep a hidden
+            // mesh so changing prismatic configurations never rebuilds it.
+            var linkCount = usesDH
+                ? dhSegments.length
+                : 2 * Math.max(joints.length - 1, 0);
+            for (var i = 0; i < linkCount; i++) {
+                var mesh = new THREE.Mesh(linkGeometry, linkMaterial);
+                robotGroup.add(mesh);
+                linkMeshes.push(mesh);
             }
         }
 
@@ -894,7 +940,7 @@ window.MoroThreeJS = (function() {
 
         var length = tmp.direction.length();
 
-        if (!Number.isFinite(length) || length < 1e-6) {
+        if (!Number.isFinite(length) || length === 0) {
             mesh.visible = false;
             return;
         }
@@ -917,32 +963,44 @@ window.MoroThreeJS = (function() {
         var i;
 
         if (style.show_links) {
-            for (i = 0; i < joints.length - 1; i++) {
-                var linkIndex = i * 2;
-                var offsetMesh = robotObjects.linkMeshes[linkIndex];
-                var lengthMesh = robotObjects.linkMeshes[linkIndex + 1];
-
-                tmp.start.fromArray(joints[i]);
-                tmp.end.fromArray(joints[i + 1]);
-
-                var corner = null;
-                if (frames[i] && frames[i + 1]) {
-                    tmp.zAxis.fromArray(frames[i].z);
-                    tmp.xAxis.fromArray(frames[i + 1].x);
-                    corner = computeLinkCorner(
-                        tmp.start,
-                        tmp.end,
-                        tmp.zAxis,
-                        tmp.xAxis
-                    );
+            var segments = data.dh_segments;
+            if (Array.isArray(segments) && segments.length > 0) {
+                // One persistent mesh for each ordered evaluated segment.
+                // Only positions and visibility change between frames.
+                for (i = 0; i < segments.length; i++) {
+                    tmp.start.fromArray(segments[i].start);
+                    tmp.end.fromArray(segments[i].end);
+                    paintCylinder(robotObjects.linkMeshes[i], tmp.start, tmp.end, tmp);
                 }
+            } else {
+                // Legacy scenes preserve reconstructed corners/direct links.
+                for (i = 0; i < joints.length - 1; i++) {
+                    var linkIndex = i * 2;
+                    var offsetMesh = robotObjects.linkMeshes[linkIndex];
+                    var lengthMesh = robotObjects.linkMeshes[linkIndex + 1];
 
-                if (corner !== null) {
-                    paintCylinder(offsetMesh, tmp.start, corner, tmp);
-                    paintCylinder(lengthMesh, corner, tmp.end, tmp);
-                } else {
-                    paintCylinder(offsetMesh, tmp.start, tmp.end, tmp);
-                    lengthMesh.visible = false;
+                    tmp.start.fromArray(joints[i]);
+                    tmp.end.fromArray(joints[i + 1]);
+
+                    var corner = null;
+                    if (frames[i] && frames[i + 1]) {
+                        tmp.zAxis.fromArray(frames[i].z);
+                        tmp.xAxis.fromArray(frames[i + 1].x);
+                        corner = computeLinkCorner(
+                            tmp.start,
+                            tmp.end,
+                            tmp.zAxis,
+                            tmp.xAxis
+                        );
+                    }
+
+                    if (corner !== null) {
+                        paintCylinder(offsetMesh, tmp.start, corner, tmp);
+                        paintCylinder(lengthMesh, corner, tmp.end, tmp);
+                    } else {
+                        paintCylinder(offsetMesh, tmp.start, tmp.end, tmp);
+                        lengthMesh.visible = false;
+                    }
                 }
             }
         }

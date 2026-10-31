@@ -88,18 +88,34 @@ class MatplotlibBackend:
         )
 
         if style.show_links:
-            xs = [joint[0] for joint in joints]
-            ys = [joint[1] for joint in joints]
-            zs = [joint[2] for joint in joints]
-            ax.plot(
-                xs,
-                ys,
-                zs,
-                "o-",
-                color=style.link_color,
-                linewidth=style.link_linewidth,
-                markersize=0,
-            )
+            if scene_data.dh_segments:
+                # Draw the evaluated DH contributions directly instead of a
+                # diagonal between consecutive frame origins. Retain zero
+                # length segments in SceneData, but do not draw empty lines.
+                for segment in scene_data.dh_segments:
+                    if np.array_equal(segment.start, segment.end):
+                        continue
+                    ax.plot(
+                        (segment.start[0], segment.end[0]),
+                        (segment.start[1], segment.end[1]),
+                        (segment.start[2], segment.end[2]),
+                        color=style.link_color,
+                        linewidth=style.link_linewidth,
+                    )
+            else:
+                # Legacy scenes constructed without evaluated DH geometry.
+                xs = [joint[0] for joint in joints]
+                ys = [joint[1] for joint in joints]
+                zs = [joint[2] for joint in joints]
+                ax.plot(
+                    xs,
+                    ys,
+                    zs,
+                    "o-",
+                    color=style.link_color,
+                    linewidth=style.link_linewidth,
+                    markersize=0,
+                )
 
         if style.show_joints:
             for index, position in enumerate(joints):

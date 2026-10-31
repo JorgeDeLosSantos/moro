@@ -70,8 +70,12 @@ def _render_html_template(
 
 
 def _scene_to_payload(scene_data: SceneData) -> dict:
-    """Convert one scene into a JSON-serializable dictionary."""
-    return {
+    """Serialize a scene, including evaluated DH geometry when available.
+
+    Legacy scenes keep their original payload shape, and explicit zero-length
+    DH segments remain present to preserve topological identity in animations.
+    """
+    payload = {
         "joints": [
             np.asarray(joint, dtype=float).tolist()
             for joint in scene_data.joints
@@ -87,6 +91,17 @@ def _scene_to_payload(scene_data: SceneData) -> dict:
         ],
         "dimension": float(scene_data.dimension),
     }
+    if scene_data.dh_segments:
+        payload["dh_segments"] = [
+            {
+                "row_index": int(segment.row_index),
+                "kind": segment.kind,
+                "start": np.asarray(segment.start, dtype=float).tolist(),
+                "end": np.asarray(segment.end, dtype=float).tolist(),
+            }
+            for segment in scene_data.dh_segments
+        ]
+    return payload
 
 
 def _framing_to_payload(framing: SceneFraming) -> dict:
