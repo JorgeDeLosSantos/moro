@@ -650,7 +650,11 @@ window.MoroThreeJS = (function() {
                 });
                 var line = new THREE.Line(
                     new THREE.BufferGeometry().setFromPoints(points),
-                    new THREE.LineBasicMaterial({ color: style.joint_color })
+                    new THREE.LineBasicMaterial({
+                        color: symbol.kind === 'r'
+                            ? (style.revolute_color || style.joint_color)
+                            : (style.prismatic_color || style.joint_color)
+                    })
                 );
                 line.frustumCulled = false; // coordinates move during animation
                 robotGroup.add(line);
@@ -705,11 +709,10 @@ window.MoroThreeJS = (function() {
                     solid.width, solid.length, solid.depth
                 );
             var material = new THREE.MeshPhongMaterial({
-                color: style.joint_color,
-                shininess: 55,
-                transparent: style.joint_appearance === 'hybrid',
-                opacity: style.joint_appearance === 'hybrid' ? 0.42 : 0.82,
-                depthWrite: style.joint_appearance !== 'hybrid'
+                color: solid.kind === 'r'
+                    ? (style.revolute_color || style.joint_color)
+                    : (style.prismatic_color || style.joint_color),
+                shininess: 55
             });
             var mesh = new THREE.Mesh(geometry, material);
             mesh.userData.jointIndex = solid.index;
@@ -827,10 +830,10 @@ window.MoroThreeJS = (function() {
         }
 
         if (style.show_joints && style.joint_representation === 'kinematic') {
-            if (style.joint_appearance !== 'solid') {
+            if (style.joint_appearance === 'schematic') {
                 createJointSymbolLines(robotGroup, data, style);
             }
-            if (style.joint_appearance !== 'schematic') {
+            if (style.joint_appearance === 'solid') {
                 createJointSolidMeshes(robotGroup, data, style);
             }
             if (style.show_base && joints.length > 0) {
@@ -1034,10 +1037,10 @@ window.MoroThreeJS = (function() {
         var jointSymbolLines = [];
         var jointSolidMeshes = [];
         if (style.show_joints && style.joint_representation === 'kinematic') {
-            if (style.joint_appearance !== 'solid') {
+            if (style.joint_appearance === 'schematic') {
                 jointSymbolLines = createJointSymbolLines(robotGroup, data, style);
             }
-            if (style.joint_appearance !== 'schematic') {
+            if (style.joint_appearance === 'solid') {
                 jointSolidMeshes = createJointSolidMeshes(robotGroup, data, style);
             }
             if (style.show_base && joints.length > 0) {
@@ -1187,10 +1190,10 @@ window.MoroThreeJS = (function() {
         }
 
         if (style.show_joints && style.joint_representation === 'kinematic') {
-            if (style.joint_appearance !== 'solid') {
+            if (style.joint_appearance === 'schematic') {
                 updateJointSymbolLines(robotObjects.jointSymbolLines, data);
             }
-            if (style.joint_appearance !== 'schematic') {
+            if (style.joint_appearance === 'solid') {
                 updateJointSolidMeshes(robotObjects.jointSolidMeshes, data);
             }
             if (style.show_base && robotObjects.jointMeshes.length > 0) {
