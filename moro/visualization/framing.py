@@ -13,6 +13,7 @@ import numpy as np
 from .data import SceneData
 from .layout import VisualizationLayout, resolve_layout
 from .joint_symbols import build_joint_symbols
+from .joint_solids import build_joint_solids, solid_bounding_radius
 from .style import VisualizationStyle
 
 
@@ -157,10 +158,18 @@ def compute_scene_bounds(
 
     if style.show_joints:
         if style.joint_representation == "kinematic":
-            for symbol in build_joint_symbols(scene, layout=layout, style=style):
-                for path in symbol["paths"]:
-                    for position in path:
-                        add_point(position, description="joint symbol point")
+            if style.joint_appearance in ("schematic", "hybrid"):
+                for symbol in build_joint_symbols(scene, layout=layout, style=style):
+                    for path in symbol["paths"]:
+                        for position in path:
+                            add_point(position, description="joint symbol point")
+            if style.joint_appearance in ("solid", "hybrid"):
+                for solid in build_joint_solids(scene, layout=layout, style=style):
+                    add_point(
+                        solid["origin"],
+                        radius=solid_bounding_radius(solid),
+                        description="joint solid center",
+                    )
             if style.show_base and scene.joints:
                 add_point(
                     scene.joints[0],
