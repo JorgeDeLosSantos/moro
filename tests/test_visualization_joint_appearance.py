@@ -83,6 +83,11 @@ def test_threejs_solid_dimensions_and_orientation_metadata(appearance):
     for solid, joint in zip(solids, scene.joint_data):
         np.testing.assert_allclose(solid["origin"], joint.origin)
         np.testing.assert_allclose(solid["axis"], joint.axis)
+        assert np.linalg.norm(solid["transverse"]) == pytest.approx(1.0)
+        assert np.dot(solid["transverse"], joint.axis) == pytest.approx(0.0, abs=1e-12)
+        np.testing.assert_allclose(
+            solid["transverse"], scene.frames[joint.index - 1].x, atol=1e-12
+        )
         assert solid["length"] > 0
         assert solid_bounding_radius(solid) > 0
         if joint.kind == "r":
@@ -152,6 +157,7 @@ def test_solid_descriptors_covary_between_meters_and_millimeters():
         assert a["kind"] == b["kind"]
         np.testing.assert_allclose(b["origin"], 1000 * np.asarray(a["origin"]))
         np.testing.assert_allclose(b["axis"], a["axis"])
+        np.testing.assert_allclose(b["transverse"], a["transverse"])
         for key in ("radius", "width", "depth", "length"):
             if key in a:
                 assert b[key] == pytest.approx(1000 * a[key])
