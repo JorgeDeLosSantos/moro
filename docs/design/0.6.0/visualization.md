@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Visualization design
 
-**Status:** V1–V5-A integrated into `develop`; V5-B1 joint metadata in review; V5-B2 and V5-C pending.
+**Status:** V1–V5-B1 integrated into `develop`; V5-B2 schematic symbols in review; V5-C pending.
 
-**Current integration branch:** `feat/0.6.0-joint-data` (from `develop`).
+**Current integration branch:** `feat/0.6.0-joint-symbols` (from `develop`).
 
 ## Purpose and boundaries
 
@@ -575,3 +575,93 @@ decisions; they are *not* inferred in V5-B1.
   changing the corresponding axis when prior joints are held fixed;
 - Preserve old `SceneData` construction and renderer payload behavior;
 - Pass Python 3.11–3.14, distribution and Sphinx CI before integration.
+
+## 14. V5-B2 — Shared schematic revolute and prismatic joint symbols
+
+### User-facing style (opt-in)
+
+`VisualizationStyle(joint_representation="simple", joint_scale=1.0)`
+preserves the existing frame-origin sphere markers by default. The
+`"kinematic"` option replaces frame-origin joint markers with schematic
+motion symbols at `JointData.origin` oriented with `JointData.axis`.
+Both options honor `show_joints`. `show_frames` and `show_links`
+remain independent. A base sphere is kept at `SceneData.joints[0]`
+only when `show_base=True`, independently of the symbol for joint 1.
+
+`joint_scale` is a finite, strictly positive, dimensionless multiplier
+for the new symbols. It does not change the size of the legacy spheres,
+the nominal link radius, or the frame axes. For the first iteration it
+defaults to 1, and the initial default representation remains
+`"simple"` to avoid surprising callers.
+
+A caller who asks for `kinematic` with visible joints must provide
+`SceneData.joint_data` (normally obtained from `evaluate_robot`).
+No joint types or axes are fabricated for legacy hand-built scenes;
+an informative `ValueError` is raised. With `show_joints=False`,
+neither metadata nor symbols are required.
+
+### Geometry and kinematic meaning
+
+`moro.visualization.joint_symbols.build_joint_symbols(scene, layout, style)`
+builds JSON-compatible **world-space polylines** in Python. Matplotlib
+uses the points directly; Three.js receives exactly the same points,
+without recomputing a motion axis, numerical DH transform or geometry.
+
+For joint i, the symbol is anchored at `p_(i-1)`, oriented along the
+unit `z_(i-1)` axis, and rotated in the transverse plane using the
+previous frame's X direction for a stable basis. For scenes without a
+previous frame the fallback basis chooses the least-aligned world axis.
+The transverse pair is right-handed, with
+`u × v = z_(i-1)` (approximately, subject to floating-point error).
+
+- **Revolute R:** a positive-direction circular arc in the plane normal
+  to the joint axis plus a short arrowhead. Its nominal radius is
+  `2.8 * layout.joint_radius * joint_scale`.
+- **Prismatic P:** two axial guide lines, a centered rectangle symbol,
+  and an axial arrow. Dimensions are fixed ratios of the same radius.
+  The representation describes permitted translation only; the
+  indicated slider is **not** driven along the evaluated `d_i` segment
+  and does not assert physical actuator geometry.
+
+All dimensions scale with `VisualizationLayout`. They have no
+absolute minimum in meters, millimeters, or screen units. Shapes remain
+numerically well defined for zero evaluated DH translations, since the
+symbols depend on `JointData` and layout, not on nonzero `d_i`.
+
+### Rendering and animations
+
+`compute_scene_bounds` includes every symbol polyline vertex while
+kinematic symbols are visible. If `show_base` is enabled, it includes
+the independent base sphere radius. Hidden joint symbols make no
+contribution to framing.
+
+Matplotlib draws each polyline as a Line3D, retaining the same
+`joint_color`; with `simple` it keeps the current scatter markers
+unchanged. Each animation frame is redrawn with the shared sequence
+layout and framing.
+
+Three.js serializes `joint_symbols` only when visible in `kinematic`
+mode, at the scene level for static views or the frame level for
+animations. Every symbol has `index`, `kind`, and ordered `paths`.
+`simple` payloads keep their historic geometry. On animation
+initialization, one THREE.Line is allocated for each symbol path. Each
+sample updates the existing BufferGeometry position attribute and marks
+it dirty, with no per-frame geometry reconstruction. The topology check
+rejects count, kind, index, path-count and vertex-count changes across
+samples. These line symbols do not use Three.js mesh transparency or
+physically model a prismatic housing.
+
+### Acceptance
+
+1. Both simple and kinematic modes render and animate without changing
+   the robot model, DH segments, or V4 camera framing contract.
+2. RR, RP and spatial RRP demonstrate the correct axes even when frame
+   i is offset from the physical motion line.
+3. Kinematic primitives rotate/translate with the **preceding** DH frame
+   and retain stable vertex counts across samples.
+4. Models expressed in m or mm create proportionally scaled polylines
+   and the same appearance under camera framing.
+5. Hiding joints or base works independently; legacy scenes without
+   joint metadata work in simple mode.
+6. CI passes on Python 3.11–3.14, packaging and Sphinx.
+   The user reviews the visual appearance before merging.
