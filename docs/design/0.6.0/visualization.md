@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Visualization design
 
-**Status:** V1, V2 and V3-A integrated into `develop`; V3-B implementation in review; V4–V5 pending.
+**Status:** V1–V3-B integrated into `develop`; V4-A core implementation in review; V4-B and V5 pending.
 
-**Current integration branch:** `feat/0.6.0-layout-backends` (from `develop`).
+**Current integration branch:** `feat/0.6.0-framing-core` (from `develop`).
 
 ## Purpose and boundaries
 
@@ -310,3 +310,52 @@ V3-B intentionally does **not** change:
 ### Regression expectations
 
 Test unit conversion proportionality, explicit override compatibility, shared animation layout, Three.js JSON serialization, existing visualization behavior, and the Python 3.11–3.14 CI matrix. V3-B should be merged only after all required checks pass.
+
+## 10. V4-A — Backend-independent scene bounds and framing
+
+### Purpose
+
+V4-A introduces `moro.visualization.framing` and exports `SceneBounds`, `SceneFraming`, `compute_scene_bounds`, `union_bounds`, and `resolve_framing`. No renderer, camera, axis limits, JavaScript payload, or `SceneData.dimension` changes in V4-A.
+
+### Geometry contract
+
+`SceneBounds(minimum, maximum)` is a frozen, slotted dataclass of three-coordinate **finite world-space** tuples. Array-like constructor arguments are normalized to independent tuples, and each minimum coordinate must not exceed its corresponding maximum. The `center` and `size` properties return three-element tuples. The center is computed without directly adding large endpoint coordinates.
+
+`compute_scene_bounds(scene, *, layout=None, style=None)` includes the following **visible** primitives:
+
+- If `style.show_links`, the evaluated DH segment endpoints, expanded conservatively by `layout.link_radius * style.link_linewidth / 3`. Zero-length DH segments are skipped. If the scene has no DH segments, include nonzero legacy joint-to-joint segments instead.
+- If `style.show_joints`, joint centers expanded by nominal `layout.joint_radius`, or nominal `layout.base_radius` for the first joint. Exclude the base center/radius when `show_base=False`.
+- If `style.show_frames`, each frame origin and three axis tips calculated from the numerical frame directions with explicit `style.frame_scale`, otherwise `layout.frame_length`.
+- If `style.show_trajectory`, the end-effector position given by the final numerical frame of each scene. For a precomputed animation, the union naturally covers its complete **sampled** trajectory, regardless of whether the line is displayed in `full` or `trace` mode.
+
+Do **not** use the legacy `SceneData.dimension` as an additional geometric bound. Do **not** include the adaptive grid, global world axes, hidden geometry, or points that have no visual representation.
+
+Radii are conservative backend-independent world-space approximations; explicit Matplotlib point-squared marker sizes cannot be exactly bounded in world coordinates. Exact screen-space overscan and zoom-dependent behavior remain V4-B concerns.
+
+When no visible primitives are available, use a degenerate bounds point at the world origin. Its positive viewing volume is resolved by the *visual-only* fallback described below.
+
+`union_bounds(bounds)` computes the coordinate-wise union of a nonempty sequence of such boxes. Empty sequences and invalid positions are rejected with `ValueError`.
+
+### Framing contract
+
+`SceneFraming(bounds, center, half_extent, fit_radius)` is immutable and contains a cubic half-extent (for Matplotlib), and a bounding-sphere radius (for projection-independent Three.js camera fitting), in world units. Its values do **not** include specific camera FOVs, aspect ratios, orientation, near/far planes, grids, or axes.
+
+```python
+layout = resolve_layout(scenes)
+framing = resolve_framing(scenes, layout=layout, style=style)
+```
+
+`resolve_framing` computes a **single** global union across all supplied evaluated configurations. The default margin is 10%, and the minimum visual half-extent factor is 10% of `layout.reference_length`. Write `s` for the box size and `L` for the reference length. The provisional formulas are:
+
+```text
+h = (1 + margin) * max(s_x/2, s_y/2, s_z/2, min_extent_factor * L)
+R = (1 + margin) * max(hypot(s_x/2, s_y/2, s_z/2), min_extent_factor * L)
+```
+
+Here `h` is `half_extent` and `R` is `fit_radius`. Neither result enforces a fixed minimum in meters, millimeters, or any other physical unit. Positive finite results are required. User-supplied margin and minimum factor must be finite and nonnegative.
+
+This provides scale covariance for properly evaluated DH geometry and stable framing over sampled animations. It is **not** a continuous swept-volume bound between samples. The caller may provide an existing `VisualizationLayout` to guarantee that size and framing refer to the same global animation reference.
+
+### V4-B boundary
+
+V4-B will apply the framing to Matplotlib's three axis limits and aspect ratio, and to Three.js perspective/orthographic camera target, visible height/distance, clipping planes, reset and view switches. The current V3-B Matplotlib marker-area adapter still uses a nominal view span; V4-B should tie it to the actual fitted view. Any exact screen-pixel padding needed for user-supplied marker sizes belongs in the backend adapters, not in geometric AABBs.
