@@ -27,8 +27,12 @@ class VisualizationStyle:
     joint_scale : float
         Finite positive dimensionless factor for kinematic joint symbols.
     joint_appearance : str
-        Three.js experimental R/P appearance: 'schematic', 'solid' or 'hybrid'.
-        Matplotlib supports 'schematic' only for now.
+        'solid' (default within kinematic mode, Three.js) or 'schematic'
+        (also available in Matplotlib). The general default remains 'simple'.
+    revolute_color : str
+        Color of kinematic revolute joint symbols or solid cylinders.
+    prismatic_color : str
+        Color of kinematic prismatic joint symbols or solid prisms.
     link_color : str
         Color used for links.
     joint_color : str
@@ -80,13 +84,19 @@ class VisualizationStyle:
     # dataclass's previously supported positional-argument order.
     joint_representation: Literal["simple", "kinematic"] = "simple"
     joint_scale: float = 1.0
-    joint_appearance: Literal["schematic", "solid", "hybrid"] = "schematic"
+    joint_appearance: Literal["schematic", "solid"] = "solid"
+    revolute_color: str = "#0072B2"
+    prismatic_color: str = "#D55E00"
 
     def __post_init__(self):
-        if self.joint_appearance not in {"schematic", "solid", "hybrid"}:
+        if self.joint_appearance not in {"schematic", "solid"}:
             raise ValueError(
-                "joint_appearance must be 'schematic', 'solid' or 'hybrid'."
+                "joint_appearance must be 'schematic' or 'solid'."
             )
+        for name in ("revolute_color", "prismatic_color"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must be a non-empty color string.")
         if self.joint_representation not in {'simple', 'kinematic'}:
             raise ValueError("joint_representation must be 'simple' or 'kinematic'.")
         if isinstance(self.joint_scale, bool):
