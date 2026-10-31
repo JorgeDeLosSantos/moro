@@ -39,7 +39,9 @@ def build_joint_solids(
             "from evaluate_robot()."
         )
 
-    radius = float(layout.joint_radius) * 2.8 * style.joint_scale
+    # Reduce the prototype solid dimensions by 20%, without changing the
+    # schematic stroke geometry or the meaning of joint_scale=1.0.
+    radius = float(layout.joint_radius) * 2.8 * style.joint_scale * 0.8
     if not math.isfinite(radius) or radius <= 0:
         raise ValueError("Kinematic joint solid dimensions must be finite and positive.")
 
