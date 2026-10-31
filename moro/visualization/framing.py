@@ -12,6 +12,8 @@ import numpy as np
 
 from .data import SceneData
 from .layout import VisualizationLayout, resolve_layout
+from .joint_symbols import build_joint_symbols
+from .joint_solids import build_joint_solids, solid_bounding_radius
 from .style import VisualizationStyle
 
 
@@ -155,15 +157,35 @@ def compute_scene_bounds(
                     add_point(end, radius=radius, description="link end")
 
     if style.show_joints:
-        for index, position in enumerate(scene.joints):
-            if index == 0 and not style.show_base:
-                continue
-            radius_name = "layout.base_radius" if index == 0 else "layout.joint_radius"
-            radius = _nonnegative(
-                layout.base_radius if index == 0 else layout.joint_radius,
-                radius_name,
-            )
-            add_point(position, radius=radius, description="joint position")
+        if style.joint_representation == "kinematic":
+            if style.joint_appearance == "schematic":
+                for symbol in build_joint_symbols(scene, layout=layout, style=style):
+                    for path in symbol["paths"]:
+                        for position in path:
+                            add_point(position, description="joint symbol point")
+            if style.joint_appearance == "solid":
+                for solid in build_joint_solids(scene, layout=layout, style=style):
+                    add_point(
+                        solid["origin"],
+                        radius=solid_bounding_radius(solid),
+                        description="joint solid center",
+                    )
+            if style.show_base and scene.joints:
+                add_point(
+                    scene.joints[0],
+                    radius=_nonnegative(layout.base_radius, "layout.base_radius"),
+                    description="base position",
+                )
+        else:
+            for index, position in enumerate(scene.joints):
+                if index == 0 and not style.show_base:
+                    continue
+                radius_name = "layout.base_radius" if index == 0 else "layout.joint_radius"
+                radius = _nonnegative(
+                    layout.base_radius if index == 0 else layout.joint_radius,
+                    radius_name,
+                )
+                add_point(position, radius=radius, description="joint position")
 
     if style.show_frames:
         length = _nonnegative(

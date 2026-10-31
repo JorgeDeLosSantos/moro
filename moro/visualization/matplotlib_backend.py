@@ -4,6 +4,7 @@ import numpy as np
 
 from .data import SceneData
 from .framing import SceneFraming, resolve_framing
+from .joint_symbols import build_joint_symbols
 from .layout import VisualizationLayout, resolve_layout
 from .style import VisualizationStyle
 from .threejs_backend import _extract_end_effector_trajectory
@@ -59,6 +60,15 @@ class MatplotlibBackend:
 
         if style is None:
             style = VisualizationStyle()
+        if (
+            style.show_joints
+            and style.joint_representation == "kinematic"
+            and style.joint_appearance != "schematic"
+        ):
+            raise ValueError(
+                "joint_appearance='solid' is available only in Three.js; "
+                "use joint_appearance='schematic' in Matplotlib."
+            )
 
         if layout is None:
             layout = resolve_layout([scene_data])
@@ -118,20 +128,44 @@ class MatplotlibBackend:
                 )
 
         if style.show_joints:
-            for index, position in enumerate(joints):
-                if index == 0 and not style.show_base:
-                    continue
-
-                color = style.base_color if index == 0 else style.joint_color
-                marker_area = base_area if index == 0 else joint_area
-                ax.scatter(
-                    position[0],
-                    position[1],
-                    position[2],
-                    color=color,
-                    s=marker_area,
-                    zorder=10,
+            if style.joint_representation == "kinematic":
+                symbols = build_joint_symbols(
+                    scene_data, layout=layout, style=style
                 )
+                for symbol in symbols:
+                    for path in symbol["paths"]:
+                        coords = np.asarray(path, dtype=float)
+                        ax.plot(
+                            coords[:, 0], coords[:, 1], coords[:, 2],
+                            color=(
+                                style.revolute_color if symbol["kind"] == "r"
+                                else style.prismatic_color
+                            ),
+                            linewidth=style.link_linewidth,
+                            zorder=12,
+                        )
+                # The original base marker remains independent from joint 1.
+                if style.show_base and joints:
+                    position = joints[0]
+                    ax.scatter(
+                        position[0], position[1], position[2],
+                        color=style.base_color, s=base_area, zorder=10,
+                    )
+            else:
+                for index, position in enumerate(joints):
+                    if index == 0 and not style.show_base:
+                        continue
+
+                    color = style.base_color if index == 0 else style.joint_color
+                    marker_area = base_area if index == 0 else joint_area
+                    ax.scatter(
+                        position[0],
+                        position[1],
+                        position[2],
+                        color=color,
+                        s=marker_area,
+                        zorder=10,
+                    )
 
         if style.show_frames:
             for frame in frames:
@@ -193,6 +227,15 @@ class MatplotlibBackend:
 
         if style is None:
             style = VisualizationStyle()
+        if (
+            style.show_joints
+            and style.joint_representation == "kinematic"
+            and style.joint_appearance != "schematic"
+        ):
+            raise ValueError(
+                "joint_appearance='solid' is available only in Three.js; "
+                "use joint_appearance='schematic' in Matplotlib."
+            )
         if layout is None:
             layout = resolve_layout(scene_data_list)
 
