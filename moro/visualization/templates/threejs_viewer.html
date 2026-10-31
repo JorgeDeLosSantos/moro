@@ -226,8 +226,6 @@ __COMMON_SCRIPT__
             }
 
             function setView(viewName, resetTarget) {
-                var distance = cameraDistance;
-
                 if (resetTarget !== false) {
                     controls.target.copy(getDefaultTarget());
                 }
@@ -235,7 +233,7 @@ __COMMON_SCRIPT__
                 if (!window.MoroThreeJS.setPresetView({
                     camera: camera,
                     target: controls.target.clone(),
-                    distance: distance,
+                    distance: cameraDistance,
                     viewName: viewName,
                     topUp: [0, 1, 0]
                 })) {
