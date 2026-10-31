@@ -60,6 +60,15 @@ class MatplotlibBackend:
 
         if style is None:
             style = VisualizationStyle()
+        if (
+            style.show_joints
+            and style.joint_representation == "kinematic"
+            and style.joint_appearance != "schematic"
+        ):
+            raise ValueError(
+                "joint_appearance='solid' and 'hybrid' are experimental "
+                "Three.js-only options; Matplotlib supports 'schematic'."
+            )
 
         if layout is None:
             layout = resolve_layout([scene_data])
@@ -215,6 +224,15 @@ class MatplotlibBackend:
 
         if style is None:
             style = VisualizationStyle()
+        if (
+            style.show_joints
+            and style.joint_representation == "kinematic"
+            and style.joint_appearance != "schematic"
+        ):
+            raise ValueError(
+                "joint_appearance='solid' and 'hybrid' are experimental "
+                "Three.js-only options; Matplotlib supports 'schematic'."
+            )
         if layout is None:
             layout = resolve_layout(scene_data_list)
 
