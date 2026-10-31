@@ -66,8 +66,8 @@ class MatplotlibBackend:
             and style.joint_appearance != "schematic"
         ):
             raise ValueError(
-                "joint_appearance='solid' and 'hybrid' are experimental "
-                "Three.js-only options; Matplotlib supports 'schematic'."
+                "joint_appearance='solid' is available only in Three.js; "
+                "use joint_appearance='schematic' in Matplotlib."
             )
 
         if layout is None:
@@ -137,7 +137,10 @@ class MatplotlibBackend:
                         coords = np.asarray(path, dtype=float)
                         ax.plot(
                             coords[:, 0], coords[:, 1], coords[:, 2],
-                            color=style.joint_color,
+                            color=(
+                                style.revolute_color if symbol["kind"] == "r"
+                                else style.prismatic_color
+                            ),
                             linewidth=style.link_linewidth,
                             zorder=12,
                         )
@@ -230,8 +233,8 @@ class MatplotlibBackend:
             and style.joint_appearance != "schematic"
         ):
             raise ValueError(
-                "joint_appearance='solid' and 'hybrid' are experimental "
-                "Three.js-only options; Matplotlib supports 'schematic'."
+                "joint_appearance='solid' is available only in Three.js; "
+                "use joint_appearance='schematic' in Matplotlib."
             )
         if layout is None:
             layout = resolve_layout(scene_data_list)
