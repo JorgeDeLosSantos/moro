@@ -116,6 +116,7 @@ __COMMON_SCRIPT__
             var data = __ROBOT_DATA__;
             var style = data.style;
             var layout = data.layout;
+            var framing = data.framing;
             var container = document.getElementById('container-__UNIQUE_ID__');
             var status = document.getElementById('status-__UNIQUE_ID__');
 
@@ -133,7 +134,9 @@ __COMMON_SCRIPT__
             var width = __WIDTH__;
             var height = __HEIGHT__;
             var aspect = width / height;
-            var sceneScale = Math.max(Number(data.dimension) || 0, 1);
+            var sceneCenter = new THREE.Vector3().fromArray(framing.center);
+            var sceneScale = framing.fit_radius * 2;
+            var cameraDistance;
             var resolvedStyle = window.MoroThreeJS.resolveStyle(
                 style,
                 sceneScale,
@@ -146,8 +149,9 @@ __COMMON_SCRIPT__
 
                 var cameraSet = window.MoroThreeJS.createCameras({
                     aspect: aspect,
-                    sceneScale: sceneScale
+                    framing: framing
                 });
+                cameraDistance = cameraSet.distance;
 
                 perspectiveCamera = cameraSet.perspectiveCamera;
                 orthographicCamera = cameraSet.orthographicCamera;
@@ -169,12 +173,22 @@ __COMMON_SCRIPT__
                     }
                 });
 
-                window.MoroThreeJS.createLights(scene, sceneScale);
+                window.MoroThreeJS.createLights(
+                    scene, sceneScale, sceneCenter
+                );
 
-                // Grid on the XY plane for the Z-up convention.
+                // Keep the XY grid at the world origin without letting
+                // its extent influence the robot framing.
                 if (style.show_grid) {
+                    var gridHalfExtent = Math.max(
+                        Math.abs(framing.minimum[0]),
+                        Math.abs(framing.maximum[0]),
+                        Math.abs(framing.minimum[1]),
+                        Math.abs(framing.maximum[1]),
+                        framing.fit_radius
+                    );
                     window.MoroThreeJS.createGrid(scene, {
-                        gridSize: sceneScale * 2.5,
+                        gridSize: gridHalfExtent * 2.4,
                         gridDivisions: 20,
                         primaryColor: 0x888888,
                         secondaryColor: 0xcccccc,
@@ -183,7 +197,7 @@ __COMMON_SCRIPT__
                     });
                 }
 
-                scene.add(new THREE.AxesHelper(sceneScale / 4));
+                scene.add(new THREE.AxesHelper(layout.reference_length / 4));
 
                 robotGroup = new THREE.Group();
                 scene.add(robotGroup);
@@ -197,11 +211,7 @@ __COMMON_SCRIPT__
             }
 
             function getDefaultTarget() {
-                return new THREE.Vector3(
-                    0,
-                    0,
-                    sceneScale / 3
-                );
+                return sceneCenter.clone();
             }
 
             function drawRobot(d) {
@@ -216,7 +226,7 @@ __COMMON_SCRIPT__
             }
 
             function setView(viewName, resetTarget) {
-                var distance = sceneScale * 2.5;
+                var distance = cameraDistance;
 
                 if (resetTarget !== false) {
                     controls.target.copy(getDefaultTarget());
@@ -226,7 +236,8 @@ __COMMON_SCRIPT__
                     camera: camera,
                     target: controls.target.clone(),
                     distance: distance,
-                    viewName: viewName
+                    viewName: viewName,
+                    topUp: [0, 1, 0]
                 })) {
                     return;
                 }
@@ -266,6 +277,12 @@ __COMMON_SCRIPT__
             }
 
             function resetView() {
+                window.MoroThreeJS.resetCameraFraming({
+                    perspectiveCamera: perspectiveCamera,
+                    orthographicCamera: orthographicCamera,
+                    framing: framing,
+                    aspect: aspect
+                });
                 controls.target.copy(getDefaultTarget());
                 setView('isometric', false);
             }
