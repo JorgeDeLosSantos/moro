@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Visualization design
 
-**Status:** V1–V4-B integrated into `develop`; V5-A DH rendering in review; V5-B and V5-C pending.
+**Status:** V1–V5-A integrated into `develop`; V5-B1 joint metadata in review; V5-B2 and V5-C pending.
 
-**Current integration branch:** `feat/0.6.0-dh-rendering` (from `develop`).
+**Current integration branch:** `feat/0.6.0-joint-data` (from `develop`).
 
 ## Purpose and boundaries
 
@@ -497,3 +497,81 @@ finite link lengths are never rejected merely for being small.
 6. The Python 3.11–3.14 test matrix, packaging and Sphinx documentation
    builds remain green. Confirm actual appearance in Jupyter/Colab before
    integrating when possible.
+
+## 13. V5-B1 — Evaluated kinematic joint metadata
+
+### Geometry and semantics
+
+Classic DH joint `i` acts **about** (revolute) or **along** (prismatic)
+the positive `z_(i-1)` direction through the previous evaluated frame
+origin `p_(i-1)`, in base/world coordinates:
+
+```text
+A_i(lambda) = p_(i-1) + lambda * z_(i-1),  i = 1,...,robot.dof
+```
+
+This is a *kinematic motion line*, not a physical bearing, motor, guide,
+actuator housing or point that must be attached to the moving link. In
+particular, when `a_i != 0`, the current frame origin `p_i` need not lie
+on the joint axis. The existing `SceneData.joints` field continues to
+store the `n+1` frame origins, including the base. Never reinterpret
+those origins as the `n` joint axes.
+
+### Data contracts
+
+`moro.visualization.data.JointData` is a slotted dataclass with fields:
+
+| Field | Type | Contract |
+| --- | --- | --- |
+| `index` | int | 1-based joint/DH row index, positive; reject booleans and floats |
+| `kind` | Literal["r", "p"] | Exact lowercase robot joint type |
+| `origin` | numpy float[3] | Independent copy of `p_(i-1)`, finite world-space position |
+| `axis` | numpy float[3] | Independent normalized copy of `z_(i-1)`, finite nonzero direction |
+
+The constructor validates both vector shapes, finite values and the
+nonzero axis norm, and normalizes the supplied axis to unit length.
+There is no physical-unit threshold for a direction's magnitude.
+`JointData` represents a **line and kind**, not the visual size or
+position of a particular three-dimensional drawing.
+
+`SceneData` appends the optional field
+`joint_data: list[JointData] = field(default_factory=list)` **after**
+`dh_segments`. This preserves existing positional constructors with
+three or four arguments and keeps the list independent for each scene.
+The `joints` list is unchanged.
+
+`evaluate_robot` builds the ordered `n` joint entries using
+`robot.joint_types` and the `n+1` already evaluated frames, with
+`index=i`, `origin=frames[i-1].position` and
+`axis=frames[i-1].z`. It does **not** recalculate symbolic DH transforms.
+The axis and origin arrays do not alias frame matrices or DH segments.
+For animations, each scene evaluates current world-space joint axes
+independently, without changing the joint order or types.
+
+### Renderers and forward compatibility
+
+**V5-B1 does not change the appearance or rendering payload.** Neither
+Matplotlib nor Three.js consumes `joint_data` yet; the Three.js
+`_scene_to_payload()` keys remain unchanged, including for evaluated
+scenes with both DH segments and joint metadata. Existing sphere markers
+continue to represent frame origins, not kinematic joint symbols.
+
+**V5-B2** will serialize `joint_data`, design the actual R/P symbols,
+orient them about/along the motion axes, and integrate them with the
+shared layout and framing. Proposed style choice:
+`joint_representation="simple" | "kinematic"`, retaining `"simple"` as
+the initial default. Exact graphic anchor, symbol dimension ratios,
+base overlap handling and camera-space appearance remain V5-B2 design
+decisions; they are *not* inferred in V5-B1.
+
+### Acceptance criteria
+
+- Evaluate RR, RP and spatial RRP with nonzero signed DH translations and twists;
+- Verify axes originate at the **previous** frame, not the next;
+- Verify joint kind and one-based order match `robot.joint_types`;
+- Verify finite, unit-length and independently copied vectors;
+- Reject zero/invalid axis directions and malformed index or kind;
+- Verify prismatic movement changes its DH `d_i` displacement without
+  changing the corresponding axis when prior joints are held fixed;
+- Preserve old `SceneData` construction and renderer payload behavior;
+- Pass Python 3.11–3.14, distribution and Sphinx CI before integration.

@@ -1,6 +1,6 @@
 """Visualization tools for serial robots."""
 
-from .data import DHSegmentData, FrameData, SceneData
+from .data import DHSegmentData, FrameData, JointData, SceneData
 from .evaluation import evaluate_robot
 from .framing import SceneBounds, SceneFraming, compute_scene_bounds, resolve_framing, union_bounds
 from .layout import VisualizationLayout, resolve_layout
@@ -31,6 +31,7 @@ __all__ = [
     "SceneData",
     "FrameData",
     "DHSegmentData",
+    "JointData",
     "resolve_reference_length",
     "VisualizationLayout",
     "resolve_layout",
