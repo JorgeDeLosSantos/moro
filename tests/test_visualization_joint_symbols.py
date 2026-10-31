@@ -53,6 +53,14 @@ def test_style_defaults_preserve_existing_spherical_markers():
     assert style.show_joints
     assert style.show_base
 
+def test_style_positional_compatibility_remains_intact():
+    # The first five fields predate V5-B2; the sixth is link_color.
+    style = VisualizationStyle(True, True, True, True, True, "#010203")
+    assert style.link_color == "#010203"
+    assert style.joint_representation == "simple"
+    assert style.joint_scale == 1.0
+
+
 
 @pytest.mark.parametrize("mode", ["kinematic2", "R", "p", "", None])
 def test_invalid_joint_representation_rejected(mode):
