@@ -639,6 +639,47 @@ window.MoroThreeJS = (function() {
         return corner;
     }
 
+    function createJointSymbolLines(robotGroup, data, style) {
+        // World-space paths are computed once in Python and identical to the
+        // paths used by Matplotlib and shared scene framing.
+        var lines = [];
+        (data.joint_symbols || []).forEach(function(symbol) {
+            symbol.paths.forEach(function(path) {
+                var points = path.map(function(position) {
+                    return new THREE.Vector3().fromArray(position);
+                });
+                var line = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints(points),
+                    new THREE.LineBasicMaterial({ color: style.joint_color })
+                );
+                line.frustumCulled = false; // coordinates move during animation
+                robotGroup.add(line);
+                lines.push(line);
+            });
+        });
+        return lines;
+    }
+
+    function updateJointSymbolLines(lines, data) {
+        var pathIndex = 0;
+        (data.joint_symbols || []).forEach(function(symbol) {
+            symbol.paths.forEach(function(path) {
+                var attribute = lines[pathIndex].geometry.attributes.position;
+                if (attribute.count !== path.length) {
+                    throw new Error('Inconsistent joint symbol path vertex count.');
+                }
+                for (var i = 0; i < path.length; i++) {
+                    attribute.setXYZ(i, path[i][0], path[i][1], path[i][2]);
+                }
+                attribute.needsUpdate = true;
+                pathIndex++;
+            });
+        });
+        if (pathIndex !== lines.length) {
+            throw new Error('Inconsistent joint symbol line count.');
+        }
+    }
+
     function createRobotMeshes(options) {
         var robotGroup = options.robotGroup;
         var data = options.data;
@@ -727,7 +768,22 @@ window.MoroThreeJS = (function() {
             }
         }
 
-        if (style.show_joints) {
+        if (style.show_joints && style.joint_representation === 'kinematic') {
+            createJointSymbolLines(robotGroup, data, style);
+            if (style.show_base && joints.length > 0) {
+                var baseSymbolMaterial = new THREE.MeshPhongMaterial({
+                    color: style.base_color, shininess: 50
+                });
+                var baseSymbolMarker = new THREE.Mesh(
+                    new THREE.SphereGeometry(resolvedStyle.baseRadius, 16, 16),
+                    baseSymbolMaterial
+                );
+                baseSymbolMarker.position.fromArray(joints[0]);
+                robotGroup.add(baseSymbolMarker);
+            }
+        }
+
+        if (style.show_joints && style.joint_representation !== 'kinematic') {
             var jointMat = new THREE.MeshPhongMaterial({
                 color: style.joint_color,
                 shininess: 50
@@ -822,10 +878,34 @@ window.MoroThreeJS = (function() {
             }
         }
 
+        var referenceSymbols = referenceData.joint_symbols || [];
+        var actualSymbols = data.joint_symbols || [];
+        var symbolMismatch = referenceSymbols.length !== actualSymbols.length;
+        if (!symbolMismatch) {
+            for (var s = 0; s < referenceSymbols.length; s++) {
+                var refSymbol = referenceSymbols[s];
+                var nextSymbol = actualSymbols[s];
+                if (refSymbol.index !== nextSymbol.index ||
+                    refSymbol.kind !== nextSymbol.kind ||
+                    refSymbol.paths.length !== nextSymbol.paths.length) {
+                    symbolMismatch = true;
+                    break;
+                }
+                for (var p = 0; p < refSymbol.paths.length; p++) {
+                    if (refSymbol.paths[p].length !== nextSymbol.paths[p].length) {
+                        symbolMismatch = true;
+                        break;
+                    }
+                }
+                if (symbolMismatch) { break; }
+            }
+        }
+
         if (
             expectedJointCount !== actualJointCount ||
             expectedFrameCount !== actualFrameCount ||
-            dhMismatch
+            dhMismatch ||
+            symbolMismatch
         ) {
             throw new Error(
                 'Inconsistent robot topology between animation frames.'
@@ -874,7 +954,23 @@ window.MoroThreeJS = (function() {
             }
         }
 
-        if (style.show_joints) {
+        var jointSymbolLines = [];
+        if (style.show_joints && style.joint_representation === 'kinematic') {
+            jointSymbolLines = createJointSymbolLines(robotGroup, data, style);
+            if (style.show_base && joints.length > 0) {
+                var baseSymbolMesh = new THREE.Mesh(
+                    new THREE.SphereGeometry(resolvedStyle.baseRadius, 16, 16),
+                    new THREE.MeshPhongMaterial({
+                        color: style.base_color, shininess: 50
+                    })
+                );
+                baseSymbolMesh.position.fromArray(joints[0]);
+                robotGroup.add(baseSymbolMesh);
+                jointMeshes.push(baseSymbolMesh);
+            }
+        }
+
+        if (style.show_joints && style.joint_representation !== 'kinematic') {
             var jointMaterial = new THREE.MeshPhongMaterial({
                 color: style.joint_color,
                 shininess: 50
@@ -920,6 +1016,7 @@ window.MoroThreeJS = (function() {
             referenceData: data,
             linkMeshes: linkMeshes,
             jointMeshes: jointMeshes,
+            jointSymbolLines: jointSymbolLines,
             frameHelpers: frameHelpers,
             _tmp: {
                 start: new THREE.Vector3(),
@@ -1005,7 +1102,14 @@ window.MoroThreeJS = (function() {
             }
         }
 
-        if (style.show_joints) {
+        if (style.show_joints && style.joint_representation === 'kinematic') {
+            updateJointSymbolLines(robotObjects.jointSymbolLines, data);
+            if (style.show_base && robotObjects.jointMeshes.length > 0) {
+                robotObjects.jointMeshes[0].position.fromArray(joints[0]);
+            }
+        }
+
+        if (style.show_joints && style.joint_representation !== 'kinematic') {
             for (i = 0; i < robotObjects.jointMeshes.length; i++) {
                 var jointMesh = robotObjects.jointMeshes[i];
                 jointMesh.position.fromArray(joints[i]);
