@@ -576,7 +576,7 @@ decisions; they are *not* inferred in V5-B1.
 - Preserve old `SceneData` construction and renderer payload behavior;
 - Pass Python 3.11–3.14, distribution and Sphinx CI before integration.
 
-## 14. V5-B2 — Shared schematic revolute and prismatic joint symbols
+## 14. V5-B2 — Kinematic revolute/prismatic joint representations
 
 ### User-facing style (opt-in)
 
@@ -635,13 +635,13 @@ kinematic symbols are visible. If `show_base` is enabled, it includes
 the independent base sphere radius. Hidden joint symbols make no
 contribution to framing.
 
-Matplotlib draws each polyline as a Line3D, retaining the same
-`joint_color`; with `simple` it keeps the current scatter markers
+Matplotlib draws schematic R/P polylines as Line3D, using the distinct
+`revolute_color` / `prismatic_color`; with `simple` it keeps the current scatter markers
 unchanged. Each animation frame is redrawn with the shared sequence
 layout and framing.
 
 Three.js serializes `joint_symbols` only when visible in `kinematic`
-mode, at the scene level for static views or the frame level for
+and `schematic` mode, at the scene level for static views or the frame level for
 animations. Every symbol has `index`, `kind`, and ordered `paths`.
 `simple` payloads keep their historic geometry. On animation
 initialization, one THREE.Line is allocated for each symbol path. Each
@@ -666,49 +666,54 @@ physically model a prismatic housing.
 6. CI passes on Python 3.11–3.14, packaging and Sphinx.
    The user reviews the visual appearance before merging.
 
-### V5-B2 experimental Three.js joint appearance comparison
+### V5-B2 — Refined solid/schematic choice after visual comparison
 
-After the first schematic symbols were validated visually, V5-B2 includes
-two **experimental Three.js-only** appearances for comparison before
-choosing the long-term default:
+Visual inspection of the three prototypes showed that overlaying solid
+geometry and schematic motion arrows was too visually busy. Therefore,
+the experimental `hybrid` option is removed. Exactly **two** kinematic
+appearances remain:
 
-- `joint_appearance="schematic"` (default): existing R/P line symbols,
-  including their sense-of-motion arrows.
-- `joint_appearance="solid"`: a cylinder on the R motion axis or a
-  rectangular prism aligned with the P axis, with no overlaid line symbols.
-- `joint_appearance="hybrid"`: a semitransparent cylinder/prism together
-  with the existing R/P line symbols.
+- `joint_appearance="solid"` (default *within* the opt-in `kinematic`
+  representation): a blue revolute cylinder or an orange prismatic box
+  aligned with the joint motion axis, with no overlaid schematic arrows.
+- `joint_appearance="schematic"`: the existing R/P line-based motion
+  symbols and arrows, available in both Three.js and Matplotlib.
 
-This option is appended **after** existing style fields to avoid breaking
-positional `VisualizationStyle` construction. It has an effect only when
-`joint_representation="kinematic"` and `show_joints=True`. Matplotlib
-supports `schematic`; attempting either 3D appearance in Matplotlib raises
-a contextual `ValueError` rather than silently showing something else.
+The global `joint_representation="simple"` default is **unchanged**;
+this preserves existing spherical markers and older callers. The new
+`joint_appearance`, `revolute_color`, and `prismatic_color` options
+remain appended after the older fields in `VisualizationStyle` to
+preserve positional arguments. `joint_color` still controls spheres in
+simple mode; `revolute_color="#0072B2"` and
+`prismatic_color="#D55E00"` control both kinematic appearances
+independently and may be overridden by the user.
 
-`joint_solids.build_joint_solids(scene, layout, style)` resolves world-space
-solid descriptors from the existing `JointData` and `VisualizationLayout`.
-The solid center is always `JointData.origin` and its main longitudinal
-axis is `JointData.axis`. The cylinder radius and length and rectangular
-prism width, depth and length are positive proportional multiples of
-`layout.joint_radius * joint_scale`. Their sizes do not depend on the
-prismatic extension. Three.js constructs `CylinderGeometry` or
-`BoxGeometry` with their long axis along local Y. The orientation
-uses the motion axis for local Y and the preceding DH frame X for local X,
-so the prism faces and schematic guides have a consistent roll. Static
-and animated views
-share the same descriptors. Animation meshes persist and only the world
-position/quaternion are updated per frame. A stable joint `index`/`kind`
-order is checked before updates.
+All three spatial dimensions of the original prototype cylinders and
+boxes are multiplied by **0.8**. This reduction is implemented in the
+Python solid-descriptor builder, leaving the schematic polylines and
+`joint_scale=1.0` behavior intact. Dimensions remain proportional to
+`VisualizationLayout`, independent of the robot's m/mm units or
+the instantaneous prismatic extension.
 
-When solid geometry is visible, `compute_scene_bounds` includes a
-conservative world-space enclosing sphere around each solid, so no camera
-clipping occurs for tilted R/P axes. For the hybrid appearance it also
-includes the existing line paths. The original base sphere remains
-independently controlled by `show_base`.
+`joint_solids.build_joint_solids(scene, layout, style)` resolves
+world-space solid descriptors from `JointData`. The solid center
+is `JointData.origin`, the longitudinal local Y axis follows
+`JointData.axis`, and local X follows the preceding DH frame X.
+Three.js constructs `CylinderGeometry` or `BoxGeometry` and
+uses a full orthonormal basis to orient both types. Animated meshes are
+persistent: only positions and quaternions change with configuration.
+The solid kind/order and the schematic path topology are validated for
+their respective modes.
 
-This experiment does **not** imply mechanical CAD geometry or authorize
-switching the library's default joint representation/backend. The
-comparative notebook recipe is in
-`docs/design/0.6.0/joint-appearance-experiment.md`. The result should be
-evaluated visually on RR, RP and spatial RRP before selecting a preferred
-appearance or implementing volumetric Matplotlib primitives.
+`compute_scene_bounds` includes the visible *selected* representation:
+all schematic points for `schematic` or a conservative enclosing sphere
+per solid for `solid`. The base sphere remains independently controlled
+by `show_base`. Matplotlib currently supports `schematic` for
+kinematic joints; explicit use of `solid` raises a clear `ValueError`
+rather than silently rendering a different appearance.
+
+The comparison recipe is in
+`docs/design/0.6.0/joint-appearance-experiment.md`. We retain both
+appearances without switching the library's general representation or
+backend default. Volumetric Matplotlib rendering remains a possible
+future improvement.
