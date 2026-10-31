@@ -3,24 +3,35 @@
 import numpy as np
 
 from .data import SceneData
+from .framing import SceneFraming, resolve_framing
 from .layout import VisualizationLayout, resolve_layout
 from .style import VisualizationStyle
 from .threejs_backend import _extract_end_effector_trajectory
 
 
-def _marker_area_from_world_radius(ax, radius: float, reference_length: float) -> float:
-    """Convert a nominal world-space radius into Matplotlib pt² marker area.
+def _marker_area_from_world_radius(
+    ax, radius: float, visible_half_extent: float
+) -> float:
+    """Map a nominal world radius to Matplotlib scatter marker area in pt².
 
-    Matplotlib's scatter markers are sized on the canvas, not in world units.
-    Until the camera/viewport scale is unified in V4, use a nominal view span
-    of three reference lengths and the existing axes' shorter screen extent.
-    This makes the automatic marker sizes independent of input linear units
-    and stable over an animation that reuses the same layout.
+    Matplotlib's scatter markers are display-space objects. This approximate
+    conversion uses the *resolved visible span*, not a unit-specific nominal
+    span. Exact apparent size can vary under perspective/zoom.
     """
     extent = ax.get_window_extent()
     viewport_points = min(extent.width, extent.height) * 72.0 / ax.figure.dpi
-    diameter_points = 2.0 * radius * viewport_points / (3.0 * reference_length)
+    diameter_points = (radius / visible_half_extent) * viewport_points
     return diameter_points ** 2
+
+
+def _apply_framing(ax, framing: SceneFraming) -> None:
+    """Apply a world-space cubic framing without imposing an absolute floor."""
+    center = framing.center
+    half = framing.half_extent
+    ax.set_xlim(center[0] - half, center[0] + half)
+    ax.set_ylim(center[1] - half, center[1] + half)
+    ax.set_zlim(center[2] - half, center[2] + half)
+    ax.set_box_aspect((1, 1, 1))
 
 
 class MatplotlibBackend:
@@ -34,6 +45,7 @@ class MatplotlibBackend:
         view_init=(30, 30),
         style: VisualizationStyle | None = None,
         layout: VisualizationLayout | None = None,
+        framing: SceneFraming | None = None,
     ):
         """Render one robot configuration on a Matplotlib 3D axis."""
         import matplotlib.pyplot as plt
@@ -50,10 +62,11 @@ class MatplotlibBackend:
 
         if layout is None:
             layout = resolve_layout([scene_data])
+        if framing is None:
+            framing = resolve_framing([scene_data], layout=layout, style=style)
 
         joints = scene_data.joints
         frames = scene_data.frames
-        dim = scene_data.dimension
 
         frame_scale = (
             layout.frame_length if style.frame_scale is None else style.frame_scale
@@ -63,13 +76,13 @@ class MatplotlibBackend:
         # radii resolved in the common VisualizationLayout.
         joint_area = (
             _marker_area_from_world_radius(
-                ax, layout.joint_radius, layout.reference_length
+                ax, layout.joint_radius, framing.half_extent
             )
             if style.joint_size is None else style.joint_size * 100
         )
         base_area = (
             _marker_area_from_world_radius(
-                ax, layout.base_radius, layout.reference_length
+                ax, layout.base_radius, framing.half_extent
             )
             if style.base_size is None else style.base_size * 100
         )
@@ -121,9 +134,7 @@ class MatplotlibBackend:
                         arrow_length_ratio=0.2,
                     )
 
-        ax.set_xlim(-dim, dim)
-        ax.set_ylim(-dim, dim)
-        ax.set_zlim(-dim, dim)
+        _apply_framing(ax, framing)
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
@@ -141,6 +152,7 @@ class MatplotlibBackend:
         figsize=(10, 8),
         style: VisualizationStyle | None = None,
         layout: VisualizationLayout | None = None,
+        framing: SceneFraming | None = None,
         **kwargs,
     ):
         """
@@ -168,39 +180,18 @@ class MatplotlibBackend:
         if layout is None:
             layout = resolve_layout(scene_data_list)
 
-        dim = max(scene.dimension for scene in scene_data_list)
+        if framing is None:
+            framing = resolve_framing(
+                scene_data_list, layout=layout, style=style
+            )
+
         trajectory_points = np.array(
             _extract_end_effector_trajectory(scene_data_list),
             dtype=float,
         )
 
-        bounds_points: list[np.ndarray] = []
-        for scene in scene_data_list:
-            if scene.joints:
-                bounds_points.append(np.asarray(scene.joints, dtype=float))
-            if scene.frames:
-                bounds_points.append(np.asarray([
-                    frame.position
-                    for frame in scene.frames
-                ], dtype=float))
-
-        if style.show_trajectory and trajectory_points.size > 0:
-            bounds_points.append(trajectory_points)
-
-        if bounds_points:
-            stacked = np.vstack(bounds_points)
-            mins = stacked.min(axis=0)
-            maxs = stacked.max(axis=0)
-            center = (mins + maxs) / 2
-            half_extent = max(np.max(maxs - mins) / 2, dim)
-        else:
-            center = np.zeros(3, dtype=float)
-            half_extent = dim
-
         def apply_global_limits():
-            ax.set_xlim(center[0] - half_extent, center[0] + half_extent)
-            ax.set_ylim(center[1] - half_extent, center[1] + half_extent)
-            ax.set_zlim(center[2] - half_extent, center[2] + half_extent)
+            _apply_framing(ax, framing)
 
         def init():
             apply_global_limits()
@@ -216,6 +207,7 @@ class MatplotlibBackend:
                 style=style,
                 ax=ax,
                 layout=layout,
+                framing=framing,
                 **kwargs,
             )
 
