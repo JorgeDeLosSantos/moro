@@ -12,6 +12,7 @@ import numpy as np
 from .data import SceneData
 from .framing import SceneFraming, resolve_framing
 from .layout import VisualizationLayout, resolve_layout
+from .joint_symbols import build_joint_symbols
 from .style import VisualizationStyle
 
 
@@ -158,6 +159,8 @@ def _style_to_payload(style: VisualizationStyle) -> dict:
         "show_frames": style.show_frames,
         "show_links": style.show_links,
         "show_joints": style.show_joints,
+        "joint_representation": style.joint_representation,
+        "joint_scale": style.joint_scale,
         "show_base": style.show_base,
         "show_grid": style.show_grid,
         "link_color": style.link_color,
@@ -199,6 +202,10 @@ class ThreeJSBackend:
             framing = resolve_framing([scene_data], layout=layout, style=style)
 
         payload = _scene_to_payload(scene_data)
+        if style.show_joints and style.joint_representation == "kinematic":
+            payload["joint_symbols"] = build_joint_symbols(
+                scene_data, layout=layout, style=style
+            )
         payload["style"] = _style_to_payload(style)
         payload["layout"] = _layout_to_payload(layout)
         payload["framing"] = _framing_to_payload(framing)
@@ -243,6 +250,24 @@ class ThreeJSBackend:
             )
 
         frames_payload = _scenes_to_payload(scene_data_list)
+        if style.show_joints and style.joint_representation == "kinematic":
+            for scene, payload in zip(scene_data_list, frames_payload):
+                payload["joint_symbols"] = build_joint_symbols(
+                    scene, layout=layout, style=style
+                )
+            reference = frames_payload[0]["joint_symbols"]
+            for frame_index, payload in enumerate(frames_payload[1:], start=1):
+                actual = payload["joint_symbols"]
+                if len(actual) != len(reference) or any(
+                    a["index"] != b["index"] or a["kind"] != b["kind"] or
+                    tuple(map(len, a["paths"])) != tuple(map(len, b["paths"]))
+                    for a, b in zip(reference, actual)
+                ):
+                    raise ValueError(
+                        "Joint symbol topology differs across animation frames "
+                        f"(frame {frame_index})."
+                    )
+
         animation_payload = {
             "frames": frames_payload,
             "style": _style_to_payload(style),
