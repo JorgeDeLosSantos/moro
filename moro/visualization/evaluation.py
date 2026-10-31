@@ -6,7 +6,7 @@ import sympy as sp
 from moro.core import Robot
 from moro.util import sympy_matrix_to_numpy_float
 
-from .data import DHSegmentData, FrameData, SceneData
+from .data import DHSegmentData, FrameData, JointData, SceneData
 
 
 def _evaluate_dh_translation(value, num_vals: dict, row_index: int, name: str) -> float:
@@ -68,6 +68,28 @@ def _build_dh_segments(
     return segments
 
 
+
+def _build_joint_data(robot: Robot, frames: list[FrameData]) -> list[JointData]:
+    """Build kinematic motion axes from the evaluated *previous* DH frames.
+
+    For classical DH, joint i acts along/about z_(i-1). Frames and the
+    existing SceneData.joints array contain origins of coordinate systems,
+    not physical actuator placements. Do not substitute p_i or z_i here.
+    """
+    if len(frames) != robot.dof + 1:
+        raise ValueError("Expected exactly one base frame and one frame per joint.")
+
+    return [
+        JointData(
+            index=i,
+            kind=kind,
+            origin=frames[i - 1].position,
+            axis=frames[i - 1].z,
+        )
+        for i, kind in enumerate(robot.joint_types, start=1)
+    ]
+
+
 def evaluate_robot(robot: Robot, num_vals: dict) -> SceneData:
     """
     Evaluate a robot at a numerical configuration.
@@ -82,8 +104,8 @@ def evaluate_robot(robot: Robot, num_vals: dict) -> SceneData:
     Returns
     -------
     SceneData
-        Numerical joint positions, frame transformations and ordered
-        DH translation segments in the base frame, ready for rendering.
+        Numerical frame origins, frame transformations, ordered DH translation
+        segments and kinematic joint axes in the base frame.
     """
     joints: list[np.ndarray] = []
     frames: list[FrameData] = []
@@ -109,4 +131,5 @@ def evaluate_robot(robot: Robot, num_vals: dict) -> SceneData:
         frames=frames,
         dimension=dimension,
         dh_segments=_build_dh_segments(robot, num_vals, frames),
+        joint_data=_build_joint_data(robot, frames),
     )
