@@ -158,12 +158,12 @@ def compute_scene_bounds(
 
     if style.show_joints:
         if style.joint_representation == "kinematic":
-            if style.joint_appearance in ("schematic", "hybrid"):
+            if style.joint_appearance == "schematic":
                 for symbol in build_joint_symbols(scene, layout=layout, style=style):
                     for path in symbol["paths"]:
                         for position in path:
                             add_point(position, description="joint symbol point")
-            if style.joint_appearance in ("solid", "hybrid"):
+            if style.joint_appearance == "solid":
                 for solid in build_joint_solids(scene, layout=layout, style=style):
                     add_point(
                         solid["origin"],
