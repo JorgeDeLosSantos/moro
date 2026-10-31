@@ -163,6 +163,8 @@ def _style_to_payload(style: VisualizationStyle) -> dict:
         "joint_representation": style.joint_representation,
         "joint_scale": style.joint_scale,
         "joint_appearance": style.joint_appearance,
+        "revolute_color": style.revolute_color,
+        "prismatic_color": style.prismatic_color,
         "show_base": style.show_base,
         "show_grid": style.show_grid,
         "link_color": style.link_color,
@@ -205,11 +207,11 @@ class ThreeJSBackend:
 
         payload = _scene_to_payload(scene_data)
         if style.show_joints and style.joint_representation == "kinematic":
-            if style.joint_appearance in ("schematic", "hybrid"):
+            if style.joint_appearance == "schematic":
                 payload["joint_symbols"] = build_joint_symbols(
                     scene_data, layout=layout, style=style
                 )
-            if style.joint_appearance in ("solid", "hybrid"):
+            if style.joint_appearance == "solid":
                 payload["joint_solids"] = build_joint_solids(
                     scene_data, layout=layout, style=style
                 )
@@ -259,15 +261,15 @@ class ThreeJSBackend:
         frames_payload = _scenes_to_payload(scene_data_list)
         if style.show_joints and style.joint_representation == "kinematic":
             for scene, payload in zip(scene_data_list, frames_payload):
-                if style.joint_appearance in ("schematic", "hybrid"):
+                if style.joint_appearance == "schematic":
                     payload["joint_symbols"] = build_joint_symbols(
                         scene, layout=layout, style=style
                     )
-                if style.joint_appearance in ("solid", "hybrid"):
+                if style.joint_appearance == "solid":
                     payload["joint_solids"] = build_joint_solids(
                         scene, layout=layout, style=style
                     )
-            if style.joint_appearance in ("schematic", "hybrid"):
+            if style.joint_appearance == "schematic":
                 reference = frames_payload[0]["joint_symbols"]
                 for frame_index, payload in enumerate(frames_payload[1:], start=1):
                     actual = payload["joint_symbols"]
@@ -280,7 +282,7 @@ class ThreeJSBackend:
                             "Joint symbol topology differs across animation frames "
                             f"(frame {frame_index})."
                         )
-            if style.joint_appearance in ("solid", "hybrid"):
+            if style.joint_appearance == "solid":
                 reference = frames_payload[0]["joint_solids"]
                 for frame_index, payload in enumerate(frames_payload[1:], start=1):
                     actual = payload["joint_solids"]
