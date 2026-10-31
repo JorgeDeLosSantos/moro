@@ -167,7 +167,89 @@ window.MoroThreeJS = (function() {
         return trajectoryLine;
     }
 
+    function resolveCameraFit(framing, aspect, fovDegrees) {
+        // The Python backend owns the spatial bounds and margin. Only the
+        // camera's viewport-dependent projection is computed here.
+        var radius = Number(framing.fit_radius);
+        if (!Number.isFinite(radius) || radius <= 0) {
+            throw new Error('A positive finite fit_radius is required.');
+        }
+        var ratio = Number(aspect);
+        if (!Number.isFinite(ratio) || ratio <= 0) {
+            throw new Error('Camera aspect ratio must be positive.');
+        }
+
+        var vertical = THREE.MathUtils.degToRad(fovDegrees);
+        var horizontal = 2 * Math.atan(Math.tan(vertical / 2) * ratio);
+        var smallestHalfFov = Math.min(vertical, horizontal) / 2;
+        // Sphere fitting works for all preset orientations, including the
+        // isometric and top views, without adding unit-specific floors.
+        var distance = radius / Math.sin(smallestHalfFov);
+        var orthoHalfHeight = radius / Math.min(1, ratio);
+        var nearPlane = (distance - radius) * 0.1;
+        var farPlane = distance + radius * 4;
+
+        return {
+            distance: distance,
+            nearPlane: nearPlane,
+            farPlane: farPlane,
+            orthoHalfHeight: orthoHalfHeight,
+            orthoHalfWidth: orthoHalfHeight * ratio
+        };
+    }
+
+    function resetCameraFraming(options) {
+        // Restore the original projection after camera switches or zoom.
+        var fit = resolveCameraFit(
+            options.framing, options.aspect, options.perspectiveCamera.fov
+        );
+        var perspective = options.perspectiveCamera;
+        var orthographic = options.orthographicCamera;
+        perspective.aspect = options.aspect;
+        perspective.near = fit.nearPlane;
+        perspective.far = fit.farPlane;
+        perspective.zoom = 1;
+        perspective.updateProjectionMatrix();
+
+        orthographic.left = -fit.orthoHalfWidth;
+        orthographic.right = fit.orthoHalfWidth;
+        orthographic.top = fit.orthoHalfHeight;
+        orthographic.bottom = -fit.orthoHalfHeight;
+        orthographic.near = -fit.farPlane;
+        orthographic.far = fit.farPlane;
+        orthographic.zoom = 1;
+        orthographic.updateProjectionMatrix();
+        return fit;
+    }
+
     function createCameras(options) {
+        if (options.framing) {
+            var ratio = toFiniteNumber(options.aspect, 1);
+            var fit = resolveCameraFit(options.framing, ratio, 50);
+            var perspective = new THREE.PerspectiveCamera(
+                50, ratio, fit.nearPlane, fit.farPlane
+            );
+            var orthographic = new THREE.OrthographicCamera(
+                -fit.orthoHalfWidth,
+                fit.orthoHalfWidth,
+                fit.orthoHalfHeight,
+                -fit.orthoHalfHeight,
+                -fit.farPlane,
+                fit.farPlane
+            );
+            perspective.up.set(0, 0, 1);
+            orthographic.up.set(0, 0, 1);
+            return {
+                perspectiveCamera: perspective,
+                orthographicCamera: orthographic,
+                nearPlane: fit.nearPlane,
+                farPlane: fit.farPlane,
+                aspect: ratio,
+                distance: fit.distance
+            };
+        }
+
+        // Compatibility path for older JavaScript payloads without framing.
         var sceneScale = Math.max(toFiniteNumber(options.sceneScale, 0), 1);
         var aspect = toFiniteNumber(options.aspect, 1);
 
@@ -412,15 +494,20 @@ window.MoroThreeJS = (function() {
         };
     }
 
-    function createLights(scene, sceneScale) {
+    function createLights(scene, sceneScale, sceneCenter) {
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
+        var center = sceneCenter || new THREE.Vector3(0, 0, 0);
         var dl1 = new THREE.DirectionalLight(0xffffff, 0.5);
-        dl1.position.set(sceneScale, sceneScale, sceneScale);
+        dl1.position.copy(center).add(
+            new THREE.Vector3(sceneScale, sceneScale, sceneScale)
+        );
         scene.add(dl1);
 
         var dl2 = new THREE.DirectionalLight(0xffffff, 0.3);
-        dl2.position.set(-sceneScale, -sceneScale, -sceneScale);
+        dl2.position.copy(center).add(
+            new THREE.Vector3(-sceneScale, -sceneScale, -sceneScale)
+        );
         scene.add(dl2);
 
         return {
@@ -930,6 +1017,8 @@ window.MoroThreeJS = (function() {
         assertRobotTopology: assertRobotTopology,
         clearGroup: clearGroup,
         createCameras: createCameras,
+        resolveCameraFit: resolveCameraFit,
+        resetCameraFraming: resetCameraFraming,
         createCylinderBetweenPoints: createCylinderBetweenPoints,
         createGrid: createGrid,
         createLights: createLights,
