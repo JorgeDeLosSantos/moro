@@ -27,13 +27,13 @@ class VisualizationStyle:
     base_color : str
         Color used for the base joint.
     frame_scale : float or None
-        Length of frame axes. If None, derive it from the scene dimension.
+        Length of frame axes in robot units. If None, use the shared layout.
     joint_size : float or None
-        Joint size. If None, derive it from the scene dimension.
+        Explicit size: Matplotlib marker area factor (s=size*100 in pt²),\n        or Three.js world-space radius. If None, use the backend adapter.
     base_size : float or None
-        Base size. If None, derive it from the scene dimension.
+        Base marker size with the same backend-specific semantics as\n        joint_size. If None, use the backend adapter.
     link_linewidth : float
-        Link thickness. Three.js interprets it as a relative thickness factor.
+        Link thickness in Matplotlib points; Three.js uses it as a\n        multiplicative factor relative to its nominal link radius (value/3).
     show_trajectory : bool
         Draw end-effector Cartesian trajectory in animations.
     trajectory_color : str
