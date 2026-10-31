@@ -1,6 +1,8 @@
 """Backend-independent visualization style configuration."""
 
 from dataclasses import dataclass
+import math
+from typing import Literal
 
 
 @dataclass(slots=True)
@@ -20,6 +22,10 @@ class VisualizationStyle:
         Highlight the base joint when joints are visible.
     show_grid : bool
         Draw the reference grid.
+    joint_representation : str
+        'simple' keeps frame-origin spheres; 'kinematic' draws R/P axis symbols.
+    joint_scale : float
+        Finite positive dimensionless factor for kinematic joint symbols.
     link_color : str
         Color used for links.
     joint_color : str
@@ -53,6 +59,9 @@ class VisualizationStyle:
     show_base: bool = True
     show_grid: bool = True
 
+    joint_representation: Literal['simple', 'kinematic'] = 'simple'
+    joint_scale: float = 1.0
+
     link_color: str = "#778877"
     joint_color: str = "#ff1493"
     base_color: str = "#ff00ff"
@@ -68,6 +77,17 @@ class VisualizationStyle:
     trajectory_mode: str = "full"
 
     def __post_init__(self):
+        if self.joint_representation not in {'simple', 'kinematic'}:
+            raise ValueError("joint_representation must be 'simple' or 'kinematic'.")
+        if isinstance(self.joint_scale, bool):
+            raise ValueError('joint_scale must be a finite positive number.')
+        try:
+            scale = float(self.joint_scale)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError('joint_scale must be a finite positive number.') from exc
+        if not math.isfinite(scale) or scale <= 0:
+            raise ValueError('joint_scale must be a finite positive number.')
+        self.joint_scale = scale
         if self.trajectory_mode not in {"full", "trace"}:
             raise ValueError(
                 "trajectory_mode must be either 'full' or 'trace'"
