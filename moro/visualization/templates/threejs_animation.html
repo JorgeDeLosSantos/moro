@@ -142,6 +142,7 @@ __COMMON_SCRIPT__
             var framesData = animationData.frames;
             var style = animationData.style;
             var layout = animationData.layout;
+            var framing = animationData.framing;
             var trajectoryData = animationData.trajectory || [];
             var container = document.getElementById('container-__UNIQUE_ID__');
             var slider = document.getElementById('slider-__UNIQUE_ID__');
@@ -169,134 +170,15 @@ __COMMON_SCRIPT__
             var activeCameraType = 'orthographic';
             var currentView = 'isometric';
 
-            // Compute one global bounding box for the complete animation.
-            // The resulting scale remains fixed while frames are played, so links,
-            // joints and coordinate axes do not change size between frames.
-            var animationBounds = computeAnimationBounds(
-                framesData,
-                trajectoryData
+            // Reuse the Python-resolved global framing throughout playback.
+            var sceneCenter = new THREE.Vector3().fromArray(framing.center);
+            var sceneScale = framing.fit_radius * 2;
+            var cameraDistance;
+            var resolvedStyle = window.MoroThreeJS.resolveStyle(
+                style, sceneScale, layout
             );
-            var sceneCenter = animationBounds.center;
-            var dim = animationBounds.dimension * 1.15;
-            var resolvedStyle = window.MoroThreeJS.resolveStyle(style, dim, layout);
             var resolvedTrajectoryStyle =
                 window.MoroThreeJS.resolveTrajectoryStyle(style);
-
-            function computeAnimationBounds(animationData, trajectoryData) {
-                var minPoint = new THREE.Vector3(
-                    Infinity,
-                    Infinity,
-                    Infinity
-                );
-                var maxPoint = new THREE.Vector3(
-                    -Infinity,
-                    -Infinity,
-                    -Infinity
-                );
-                var largestDeclaredDimension = 0;
-                var pointCount = 0;
-
-                function expandBounds(position) {
-                    if (!Array.isArray(position) || position.length < 3) {
-                        return;
-                    }
-
-                    var x = Number(position[0]);
-                    var y = Number(position[1]);
-                    var z = Number(position[2]);
-
-                    if (
-                        !Number.isFinite(x) ||
-                        !Number.isFinite(y) ||
-                        !Number.isFinite(z)
-                    ) {
-                        return;
-                    }
-
-                    var point = new THREE.Vector3(x, y, z);
-                    minPoint.min(point);
-                    maxPoint.max(point);
-                    pointCount++;
-                }
-
-                animationData.forEach(function(frameData) {
-                    var declaredDimension = Number(frameData.dimension);
-                    if (
-                        Number.isFinite(declaredDimension) &&
-                        declaredDimension > 0
-                    ) {
-                        largestDeclaredDimension = Math.max(
-                            largestDeclaredDimension,
-                            declaredDimension
-                        );
-                    }
-
-                    if (Array.isArray(frameData.joints)) {
-                        frameData.joints.forEach(expandBounds);
-                    }
-
-                    if (Array.isArray(frameData.frames)) {
-                        frameData.frames.forEach(function(frame) {
-                            expandBounds(frame.position);
-                        });
-                    }
-                });
-
-                if (Array.isArray(trajectoryData)) {
-                    trajectoryData.forEach(expandBounds);
-                }
-
-                if (pointCount === 0) {
-                    var fallbackDimension = Math.max(
-                        largestDeclaredDimension,
-                        1
-                    );
-                    return {
-                        min: new THREE.Vector3(
-                            -fallbackDimension / 2,
-                            -fallbackDimension / 2,
-                            -fallbackDimension / 2
-                        ),
-                        max: new THREE.Vector3(
-                            fallbackDimension / 2,
-                            fallbackDimension / 2,
-                            fallbackDimension / 2
-                        ),
-                        center: new THREE.Vector3(0, 0, 0),
-                        size: new THREE.Vector3(
-                            fallbackDimension,
-                            fallbackDimension,
-                            fallbackDimension
-                        ),
-                        dimension: fallbackDimension
-                    };
-                }
-
-                var size = new THREE.Vector3().subVectors(
-                    maxPoint,
-                    minPoint
-                );
-                var center = new THREE.Vector3()
-                    .addVectors(minPoint, maxPoint)
-                    .multiplyScalar(0.5);
-                var measuredDimension = Math.max(
-                    size.x,
-                    size.y,
-                    size.z
-                );
-
-                return {
-                    min: minPoint,
-                    max: maxPoint,
-                    center: center,
-                    size: size,
-                    dimension: Math.max(
-                        measuredDimension,
-                        largestDeclaredDimension,
-                        1
-                    )
-                };
-            }
 
             try {
                 scene = new THREE.Scene();
@@ -305,17 +187,11 @@ __COMMON_SCRIPT__
                 var width = __WIDTH__;
                 var height = __HEIGHT__;
                 var aspect = width / height;
-                var nearPlane = Math.max(dim * 0.001, 0.01);
-                var farPlane = Math.max(dim * 50, 1000);
-
                 var cameraSet = window.MoroThreeJS.createCameras({
                     aspect: aspect,
-                    sceneScale: dim,
-                    nearPlane: nearPlane,
-                    farPlane: farPlane,
-                    orthographicNear: -farPlane,
-                    orthographicFar: farPlane
+                    framing: framing
                 });
+                cameraDistance = cameraSet.distance;
 
                 perspectiveCamera = cameraSet.perspectiveCamera;
                 orthographicCamera = cameraSet.orthographicCamera;
@@ -335,7 +211,9 @@ __COMMON_SCRIPT__
 
                 setView('isometric');
 
-                window.MoroThreeJS.createLights(scene, dim);
+                window.MoroThreeJS.createLights(
+                    scene, sceneScale, sceneCenter
+                );
 
                 // Grid on the global XY plane (Z = 0). Its center must remain
                 // at the world origin so that it agrees with the robot base frame.
@@ -343,13 +221,13 @@ __COMMON_SCRIPT__
                 // contain the complete animation, even when its bounds are offset.
                 if (style.show_grid) {
                     var gridHalfExtent = Math.max(
-                        Math.abs(animationBounds.min.x),
-                        Math.abs(animationBounds.max.x),
-                        Math.abs(animationBounds.min.y),
-                        Math.abs(animationBounds.max.y),
-                        dim / 2
+                        Math.abs(framing.minimum[0]),
+                        Math.abs(framing.maximum[0]),
+                        Math.abs(framing.minimum[1]),
+                        Math.abs(framing.maximum[1]),
+                        framing.fit_radius
                     );
-                    var gridSize = Math.max(gridHalfExtent * 2.4, dim * 2.5);
+                    var gridSize = gridHalfExtent * 2.4;
 
                     window.MoroThreeJS.createGrid(scene, {
                         gridSize: gridSize,
@@ -362,7 +240,7 @@ __COMMON_SCRIPT__
                 }
 
                 // Global coordinate system at the world origin.
-                var worldAxes = new THREE.AxesHelper(dim / 4);
+                var worldAxes = new THREE.AxesHelper(layout.reference_length / 4);
                 worldAxes.position.set(0, 0, 0);
                 scene.add(worldAxes);
 
@@ -503,9 +381,9 @@ __COMMON_SCRIPT__
                 if (!window.MoroThreeJS.setPresetView({
                     camera: camera,
                     target: controls.target.clone(),
-                    distance: dim * 2.5,
+                    distance: cameraDistance,
                     viewName: viewName,
-                    topUp: [0, 0, 1]
+                    topUp: [0, 1, 0]
                 })) {
                     return;
                 }
@@ -523,7 +401,7 @@ __COMMON_SCRIPT__
                     orthographicCamera: orthographicCamera,
                     controls: controls,
                     aspect: aspect,
-                    synchronizeProjection: false
+                    synchronizeProjection: true
                 });
 
                 if (!result.changed) {
@@ -539,17 +417,14 @@ __COMMON_SCRIPT__
             }
 
             function resetView() {
+                // Keep the user's projection type but restore its initial fit.
+                window.MoroThreeJS.resetCameraFraming({
+                    perspectiveCamera: perspectiveCamera,
+                    orthographicCamera: orthographicCamera,
+                    framing: framing,
+                    aspect: aspect
+                });
                 controls.target.copy(sceneCenter);
-
-                if (activeCameraType !== 'orthographic') {
-                    setCameraType('orthographic');
-                }
-
-                orthographicCamera.zoom = 1;
-                orthographicCamera.updateProjectionMatrix();
-                perspectiveCamera.zoom = 1;
-                perspectiveCamera.updateProjectionMatrix();
-
                 setView('isometric');
             }
 
