@@ -97,7 +97,7 @@ display(
 ```
 
 El resultado esperado es que el símbolo P permanezca sobre su eje,
-mientras cambia el segmento DH asociado al desplazamiento `d_3`.
+mientras cambia el segmento DH asociado al desplazamiento de la segunda junta (`d_2`, representado por el símbolo Python `d3` en este ejemplo).
 
 ## Pautas para elegir variante
 
