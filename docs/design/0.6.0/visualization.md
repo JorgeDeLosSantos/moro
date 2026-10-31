@@ -665,3 +665,48 @@ physically model a prismatic housing.
    joint metadata work in simple mode.
 6. CI passes on Python 3.11–3.14, packaging and Sphinx.
    The user reviews the visual appearance before merging.
+
+### V5-B2 experimental Three.js joint appearance comparison
+
+After the first schematic symbols were validated visually, V5-B2 includes
+two **experimental Three.js-only** appearances for comparison before
+choosing the long-term default:
+
+- `joint_appearance="schematic"` (default): existing R/P line symbols,
+  including their sense-of-motion arrows.
+- `joint_appearance="solid"`: a cylinder on the R motion axis or a
+  rectangular prism aligned with the P axis, with no overlaid line symbols.
+- `joint_appearance="hybrid"`: a semitransparent cylinder/prism together
+  with the existing R/P line symbols.
+
+This option is appended **after** existing style fields to avoid breaking
+positional `VisualizationStyle` construction. It has an effect only when
+`joint_representation="kinematic"` and `show_joints=True`. Matplotlib
+supports `schematic`; attempting either 3D appearance in Matplotlib raises
+a contextual `ValueError` rather than silently showing something else.
+
+`joint_solids.build_joint_solids(scene, layout, style)` resolves world-space
+solid descriptors from the existing `JointData` and `VisualizationLayout`.
+The solid center is always `JointData.origin` and its main longitudinal
+axis is `JointData.axis`. The cylinder radius and length and rectangular
+prism width, depth and length are positive proportional multiples of
+`layout.joint_radius * joint_scale`. Their sizes do not depend on the
+prismatic extension. Three.js constructs `CylinderGeometry` or
+`BoxGeometry` with their long axis along local Y, then applies a
+quaternion from Y to the supplied motion axis. Static and animated views
+share the same descriptors. Animation meshes persist and only the world
+position/quaternion are updated per frame. A stable joint `index`/`kind`
+order is checked before updates.
+
+When solid geometry is visible, `compute_scene_bounds` includes a
+conservative world-space enclosing sphere around each solid, so no camera
+clipping occurs for tilted R/P axes. For the hybrid appearance it also
+includes the existing line paths. The original base sphere remains
+independently controlled by `show_base`.
+
+This experiment does **not** imply mechanical CAD geometry or authorize
+switching the library's default joint representation/backend. The
+comparative notebook recipe is in
+`docs/design/0.6.0/joint-appearance-experiment.md`. The result should be
+evaluated visually on RR, RP and spatial RRP before selecting a preferred
+appearance or implementing volumetric Matplotlib primitives.
