@@ -247,3 +247,23 @@ V3 will decide how to resolve an explicit user `reference_length`, an automatic 
 - V2 adds `SceneData.characteristic_length` and the reusable `resolve_reference_length` helper in `moro/visualization/scaling.py`, exported from `moro.visualization`.
 - No camera, scene bounding boxes, backend defaults, Matplotlib marker sizes, Three.js cylinder radii, `SceneData.dimension`, or JavaScript payloads change in V2.
 - Dedicated regression tests cover proportional unit conversion, folding, prismatic motion, empty/legacy scenes, negative lengths, mutation, and nonfinite coordinates.
+
+
+## 8. V3-A — Backend-independent layout (implemented)
+
+`moro.visualization.layout` introduces `VisualizationLayout` (frozen, slotted) and `resolve_layout(scenes, *, reference_length=None)`.
+
+The layout contains the following **world-space lengths**, in the robot's input linear units: `reference_length`, `frame_length`, `joint_radius`, `base_radius`, and `link_radius`. Initial ratios to the resolved reference length are `1/6`, `0.020`, `0.030`, and `0.015`, respectively. These ratios are internal provisional defaults, not a backend's screen-space drawing sizes.
+
+Reference selection precedence:
+
+1. Explicit finite positive `reference_length` (a nonpositive, nonfinite or nonnumeric value raises `ValueError`).
+2. Positive maximum evaluated DH characteristic length across the scenes, via V2 `resolve_reference_length`.
+3. Positive finite maximum legacy `SceneData.dimension` when DH geometry does not provide a usable positive length.
+4. Visual-only fallback `1.0` when no positive length is available.
+
+The resolver requires a nonempty sequence and computes the reference once for all its configurations; the frozen result is suitable for reuse across animation frames. `SceneData.characteristic_length` and `SceneData.dimension` are not changed by resolution. Fallback is **not** interpreted as a physical size.
+
+Backend adaptation, especially Matplotlib's points-squared markers versus Three.js world-space sphere radii, remains in **V3-B**. Explicit `VisualizationStyle` overrides, link linewidth semantics, serialization, geometry rendering, and camera framing are deliberately unchanged in V3-A. Subsequent work should avoid recalculating nominal scale independently in JavaScript.
+
+V3-A acceptance requires scale homogeneity for nonfallback inputs, constant animation layouts, correct precedence and invalid input handling, and no regressions in existing backend behavior.
