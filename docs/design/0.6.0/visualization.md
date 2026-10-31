@@ -692,8 +692,10 @@ axis is `JointData.axis`. The cylinder radius and length and rectangular
 prism width, depth and length are positive proportional multiples of
 `layout.joint_radius * joint_scale`. Their sizes do not depend on the
 prismatic extension. Three.js constructs `CylinderGeometry` or
-`BoxGeometry` with their long axis along local Y, then applies a
-quaternion from Y to the supplied motion axis. Static and animated views
+`BoxGeometry` with their long axis along local Y. The orientation
+uses the motion axis for local Y and the preceding DH frame X for local X,
+so the prism faces and schematic guides have a consistent roll. Static
+and animated views
 share the same descriptors. Animation meshes persist and only the world
 position/quaternion are updated per frame. A stable joint `index`/`kind`
 order is checked before updates.
