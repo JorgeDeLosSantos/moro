@@ -115,6 +115,7 @@ __COMMON_SCRIPT__
         function initRobot___UNIQUE_ID__() {
             var data = __ROBOT_DATA__;
             var style = data.style;
+            var layout = data.layout;
             var container = document.getElementById('container-__UNIQUE_ID__');
             var status = document.getElementById('status-__UNIQUE_ID__');
 
@@ -135,7 +136,8 @@ __COMMON_SCRIPT__
             var sceneScale = Math.max(Number(data.dimension) || 0, 1);
             var resolvedStyle = window.MoroThreeJS.resolveStyle(
                 style,
-                sceneScale
+                sceneScale,
+                layout
             );
 
             try {
