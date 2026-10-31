@@ -112,7 +112,7 @@ def test_legacy_joint_links_fallback_when_no_dh_segments():
         style=VisualizationStyle(show_frames=False, show_joints=False),
     )
     radius = layout.link_radius
-    assert bounds.minimum == pytest.approx((2-radius, -1-radius, 3-radius*-1+3))
+    assert bounds.minimum == pytest.approx((2-radius, -1-radius, 3-radius))
     assert bounds.maximum == pytest.approx((5+radius, 6+radius, 3+radius))
 
 
