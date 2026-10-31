@@ -39,10 +39,15 @@ def _payload(html, variable):
     return json.loads(match.group(1))
 
 
+def style_color(kind):
+    style = VisualizationStyle()
+    return style.revolute_color if kind == "r" else style.prismatic_color
+
+
 def _style(**kwargs):
     return VisualizationStyle(
-        joint_representation="kinematic", show_links=False,
-        show_frames=False, **kwargs
+        joint_representation="kinematic", joint_appearance="schematic",
+        show_links=False, show_frames=False, **kwargs
     )
 
 
@@ -50,6 +55,9 @@ def test_style_defaults_preserve_existing_spherical_markers():
     style = VisualizationStyle()
     assert style.joint_representation == "simple"
     assert style.joint_scale == 1.0
+    assert style.joint_appearance == "solid"
+    assert style.revolute_color == "#0072B2"
+    assert style.prismatic_color == "#D55E00"
     assert style.show_joints
     assert style.show_base
 
@@ -176,6 +184,8 @@ def test_matplotlib_kinematic_mode_draws_schematic_lines_and_base_only():
     # Revolute arc + arrowhead; prism guides, slider and arrow.
     assert len(ax.lines) == 7
     assert len(ax.collections) == 1  # Base marker only.
+    assert ax.lines[0].get_color() == style_color("r")
+    assert ax.lines[2].get_color() == style_color("p")
     expected = build_joint_symbols(
         scene, layout=resolve_layout([scene]), style=_style()
     )
