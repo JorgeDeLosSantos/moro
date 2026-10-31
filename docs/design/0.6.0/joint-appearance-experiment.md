@@ -1,14 +1,17 @@
-# V5-B2 — Experimento visual de juntas: A/B/C
+# V5-B2 — Comparación de juntas: esquemática y sólida
 
-Este experimento permite comparar tres alternativas en Three.js **sin cambiar el
-modo de visualización predeterminado de Moro**:
+Esta comparación permite explorar dos alternativas en Three.js **sin cambiar
+la representación general predeterminada de Moro**:
 
-- **A · schematic**: arcos/flechas y guías en forma de líneas. Funciona también
-  en Matplotlib, y sigue siendo el modo inicial de V5-B2.
-- **B · solid**: cilindro para R, prisma rectangular para P, alineados con
-  `JointData.axis` y centrados en `JointData.origin`.
-- **C · hybrid**: los mismos sólidos, semitransparentes, junto a las líneas de
-  A para indicar el sentido de movimiento.
+- **schematic**: arcos/flechas y guías en forma de líneas. Funciona también
+  en Matplotlib.
+- **solid**: cilindro azul para R, prisma rectangular naranja para P, alineados
+  con `JointData.axis` y centrados en `JointData.origin`. Es la opción
+  predeterminada **dentro del modo cinemático**, pero `simple` sigue siendo
+  el modo predeterminado general.
+
+La variante superpuesta `hybrid` se descartó después de la inspección visual:
+añadía demasiada información a la escena.
 
 Los sólidos son **símbolos de movimiento**; no describen los componentes
 físicos del robot. Los elementos prismáticos no se deslizan de manera
@@ -17,13 +20,16 @@ independiente a lo largo del parámetro DH `d_i`; muestran dónde está el
 configuración evaluada.
 
 Todas las dimensiones proceden de `VisualizationLayout` y
-`joint_scale`. El radio y la longitud de los volúmenes son independientes
+`joint_scale`. Los sólidos son un 20 % menores que el primer prototipo y
+se colorean según el tipo: R `#0072B2`, P `#D55E00`. Los colores pueden
+configurarse mediante `revolute_color` y `prismatic_color`. El radio
+y la longitud de los volúmenes son independientes
 de que las distancias estén expresadas en m o mm. Los objetos de Three.js
 se conservan entre fotogramas; se actualizan su origen y dirección.
 
-**Limitación deliberada:** `solid` y `hybrid` solo están disponibles
-en Three.js. Matplotlib solicita explícitamente `schematic` para
-evitar presentar variantes visuales distintas bajo el mismo nombre.
+**Limitación deliberada:** `solid` solo está disponible en Three.js.
+Matplotlib requiere `joint_appearance="schematic"` cuando se solicita
+`joint_representation="kinematic"`.
 
 ## Comparador mínimo para notebook / Colab
 
@@ -58,7 +64,7 @@ robots = {
 
 for name, (robot, q) in robots.items():
     print(name)
-    for appearance in ("schematic", "solid", "hybrid"):
+    for appearance in ("solid", "schematic"):
         print("   ", appearance)
         style = VisualizationStyle(
             joint_representation="kinematic",
@@ -87,7 +93,7 @@ configurations = [
 
 style = VisualizationStyle(
     joint_representation="kinematic",
-    joint_appearance="hybrid",
+    joint_appearance="solid",
 )
 display(
     RobotVisualizer(robot).animate(
@@ -105,6 +111,7 @@ Considera legibilidad de R/P, orientación de ejes oblicuos, visibilidad
 de los segmentos DH, superposición en la base, comportamiento con zoom,
 comportamiento de los controles y consistencia entre m y mm.
 
-No se modifica automáticamente la representación predeterminada.
-La elección definitiva y la eventual adaptación de sólidos a Matplotlib
-se decidirán después de la inspección visual.
+Se conserva `joint_representation="simple"` como predeterminado global.
+En el modo cinemático, Three.js utiliza `solid` salvo indicación contraria;
+la representación `schematic` se mantiene como alternativa. La eventual
+adaptación de sólidos a Matplotlib se evaluará por separado.
