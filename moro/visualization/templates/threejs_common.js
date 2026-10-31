@@ -222,6 +222,42 @@ window.MoroThreeJS = (function() {
         return fit;
     }
 
+    function fitCameraView(options) {
+        // Refit the shared Python-computed scene bounds WITHOUT resetting
+        // the viewing direction or changing the active camera / animation.
+        // The active projection is restored after OrbitControls zoom/pan.
+        var camera = options.camera;
+        var controls = options.controls;
+        var framing = options.framing;
+        if (!camera || !controls || !framing || !Array.isArray(framing.center)) {
+            throw new Error('fitCameraView requires a camera, controls and framing.');
+        }
+
+        // Capture direction before replacing the orbit target. Recenter in
+        // world space; do not change the camera's "up" vector.
+        var offset = new THREE.Vector3().subVectors(
+            camera.position, controls.target
+        );
+        var distanceToTarget = offset.length();
+        if (!Number.isFinite(distanceToTarget) || distanceToTarget === 0) {
+            offset.set(1, 1, 1);
+        }
+        offset.normalize();
+
+        var fit = resetCameraFraming({
+            perspectiveCamera: options.perspectiveCamera,
+            orthographicCamera: options.orthographicCamera,
+            framing: framing,
+            aspect: options.aspect
+        });
+        var target = new THREE.Vector3().fromArray(framing.center);
+        controls.target.copy(target);
+        camera.position.copy(target).addScaledVector(offset, fit.distance);
+        camera.lookAt(target);
+        controls.update();
+        return fit;
+    }
+
     function createCameras(options) {
         if (options.framing) {
             var ratio = toFiniteNumber(options.aspect, 1);
@@ -321,13 +357,15 @@ window.MoroThreeJS = (function() {
 
         controls.enableDamping = true;
         controls.dampingFactor = 0.1;
+        // Standard OrbitControls interaction works with touchpads:
+        // left-drag orbit, right-drag pan, wheel/pinch zoom.
         controls.mouseButtons = {
-            LEFT: THREE.MOUSE.PAN,
-            MIDDLE: THREE.MOUSE.ROTATE,
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
             RIGHT: THREE.MOUSE.PAN
         };
         controls.touches = {
-            ONE: THREE.TOUCH.PAN,
+            ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
         };
 
@@ -357,6 +395,15 @@ window.MoroThreeJS = (function() {
                 position.set(
                     target.x,
                     target.y - distance,
+                    target.z
+                );
+                break;
+            case 'right':
+                // Look from +X toward the scene center; keep +Z vertical.
+                camera.up.set(0, 0, 1);
+                position.set(
+                    target.x + distance,
+                    target.y,
                     target.z
                 );
                 break;
@@ -1273,6 +1320,7 @@ window.MoroThreeJS = (function() {
         createCameras: createCameras,
         resolveCameraFit: resolveCameraFit,
         resetCameraFraming: resetCameraFraming,
+        fitCameraView: fitCameraView,
         createCylinderBetweenPoints: createCylinderBetweenPoints,
         createGrid: createGrid,
         createLights: createLights,

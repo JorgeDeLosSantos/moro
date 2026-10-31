@@ -60,6 +60,9 @@
             <button onclick="window.robot___UNIQUE_ID__.setView('front')">
                 Front
             </button>
+            <button onclick="window.robot___UNIQUE_ID__.setView('right')">
+                Right
+            </button>
 
             <button onclick="window.robot___UNIQUE_ID__.setView('top')">
                 Top
@@ -79,8 +82,9 @@
                 <option value="orthographic" selected>Orthographic</option>
             </select>
 
-            <button onclick="window.robot___UNIQUE_ID__.resetView()">
-                &#x21bb; Reset View
+            <button onclick="window.robot___UNIQUE_ID__.fitView()"
+                    title="Fit robot without changing viewing direction">
+                Fit View
             </button>
         </div>
 
@@ -274,15 +278,18 @@ __COMMON_SCRIPT__
                 updateStatus();
             }
 
-            function resetView() {
-                window.MoroThreeJS.resetCameraFraming({
+            function fitView() {
+                window.MoroThreeJS.fitCameraView({
+                    camera: camera,
+                    controls: controls,
                     perspectiveCamera: perspectiveCamera,
                     orthographicCamera: orthographicCamera,
                     framing: framing,
                     aspect: aspect
                 });
-                controls.target.copy(getDefaultTarget());
-                setView('isometric', false);
+                // Keep the current preset/custom view; only the zoom and
+                // orbit center are restored.
+                updateStatus();
             }
 
             function updateStatus() {
@@ -296,8 +303,8 @@ __COMMON_SCRIPT__
 
                 status.innerHTML =
                     cameraName + ' | ' + viewName +
-                    ' &mdash; Middle drag to orbit | ' +
-                    'Left/Right drag to pan | Wheel to zoom';
+                    ' &mdash; Left drag to orbit | ' +
+                    'Right drag to pan | Wheel/pinch to zoom';
 
                 status.style.color = 'green';
             }
@@ -309,7 +316,7 @@ __COMMON_SCRIPT__
             }
 
             window.robot___UNIQUE_ID__ = {
-                resetView: resetView,
+                fitView: fitView,
                 setView: setView,
                 setCameraType: setCameraType
             };

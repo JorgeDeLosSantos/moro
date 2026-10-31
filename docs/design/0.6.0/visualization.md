@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Visualization design
 
-**Status:** V1–V5-B1 integrated into `develop`; V5-B2 schematic symbols in review; V5-C pending.
+**Status:** V1–V5-B2 integrated into `develop`; V5-C1 camera interaction in review; V5-C2 default-backend migration pending.
 
-**Current integration branch:** `feat/0.6.0-joint-symbols` (from `develop`).
+**Current integration branch:** `feat/0.6.0-camera-controls` (from `develop`).
 
 ## Purpose and boundaries
 
@@ -717,3 +717,91 @@ The comparison recipe is in
 appearances without switching the library's general representation or
 backend default. Volumetric Matplotlib rendering remains a possible
 future improvement.
+
+## 15. V5-C1 — Camera controls for notebooks and touchpads
+
+### Context and goals
+
+Three.js is an important notebook-first backend for Moro 0.6.0. Many
+students navigate it without a separate mouse. The previous CAD-inspired
+gesture mapping (middle-button drag to orbit, left drag to pan, one-finger
+touch to pan) makes exploring the robot unnecessarily difficult.
+
+V5-C1 updates only the Three.js camera UI. It must **not** change the
+robot's kinematic calculations, render geometry, joint defaults, number
+of animation frames, or the backend default. The subsequent V5-C2 will
+address default backend migration.
+
+### Default interactions
+
+The single shared `setupOrbitControls` helper uses Three.js r128
+conventional interactions, consistently in static and animated views:
+
+| Input | Action |
+| --- | --- |
+| Left-button drag / typical touchpad primary drag | Orbit |
+| Middle-button drag | Dolly (zoom) |
+| Right-button drag | Pan |
+| Wheel / touchpad scroll gesture | Zoom |
+| One-finger touch drag | Orbit |
+| Two-finger touch gesture | Dolly and pan |
+
+This is a navigation behavior choice, not a configurable CAD mode.
+Display hints and toolbar text must agree with the effective controls.
+
+### Orthographic camera presets
+
+The toolbar exposes four shared `setPresetView` orientations:
+
+| Name | Camera position relative to target | Up |
+| --- | --- | --- |
+| Front | `(0, -distance, 0)` | `+Z` |
+| Right | `(+distance, 0, 0)` | `+Z` |
+| Top | `(0, 0, +distance)` | `+Y` |
+| Isometric | `(distance, 0.8*distance, distance)` | `+Z` |
+
+All views remain available in perspective projection; the axis signs
+define an unambiguous `Right` instead of an unspecified `Side` view.
+The existing front/top/isometric behavior is preserved.
+
+### Fit View (not Reset)
+
+Both toolbars replace `Reset` / `Reset View` with `Fit View`. It is
+**not** an alias for `setView('isometric')`.
+
+`MoroThreeJS.fitCameraView` is one shared camera-only operation:
+
+1. Compute the active camera-to-orbit-target *direction* before changing
+   its target, preserving the current world-space viewing direction.
+2. Reapply Python's shared `SceneFraming` to both camera projections:
+   restore the perspective aspect/FOV-derived fit and the orthographic
+   half extents, near/far clipping and zoom=1.
+3. Move the active camera to the previously saved direction at the
+   fitted distance relative to `framing.center`, and update the Orbit
+   target to `framing.center`.
+4. Keep `camera.up`, the active perspective/orthographic camera,
+   and the user's current view orientation intact.
+5. Update OrbitControls; do **not** change the animation's current
+   frame, playback flag, timer, slider, trajectory or play/pause state.
+
+The fit is based on the union of all sampled animation scenes, not on
+the current frame alone. It supports recovering after pan, wheel/pinch
+zoom, orbit and camera-projection switches. The `Isometric` button
+remains the explicit way to restore the initial viewing direction.
+
+`resetCameraFraming` remains an internal projection helper, since its
+purpose is useful to `fitCameraView` and prior integration tests.
+The user-facing `resetView` handler is removed from both HTML
+templates to avoid confusing camera framing with animation reset.
+
+### Acceptance checks
+
+- Standard pointer and touch mappings in the shared JS helper;
+- Right preset from world `+X`, `+Z` up, available in both templates;
+- Fit restores scene center and zoom for perspective/orthographic
+  cameras **without** changing orbit orientation, active camera or up;
+- Animation playback and frame/trajectory state unaffected by Fit;
+- Both static and animation toolbars have concise, accurate labels;
+- No regression to packaging, Sphinx or Python 3.11–3.14 tests;
+- Visual check in notebook using a touchpad, pan, zoom and camera switch
+  before merge into `develop`.
