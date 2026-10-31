@@ -2,6 +2,7 @@
 
 from .data import DHSegmentData, FrameData, SceneData
 from .evaluation import evaluate_robot
+from .layout import VisualizationLayout, resolve_layout
 from .scaling import resolve_reference_length
 from .matplotlib_backend import MatplotlibBackend
 from .style import VisualizationStyle
@@ -30,6 +31,8 @@ __all__ = [
     "FrameData",
     "DHSegmentData",
     "resolve_reference_length",
+    "VisualizationLayout",
+    "resolve_layout",
     "VisualizationStyle",
     "plot_workspace",
 ]
