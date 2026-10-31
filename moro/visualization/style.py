@@ -59,9 +59,6 @@ class VisualizationStyle:
     show_base: bool = True
     show_grid: bool = True
 
-    joint_representation: Literal['simple', 'kinematic'] = 'simple'
-    joint_scale: float = 1.0
-
     link_color: str = "#778877"
     joint_color: str = "#ff1493"
     base_color: str = "#ff00ff"
@@ -75,6 +72,11 @@ class VisualizationStyle:
     trajectory_color: str = "#1565c0"
     trajectory_linewidth: float = 2
     trajectory_mode: str = "full"
+
+    # Appended (rather than inserted before colors) to preserve the
+    # dataclass's previously supported positional-argument order.
+    joint_representation: Literal["simple", "kinematic"] = "simple"
+    joint_scale: float = 1.0
 
     def __post_init__(self):
         if self.joint_representation not in {'simple', 'kinematic'}:
