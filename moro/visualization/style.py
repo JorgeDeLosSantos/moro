@@ -26,6 +26,9 @@ class VisualizationStyle:
         'simple' keeps frame-origin spheres; 'kinematic' draws R/P axis symbols.
     joint_scale : float
         Finite positive dimensionless factor for kinematic joint symbols.
+    joint_appearance : str
+        Three.js experimental R/P appearance: 'schematic', 'solid' or 'hybrid'.
+        Matplotlib supports 'schematic' only for now.
     link_color : str
         Color used for links.
     joint_color : str
@@ -77,8 +80,13 @@ class VisualizationStyle:
     # dataclass's previously supported positional-argument order.
     joint_representation: Literal["simple", "kinematic"] = "simple"
     joint_scale: float = 1.0
+    joint_appearance: Literal["schematic", "solid", "hybrid"] = "schematic"
 
     def __post_init__(self):
+        if self.joint_appearance not in {"schematic", "solid", "hybrid"}:
+            raise ValueError(
+                "joint_appearance must be 'schematic', 'solid' or 'hybrid'."
+            )
         if self.joint_representation not in {'simple', 'kinematic'}:
             raise ValueError("joint_representation must be 'simple' or 'kinematic'.")
         if isinstance(self.joint_scale, bool):
