@@ -164,7 +164,7 @@ def test_solid_descriptors_covary_between_meters_and_millimeters():
 def test_matplotlib_rejects_threejs_only_solids(appearance):
     q = sp.Symbol("q")
     scene = evaluate_robot(Robot((1, 0, 0, q)), {q: .1})
-    with pytest.raises(ValueError, match="Three.js-only"):
+    with pytest.raises(ValueError, match="available only in Three.js"):
         MatplotlibBackend.render(scene, style=_style(appearance))
 
 
@@ -183,6 +183,8 @@ def test_schematic_matplotlib_still_works_and_solid_can_be_hidden():
     # No symbols means no backend-specific appearance to render.
     style = VisualizationStyle(
         show_joints=False,
+        show_links=False,
+        show_frames=False,
         joint_representation="kinematic",
         joint_appearance="solid",
     )
