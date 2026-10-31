@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 
 from .data import SceneData
+from .framing import SceneFraming, resolve_framing
 from .layout import VisualizationLayout, resolve_layout
 from .style import VisualizationStyle
 
@@ -88,6 +89,17 @@ def _scene_to_payload(scene_data: SceneData) -> dict:
     }
 
 
+def _framing_to_payload(framing: SceneFraming) -> dict:
+    """Serialize camera-independent world-space bounds and framing."""
+    return {
+        "minimum": list(framing.bounds.minimum),
+        "maximum": list(framing.bounds.maximum),
+        "center": list(framing.center),
+        "half_extent": float(framing.half_extent),
+        "fit_radius": float(framing.fit_radius),
+    }
+
+
 def _layout_to_payload(layout: VisualizationLayout) -> dict:
     """Serialize pre-resolved geometric sizes in robot linear units."""
     return {
@@ -157,6 +169,7 @@ class ThreeJSBackend:
         height: int = 600,
         style: VisualizationStyle | None = None,
         layout: VisualizationLayout | None = None,
+        framing: SceneFraming | None = None,
     ):
         """Return an interactive Three.js view as ``IPython.display.HTML``."""
         from IPython.display import HTML
@@ -167,9 +180,13 @@ class ThreeJSBackend:
         if layout is None:
             layout = resolve_layout([scene_data])
 
+        if framing is None:
+            framing = resolve_framing([scene_data], layout=layout, style=style)
+
         payload = _scene_to_payload(scene_data)
         payload["style"] = _style_to_payload(style)
         payload["layout"] = _layout_to_payload(layout)
+        payload["framing"] = _framing_to_payload(framing)
 
         html = _render_html_template(
             "threejs_viewer.html",
@@ -189,6 +206,7 @@ class ThreeJSBackend:
         height: int = 600,
         style: VisualizationStyle | None = None,
         layout: VisualizationLayout | None = None,
+        framing: SceneFraming | None = None,
     ):
         """Return an interactive Three.js animation as ``IPython.display.HTML``."""
         from IPython.display import HTML
@@ -204,11 +222,17 @@ class ThreeJSBackend:
         if layout is None:
             layout = resolve_layout(scene_data_list)
 
+        if framing is None:
+            framing = resolve_framing(
+                scene_data_list, layout=layout, style=style
+            )
+
         frames_payload = _scenes_to_payload(scene_data_list)
         animation_payload = {
             "frames": frames_payload,
             "style": _style_to_payload(style),
             "layout": _layout_to_payload(layout),
+            "framing": _framing_to_payload(framing),
             "trajectory": _extract_end_effector_trajectory(scene_data_list),
         }
 
