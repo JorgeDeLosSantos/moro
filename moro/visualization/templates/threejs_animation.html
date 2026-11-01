@@ -360,7 +360,7 @@ __COMMON_SCRIPT__
                 playInterval = window.setInterval(function() {
                     var nextFrame = (currentFrame + 1) % framesData.length;
                     goToFrame(nextFrame);
-                }, 100);
+                }, animationData.interval === undefined ? 100 : animationData.interval);
             }
 
             function pausePlayback() {

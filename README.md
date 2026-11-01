@@ -70,14 +70,20 @@ The same symbolic model can be visualized:
 from moro.visualization import RobotVisualizer
 
 viz = RobotVisualizer(robot)
-viz.plot(values)
+viz.plot(values)  # interactive Three.js viewer (Jupyter / Colab)
 ```
 
-For interactive visualization in a notebook:
+Three.js is the default for plotting and animating configurations.
+When you need a Matplotlib figure or animation, select it explicitly:
 
 ```python
-viz.plot(values, backend="threejs")
+fig, ax = viz.plot(values, backend="matplotlib")
 ```
+
+With the default `VisualizationStyle()`, Three.js displays revolute
+cylinders and prismatic boxes when the robot's joint metadata is available;
+Matplotlib retains simple spherical markers. The interactive HTML viewer
+loads Three.js resources in the browser, so it needs access to its CDN.
 
 ## Inverse Kinematics
 

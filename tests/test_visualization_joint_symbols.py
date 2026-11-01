@@ -51,9 +51,9 @@ def _style(**kwargs):
     )
 
 
-def test_style_defaults_preserve_existing_spherical_markers():
+def test_style_defaults_use_auto_resolution():
     style = VisualizationStyle()
-    assert style.joint_representation == "simple"
+    assert style.joint_representation == "auto"
     assert style.joint_scale == 1.0
     assert style.joint_appearance == "solid"
     assert style.revolute_color == "#0072B2"
@@ -65,7 +65,7 @@ def test_style_positional_compatibility_remains_intact():
     # The first five fields predate V5-B2; the sixth is link_color.
     style = VisualizationStyle(True, True, True, True, True, "#010203")
     assert style.link_color == "#010203"
-    assert style.joint_representation == "simple"
+    assert style.joint_representation == "auto"
     assert style.joint_scale == 1.0
 
 
@@ -275,8 +275,13 @@ def test_simple_threejs_payload_does_not_contain_symbol_geometry():
     scene = evaluate_robot(Robot((0.5, 0, 0, q)), {q: 0})
     raw = _scene_to_payload(scene)
     assert "joint_symbols" not in raw
-    payload = _payload(ThreeJSBackend.render(scene).data, "data")
+    payload = _payload(
+        ThreeJSBackend.render(
+            scene, style=VisualizationStyle(joint_representation="simple")
+        ).data, "data"
+    )
     assert "joint_symbols" not in payload
+    assert "joint_solids" not in payload
     assert payload["style"]["joint_representation"] == "simple"
 
 

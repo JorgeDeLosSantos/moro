@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+* **Breaking (planned for 0.6.0):** `RobotVisualizer.plot()` and
+  `RobotVisualizer.animate()` use Three.js by default, returning
+  `IPython.display.HTML`. Scripts expecting Matplotlib Figure/Axes or
+  `FuncAnimation` must now specify `backend="matplotlib"`.
+* `VisualizationStyle(joint_representation="auto")` becomes the default:
+  Three.js chooses solid R/P joints for evaluated robot scenes; Matplotlib
+  and legacy scenes retain spherical joint markers. Explicit style choices
+  remain available and reusable.
+* Three.js animation playback now accepts a positive finite
+  `interval` in milliseconds (default 100), matching Matplotlib's
+  argument name and time units.
+* `IPython` is an explicit runtime dependency because the default
+  backend returns HTML. The browser viewer still needs CDN resources.
+
 ## [0.5.0] - 2026-10-01
 
 ### Added

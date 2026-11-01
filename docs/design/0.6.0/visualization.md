@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Visualization design
 
-**Status:** V1–V5-B2 integrated into `develop`; V5-C1 camera interaction in review; V5-C2 default-backend migration pending.
+**Status:** V1–V5-C1 integrated into `develop`; V5-C2 default-backend migration in review.
 
-**Current integration branch:** `feat/0.6.0-camera-controls` (from `develop`).
+**Current integration branch:** `feat/0.6.0-default-threejs` (from `develop`).
 
 ## Purpose and boundaries
 
@@ -805,3 +805,82 @@ templates to avoid confusing camera framing with animation reset.
 - No regression to packaging, Sphinx or Python 3.11–3.14 tests;
 - Visual check in notebook using a touchpad, pan, zoom and camera switch
   before merge into `develop`.
+
+## 16. V5-C2 — Three.js default and backend-aware joint style
+
+### Public behavior and migration
+
+`RobotVisualizer.plot(num_vals, backend="threejs", **kwargs)` and
+`RobotVisualizer.animate(num_vals_list, backend="threejs", **kwargs)`
+now return `IPython.display.HTML` when the backend argument is omitted.
+Matplotlib remains an explicit, fully supported alternative:
+
+```python
+viz.plot(q)                              # HTML (Three.js)
+viz.animate(samples, interval=50)        # HTML (Three.js)
+fig, ax = viz.plot(q, backend="matplotlib")
+animation = viz.animate(samples, backend="matplotlib", interval=50)
+```
+
+This is an intentional public API return-type change in Moro 0.6.0.
+Existing programs expecting Matplotlib figure/axes or `FuncAnimation`
+must pass `backend="matplotlib"` explicitly. Backend-specific arguments
+are not silently mapped: `figsize`, `ax`, `view_init` belong to
+Matplotlib; `width`, `height` belong to Three.js.
+
+### Backend-specific auto resolution
+
+`VisualizationStyle(joint_representation="auto")` is the new default.
+A single helper in `style.py` resolves the effective representation
+for a chosen backend **without mutating** the user's style object:
+
+- Three.js with complete, ordered `SceneData.joint_data` for every
+  frame: `kinematic` + `joint_appearance="solid"` (unless the user
+  explicitly requested `"schematic"`).
+- Three.js with missing/incomplete joint data (including manual legacy
+  scenes): `simple` spherical markers, preserving old scene support.
+- Matplotlib: `simple` spherical markers by default, even when the
+  kinematic metadata is available.
+- An explicit `joint_representation="simple"` always forces spheres.
+- An explicit `joint_representation="kinematic"` remains strict and
+  does not silently downgrade for missing metadata. On Matplotlib,
+  `joint_appearance="schematic"` must be explicitly selected;
+  `solid` is only implemented in Three.js.
+
+Effective styles are resolved by the backend **before** computing framing
+so that solid bounding radii are included consistently. The user-facing
+`VisualizationStyle` object and its colors/scales remain reusable.
+
+### Animation interval
+
+Three.js `animate` accepts an `interval` in milliseconds (default
+100), sharing the common name/units with Matplotlib. Values must be
+finite, positive real numbers; booleans, strings, nonfinite and
+nonpositive values are rejected with `ValueError`.
+The serialized animation payload contains the selected interval,
+which drives `window.setInterval` in the browser rather than using
+a fixed 100 ms timer. The template also defaults to 100 ms for
+older payloads that did not supply the field.
+
+This is a playback interval, not a physical trajectory time vector.
+No interpolation between evaluated animation frames is introduced.
+
+### Runtime dependency and delivery limitations
+
+Declare `IPython` as a runtime dependency because default Three.js
+render/animate returns `IPython.display.HTML`. The HTML templates
+still load Three.js and OrbitControls through the browser's CDN;
+there is no claimed offline browser rendering support in this increment.
+For normal scripts and offline work, users can explicitly select
+Matplotlib. Do not silently fall back to another backend by detecting
+notebook, browser or terminal environments.
+
+### Tests and documentation
+
+Cover the default HTML return types, effective R/P geometry, explicit
+Matplotlib and custom styles, legacy scenes, interval validation and
+serialization, unchanged user styles, and backend-specific argument
+semantics. Update README, Quick Start and the visualization guide
+to clearly document return-type migration and the direct-vs-high-level
+backend interfaces. Require Python 3.11–3.14, package distribution
+and Sphinx CI and user notebook validation before merging.

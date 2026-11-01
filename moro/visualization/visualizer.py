@@ -113,8 +113,12 @@ class RobotVisualizer:
             )
         self.robot = robot
 
-    def plot(self, num_vals, backend="matplotlib", **kwargs):
-        """Render one robot configuration from a mapping or joint vector."""
+    def plot(self, num_vals, backend="threejs", **kwargs):
+        """Render one configuration; Three.js is the default backend.
+
+        Returns IPython.display.HTML for Three.js, or (Figure, Axes3D)
+        when backend='matplotlib' is requested explicitly.
+        """
         configuration = _normalize_configuration(self.robot, num_vals)
         scene_data = evaluate_robot(self.robot, configuration)
 
@@ -128,8 +132,11 @@ class RobotVisualizer:
             "Available backends: 'matplotlib', 'threejs'."
         )
 
-    def animate(self, num_vals_list, backend="matplotlib", **kwargs):
-        """Animate mappings or numerical joint vectors in processing order."""
+    def animate(self, num_vals_list, backend="threejs", **kwargs):
+        """Animate joint configurations; return HTML by default.
+
+        backend='matplotlib' explicitly returns FuncAnimation instead.
+        """
         configurations = _normalize_configurations(
             self.robot,
             num_vals_list,

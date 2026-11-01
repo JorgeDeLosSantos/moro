@@ -1,6 +1,6 @@
 """Backend-independent visualization style configuration."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 from typing import Literal
 
@@ -23,12 +23,16 @@ class VisualizationStyle:
     show_grid : bool
         Draw the reference grid.
     joint_representation : str
-        'simple' keeps frame-origin spheres; 'kinematic' draws R/P axis symbols.
+        'auto' (default) selects backend-appropriate joint markers: R/P solids
+        in Three.js if joint metadata exists, otherwise spheres; Matplotlib
+        uses spheres. 'simple' forces spheres; 'kinematic' requests R/P
+        geometry explicitly.
     joint_scale : float
         Finite positive dimensionless factor for kinematic joint symbols.
     joint_appearance : str
         'solid' (default within kinematic mode, Three.js) or 'schematic'
-        (also available in Matplotlib). The general default remains 'simple'.
+        (also available in Matplotlib). In 'auto' mode, Three.js uses 'solid'
+        when full joint metadata is available.
     revolute_color : str
         Color of kinematic revolute joint symbols or solid cylinders.
     prismatic_color : str
@@ -82,7 +86,7 @@ class VisualizationStyle:
 
     # Appended (rather than inserted before colors) to preserve the
     # dataclass's previously supported positional-argument order.
-    joint_representation: Literal["simple", "kinematic"] = "simple"
+    joint_representation: Literal["auto", "simple", "kinematic"] = "auto"
     joint_scale: float = 1.0
     joint_appearance: Literal["schematic", "solid"] = "solid"
     revolute_color: str = "#0072B2"
@@ -97,8 +101,10 @@ class VisualizationStyle:
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{name} must be a non-empty color string.")
-        if self.joint_representation not in {'simple', 'kinematic'}:
-            raise ValueError("joint_representation must be 'simple' or 'kinematic'.")
+        if self.joint_representation not in {'auto', 'simple', 'kinematic'}:
+            raise ValueError(
+                "joint_representation must be 'auto', 'simple' or 'kinematic'."
+            )
         if isinstance(self.joint_scale, bool):
             raise ValueError('joint_scale must be a finite positive number.')
         try:
@@ -112,3 +118,38 @@ class VisualizationStyle:
             raise ValueError(
                 "trajectory_mode must be either 'full' or 'trace'"
             )
+
+
+def resolve_joint_style(
+    style: VisualizationStyle,
+    *,
+    backend: Literal["threejs", "matplotlib"],
+    scenes,
+) -> VisualizationStyle:
+    """Resolve 'auto' for a specific backend without mutating user styles.
+
+    Three.js uses kinematic R/P joints only when every scene has joint
+    metadata. Manually constructed SceneData without joint_data falls back
+    to legacy spheres. Explicit 'kinematic' remains strict downstream.
+    """
+    if backend not in {"threejs", "matplotlib"}:
+        raise ValueError("Unknown visualization backend.")
+    if style.joint_representation != "auto":
+        return style
+
+    has_all_joint_data = bool(scenes) and all(
+        bool(scene.joint_data)
+        and len(scene.joint_data) == len(scene.joints) - 1
+        and len(scene.frames) == len(scene.joints)
+        and all(
+            joint.index == index
+            for index, joint in enumerate(scene.joint_data, start=1)
+        )
+        for scene in scenes
+    )
+    representation = (
+        "kinematic"
+        if backend == "threejs" and has_all_joint_data
+        else "simple"
+    )
+    return replace(style, joint_representation=representation)

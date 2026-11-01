@@ -1,8 +1,10 @@
 """Three.js visualization backend and HTML serialization helpers."""
 
 import json
+import math
 import re
 import uuid
+from numbers import Real
 
 from importlib.resources import files
 from typing import Any
@@ -14,7 +16,7 @@ from .framing import SceneFraming, resolve_framing
 from .layout import VisualizationLayout, resolve_layout
 from .joint_symbols import build_joint_symbols
 from .joint_solids import build_joint_solids
-from .style import VisualizationStyle
+from .style import VisualizationStyle, resolve_joint_style
 
 
 _PLACEHOLDER_PATTERN = re.compile(r"__[A-Z][A-Z0-9_]*__")
@@ -198,6 +200,9 @@ class ThreeJSBackend:
 
         if style is None:
             style = VisualizationStyle()
+        style = resolve_joint_style(
+            style, backend="threejs", scenes=[scene_data]
+        )
 
         if layout is None:
             layout = resolve_layout([scene_data])
@@ -238,6 +243,7 @@ class ThreeJSBackend:
         style: VisualizationStyle | None = None,
         layout: VisualizationLayout | None = None,
         framing: SceneFraming | None = None,
+        interval: float = 100,
     ):
         """Return an interactive Three.js animation as ``IPython.display.HTML``."""
         from IPython.display import HTML
@@ -246,9 +252,17 @@ class ThreeJSBackend:
             raise ValueError(
                 "scene_data_list must contain at least one scene."
             )
+        if isinstance(interval, bool) or not isinstance(interval, Real):
+            raise ValueError("interval must be a finite positive number of milliseconds.")
+        interval = float(interval)
+        if not math.isfinite(interval) or interval <= 0:
+            raise ValueError("interval must be a finite positive number of milliseconds.")
 
         if style is None:
             style = VisualizationStyle()
+        style = resolve_joint_style(
+            style, backend="threejs", scenes=scene_data_list
+        )
 
         if layout is None:
             layout = resolve_layout(scene_data_list)
@@ -301,6 +315,7 @@ class ThreeJSBackend:
             "layout": _layout_to_payload(layout),
             "framing": _framing_to_payload(framing),
             "trajectory": _extract_end_effector_trajectory(scene_data_list),
+            "interval": interval,
         }
 
         html = _render_html_template(
