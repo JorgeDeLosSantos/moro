@@ -28,6 +28,7 @@ dependencies = [
     "numpy",
     "matplotlib",
     "scipy",
+    "ipython",
 ]
 
 classifiers = [
