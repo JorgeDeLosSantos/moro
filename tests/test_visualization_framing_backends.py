@@ -173,7 +173,12 @@ def test_threejs_uses_camera_fit_instead_of_legacy_dimension():
     for html in (static, animated):
         assert "framing: framing" in html
         assert "var cameraDistance;" in html
-        assert "window.MoroThreeJS.resetCameraFraming" in html
+        # V5-C1 uses a camera-only Fit View handler. The shared helper
+        # still restores the framing projection internally, without
+        # forcing an isometric camera orientation or touching playback.
+        assert "window.MoroThreeJS.fitCameraView({" in html
+        assert "function fitCameraView(options)" in html
+        assert "var fit = resetCameraFraming({" in html
         assert "distance: cameraDistance" in html
         assert "topUp: [0, 1, 0]" in html
         assert "function resolveCameraFit(framing, aspect, fovDegrees)" in html
