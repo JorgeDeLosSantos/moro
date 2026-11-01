@@ -75,6 +75,7 @@ benefit from symbolic kinematics and dynamics.
    :maxdepth: 2
    :caption: Release Notes
 
+   release-notes/0.6.0
    release-notes/0.5.0
 
 
