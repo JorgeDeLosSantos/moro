@@ -6,8 +6,9 @@ The main interface is `RobotVisualizer`, which takes a `Robot` model and evaluat
 
 Two backends are currently available:
 
-* **Matplotlib**, for static 3D plots and Python-side animations;
-* **Three.js**, for interactive browser-based visualization.
+* **Three.js** (default), for interactive browser-based visualization in
+  Jupyter and Colab;
+* **Matplotlib** (explicit), for standard Python figures and animations.
 
 This section focuses on the recommended high-level workflow. Lower-level visualization objects such as `SceneData`, `FrameData`, and the backend classes are documented in the **API Reference**.
 
@@ -60,14 +61,17 @@ viz.plot(values)
 
 The first argument is a dictionary that maps symbolic robot parameters to numerical values.
 
-Because Matplotlib is the default backend, the previous call is equivalent to:
+Because Three.js is the default backend, the previous call is equivalent to:
 
 ```python id="xlv49t"
 viz.plot(
     values,
-    backend="matplotlib",
+    backend="threejs",
 )
 ```
+
+The result is an `IPython.display.HTML` viewer. Code expecting
+`fig, ax = ...` must request `backend="matplotlib"` explicitly.
 
 ## Providing numerical values
 
@@ -122,8 +126,8 @@ backend=...
 The available values are:
 
 ```text id="1z8xnc"
-"matplotlib"
-"threejs"
+"threejs"     # default
+"matplotlib"  # explicit alternative
 ```
 
 For example:
@@ -237,6 +241,10 @@ viz.plot(
 
 The result is returned as an `IPython.display.HTML` object and can be displayed directly in environments such as Jupyter Notebook or JupyterLab.
 
+The browser viewer loads Three.js and OrbitControls from a CDN; the
+browser needs network access to those resources. For standalone Python
+scripts or offline rendering, explicitly choose Matplotlib.
+
 The default rendering area is:
 
 ```python id="9u02rc"
@@ -261,6 +269,7 @@ The interactive viewer includes buttons for:
 
 ```text id="br7rsv"
 Front
+Right
 Top
 Isometric
 ```
@@ -290,9 +299,53 @@ The Three.js viewer also provides free camera navigation through orbit controls.
 
 The user can rotate, zoom, and inspect the robot from arbitrary directions.
 
-A reset control restores the default view.
+Use left-drag or a touchpad primary drag to orbit, right-drag to pan,
+and the wheel or pinch gesture to zoom. On touchscreens, one finger orbits
+and two fingers zoom/pan.
+
+The **Fit View** button restores the scene center and fitting scale without
+changing the current viewing orientation or perspective/orthographic
+projection. Use **Isometric** to restore that camera orientation.
 
 The preset view and camera controls belong to the Three.js interface itself; they are not arguments of `RobotVisualizer.plot()`.
+
+## Default joint representation
+
+By default, `VisualizationStyle(joint_representation="auto")` selects
+joint representations according to the chosen backend:
+
+* Three.js renders solid blue revolute cylinders and orange prismatic
+  boxes when the scene contains evaluated R/P joint metadata.
+* Matplotlib retains simple spherical joint markers.
+* Manually assembled legacy scenes without joint metadata use simple
+  spheres, including in Three.js.
+
+This does not modify the caller's style object. To force spherical
+markers, use `joint_representation="simple"`. To select schematic
+joint motion lines in either backend:
+
+```python
+style = VisualizationStyle(
+    joint_representation="kinematic",
+    joint_appearance="schematic",
+)
+viz.plot(values, style=style)
+```
+
+The solid kinematic appearance currently requires Three.js. Matplotlib
+raises an explanatory error if explicitly asked to render solid joints.
+
+## Animation playback interval
+
+Both backends accept `interval`, measured in milliseconds per animation
+frame, with a default of 100 ms:
+
+```python
+viz.animate(configurations, interval=50)
+```
+
+For Three.js this is a positive finite number and controls the browser's
+playback timer, not the physical time coordinates of a computed trajectory.
 
 ## Customizing the visualization
 
@@ -433,7 +486,9 @@ animation = viz.animate(
 )
 ```
 
-Again, Matplotlib is the default backend.
+Three.js is the default backend. The result is an interactive
+`IPython.display.HTML` viewer. Select Matplotlib explicitly when you
+need a `FuncAnimation` object.
 
 An empty configuration sequence is not valid.
 
@@ -507,9 +562,9 @@ The viewer includes controls for:
 * Play and Pause;
 * direct frame selection;
 * a frame slider;
-* Front, Top, and Isometric views;
+* Front, Right, Top, and Isometric views;
 * orthographic and perspective cameras;
-* camera reset;
+* Fit View (framing only; leaves playback and orientation unchanged);
 * free orbit navigation.
 
 The animation uses one global spatial scale for the complete sequence, so the apparent sizes of links, joints, and coordinate frames remain consistent throughout the motion.
@@ -757,6 +812,17 @@ animation = viz.animate(
 )
 ```
 
+## Return types and migration from previous versions
+
+The default backend changed in Moro 0.6.0. A bare `viz.plot(values)`
+returns HTML rather than `(fig, ax)`, and bare
+`viz.animate(configurations)` returns HTML rather than
+`FuncAnimation`. Older notebooks that manipulate Matplotlib axes or
+animation objects should request `backend="matplotlib"` explicitly.
+Arguments `ax`, `figsize`, and `view_init` remain specific to
+Matplotlib; `width` and `height` remain specific to Three.js. These
+are not converted automatically.
+
 ## Notes and limitations
 
 The visualization module is intended primarily for inspecting kinematic robot models and computed joint trajectories.
@@ -767,8 +833,9 @@ Keep the following points in mind:
 * all symbolic quantities required by the robot transformations must be assigned numerical values;
 * `RobotVisualizer.plot()` renders one configuration;
 * `RobotVisualizer.animate()` renders a sequence of configurations;
-* Matplotlib is the default backend;
-* the Three.js backend returns interactive HTML and is especially convenient in notebook environments;
+* Three.js is the default backend for `plot()` and `animate()` and
+  returns interactive HTML, especially convenient in notebook environments;
+* Matplotlib returns normal figures or `FuncAnimation` when explicitly selected;
 * Three.js preset views and camera types are controlled from the viewer interface rather than through `RobotVisualizer.plot()` arguments;
 * visualization styles can be shared between both backends;
 * automatic scene scaling is used when explicit object sizes are not provided;
