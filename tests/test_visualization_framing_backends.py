@@ -17,6 +17,7 @@ from moro.visualization import (
     VisualizationStyle, evaluate_robot, resolve_framing, resolve_layout,
 )
 from moro.visualization.threejs_backend import _framing_to_payload
+from moro.visualization.style import resolve_joint_style
 
 
 @pytest.fixture(autouse=True)
@@ -159,7 +160,13 @@ def test_threejs_animation_has_global_frame_not_per_scene():
     data = _extract_html_payload(
         ThreeJSBackend.animate(scenes).data, "animationData"
     )
-    expected = resolve_framing(scenes)
+    # The default Three.js auto style now draws solid R/P joints, whose
+    # bounding volumes must be included in global animation framing.
+    effective_style = resolve_joint_style(
+        VisualizationStyle(), backend="threejs", scenes=scenes
+    )
+    expected = resolve_framing(scenes, style=effective_style)
+    assert data["style"]["joint_representation"] == "kinematic"
     assert data["framing"]["center"] == pytest.approx(expected.center)
     assert data["framing"]["fit_radius"] == pytest.approx(expected.fit_radius)
     assert all("framing" not in scene for scene in data["frames"])
