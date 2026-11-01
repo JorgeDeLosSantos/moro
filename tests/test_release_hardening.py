@@ -46,7 +46,7 @@ def test_package_and_project_versions_are_synchronized():
 
     assert moro.__version__ == version_module.__version__
     assert project["version"] == moro.__version__
-    assert moro.__version__ == "0.5.0"
+    # Must remain valid across the 0.5.x -> 0.6.0 release bump.
 
 
 def test_supported_python_and_direct_runtime_dependencies_are_release_ready():
@@ -63,7 +63,7 @@ def test_supported_python_and_direct_runtime_dependencies_are_release_ready():
     }
 
     assert project["requires-python"] == ">=3.11"
-    assert {"sympy", "numpy", "matplotlib", "scipy"} <= dependencies
+    assert {"sympy", "numpy", "matplotlib", "scipy", "ipython"} <= dependencies
 
 
 def test_root_package_remains_intentionally_compact():
