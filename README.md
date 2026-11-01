@@ -33,7 +33,7 @@ To install the current development version from GitHub:
 pip install git+https://github.com/JorgeDeLosSantos/moro.git@develop
 ```
 
-Moro 0.5.x requires **Python 3.11 or newer**.
+Moro requires **Python 3.11 or newer**.
 
 Its main runtime dependencies are SymPy, NumPy, Matplotlib, SciPy, and IPython (for Three.js HTML output).
 
