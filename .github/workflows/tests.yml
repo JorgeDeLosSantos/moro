@@ -65,14 +65,48 @@ jobs:
 
       - name: Build wheel and sdist
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build twine
           python -m build
+
+      - name: Validate distribution metadata
+        run: python -m twine check dist/*
 
       - name: Install wheel in a clean virtual environment
         run: |
           python -m venv /tmp/moro-package-smoke
           /tmp/moro-package-smoke/bin/python -m pip install --upgrade pip
           /tmp/moro-package-smoke/bin/python -m pip install dist/*.whl
+
+      - name: Install sdist in a clean virtual environment
+        run: |
+          python -m venv /tmp/moro-sdist-smoke
+          /tmp/moro-sdist-smoke/bin/python -m pip install --upgrade pip
+          /tmp/moro-sdist-smoke/bin/python -m pip install dist/*.tar.gz
+
+      - name: Smoke test installed sdist
+        working-directory: /tmp
+        run: |
+          /tmp/moro-sdist-smoke/bin/python - <<'PY'
+          import moro
+          from pathlib import Path
+          from importlib.metadata import version
+          from importlib.resources import files
+          from IPython.display import HTML
+          from sympy import Symbol
+          from moro.visualization import RobotVisualizer
+
+          assert moro.__version__ == version("moro")
+          assert "site-packages" in Path(moro.__file__).parts, moro.__file__
+          resources = files("moro.visualization.templates")
+          for name in ("threejs_viewer.html", "threejs_animation.html", "threejs_common.js"):
+              assert resources.joinpath(name).is_file()
+
+          q = Symbol("q")
+          viz = RobotVisualizer(moro.Robot((0.5, 0, 0, q, "r")))
+          assert isinstance(viz.plot({q: 0.2}), HTML)
+          assert isinstance(viz.animate([{q: 0.0}, {q: 0.3}]), HTML)
+          print("Moro installed-sdist visualization smoke test passed.")
+          PY
 
       - name: Smoke test installed package
         # Running from the checkout would let the source tree shadow the
