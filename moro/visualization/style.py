@@ -138,7 +138,14 @@ def resolve_joint_style(
         return style
 
     has_all_joint_data = bool(scenes) and all(
-        bool(scene.joint_data) for scene in scenes
+        bool(scene.joint_data)
+        and len(scene.joint_data) == len(scene.joints) - 1
+        and len(scene.frames) == len(scene.joints)
+        and all(
+            joint.index == index
+            for index, joint in enumerate(scene.joint_data, start=1)
+        )
+        for scene in scenes
     )
     representation = (
         "kinematic"
