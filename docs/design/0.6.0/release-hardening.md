@@ -1,8 +1,8 @@
 # Moro 0.6.0 — Release hardening (V6)
 
-**Status:** implementation review in progress on `chore/0.6.0-release-hardening`.
-**Release status:** not tagged or published; version metadata intentionally remains
-at `0.5.0` until the separate version-bump/release-preparation step (V7).
+**Status:** V6 completed and integrated into `develop` via PR #29.
+**Release status:** V7 is preparing package metadata for 0.6.0 on
+`release/0.6.0`; no final tag or PyPI publication has occurred.
 
 ## Scope and review policy
 
@@ -42,10 +42,11 @@ deliberate breaking change documented in the User Guide and CHANGELOG.
   future 0.6.0 version bump. Version still must match package metadata.
 - [x] Document notebook/CDN requirements, explicit offline Matplotlib
   behavior, and development branch installation.
-- [ ] Verify Python 3.11–3.14, distribution smoke and warnings-as-errors
+- [x] Verify Python 3.11–3.14, distribution smoke and warnings-as-errors
   Sphinx on the V6 PR.
-- [ ] Review smoke test evidence and release notes after CI.
-- [ ] Merge V6 into `develop` only after CI is green.
+- [x] Review clean installed-wheel smoke test evidence and release gates.
+- [x] Merge V6 into `develop` after CI success (merge commit
+  `2fb54230c2576d532217e6905aaf1f1981acec58`).
 
 ## Known limitations deliberately **not** addressed in V6
 
@@ -60,7 +61,7 @@ deliberate breaking change documented in the User Guide and CHANGELOG.
 - The browser animation `interval` controls playback frames, not
   physically sampled trajectory timestamps.
 
-## V7 — Separate release preparation (not performed yet)
+## V7 — Separate release preparation (in progress)
 
 1. Review and date the 0.6.0 section of `CHANGELOG.md`, including the
    breaking default-backend behavior and migration instructions.
