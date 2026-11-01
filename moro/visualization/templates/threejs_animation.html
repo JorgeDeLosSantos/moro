@@ -73,6 +73,9 @@
             <button onclick="window.robot___UNIQUE_ID__.setView('front')">
                 Front
             </button>
+            <button onclick="window.robot___UNIQUE_ID__.setView('right')">
+                Right
+            </button>
             <button onclick="window.robot___UNIQUE_ID__.setView('top')">
                 Top
             </button>
@@ -93,8 +96,9 @@
                 &#9654; Play
             </button>
 
-            <button onclick="window.robot___UNIQUE_ID__.resetView()">
-                &#x21bb; Reset
+            <button onclick="window.robot___UNIQUE_ID__.fitView()"
+                    title="Fit robot without changing viewing direction or playback">
+                Fit View
             </button>
         </div>
 
@@ -256,7 +260,7 @@ __COMMON_SCRIPT__
 
                 status.innerHTML =
                     'Ready &mdash; ' + framesData.length +
-                    ' frames | Middle drag to orbit | Left/Right drag to pan | Wheel to zoom';
+                    ' frames | Left drag to orbit | Right drag to pan | Wheel/pinch to zoom';
                 status.style.color = 'green';
             } catch (error) {
                 status.innerHTML = 'Error: ' + error.message;
@@ -416,16 +420,17 @@ __COMMON_SCRIPT__
                 cameraSelect.value = type;
             }
 
-            function resetView() {
-                // Keep the user's projection type but restore its initial fit.
-                window.MoroThreeJS.resetCameraFraming({
+            function fitView() {
+                // Camera-only operation: never touch currentFrame,
+                // isPlaying, playInterval, slider or trajectory state.
+                window.MoroThreeJS.fitCameraView({
+                    camera: camera,
+                    controls: controls,
                     perspectiveCamera: perspectiveCamera,
                     orthographicCamera: orthographicCamera,
                     framing: framing,
                     aspect: aspect
                 });
-                controls.target.copy(sceneCenter);
-                setView('isometric');
             }
 
             function animate() {
@@ -439,7 +444,7 @@ __COMMON_SCRIPT__
                 goToFrame: goToFrame,
                 setView: setView,
                 setCameraType: setCameraType,
-                resetView: resetView
+                fitView: fitView
             };
         }
     })();
