@@ -6,7 +6,7 @@ from .data import SceneData
 from .framing import SceneFraming, resolve_framing
 from .joint_symbols import build_joint_symbols
 from .layout import VisualizationLayout, resolve_layout
-from .style import VisualizationStyle
+from .style import VisualizationStyle, resolve_joint_style
 from .threejs_backend import _extract_end_effector_trajectory
 
 
@@ -60,6 +60,9 @@ class MatplotlibBackend:
 
         if style is None:
             style = VisualizationStyle()
+        style = resolve_joint_style(
+            style, backend="matplotlib", scenes=[scene_data]
+        )
         if (
             style.show_joints
             and style.joint_representation == "kinematic"
@@ -227,6 +230,9 @@ class MatplotlibBackend:
 
         if style is None:
             style = VisualizationStyle()
+        style = resolve_joint_style(
+            style, backend="matplotlib", scenes=scene_data_list
+        )
         if (
             style.show_joints
             and style.joint_representation == "kinematic"
