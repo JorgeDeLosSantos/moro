@@ -75,6 +75,9 @@ jobs:
           /tmp/moro-package-smoke/bin/python -m pip install dist/*.whl
 
       - name: Smoke test installed package
+        # Running from the checkout would let the source tree shadow the
+        # installed wheel on sys.path. Use a directory outside the repo.
+        working-directory: /tmp
         run: |
           /tmp/moro-package-smoke/bin/python - <<'PY'
           import moro
@@ -91,6 +94,7 @@ jobs:
 
           # Version consistency, without hard-coding the previous release.
           assert moro.__version__ == version("moro")
+          assert "/site-packages/moro/" in moro.__file__.replace("\\\\", "/"), moro.__file__
 
           resources = files("moro.visualization.templates")
           for template_name in (
