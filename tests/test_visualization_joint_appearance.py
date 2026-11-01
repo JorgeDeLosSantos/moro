@@ -62,10 +62,11 @@ def test_threejs_two_appearances_have_expected_payloads(appearance):
         ]
 
 
-def test_simple_default_mode_is_unchanged():
+def test_explicit_simple_mode_is_unchanged():
     robot, qs = _robot()
     scene = evaluate_robot(robot, dict(zip(qs, [0, 0, 0.2])))
-    payload = _extract(ThreeJSBackend.render(scene).data, "data")
+    style = VisualizationStyle(joint_representation="simple")
+    payload = _extract(ThreeJSBackend.render(scene, style=style).data, "data")
     assert payload["style"]["joint_representation"] == "simple"
     assert payload["style"]["joint_appearance"] == "solid"
     assert "joint_solids" not in payload
