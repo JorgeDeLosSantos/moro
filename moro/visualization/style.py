@@ -137,7 +137,9 @@ def resolve_joint_style(
     if style.joint_representation != "auto":
         return style
 
-    has_all_joint_data = all(bool(scene.joint_data) for scene in scenes)
+    has_all_joint_data = bool(scenes) and all(
+        bool(scene.joint_data) for scene in scenes
+    )
     representation = (
         "kinematic"
         if backend == "threejs" and has_all_joint_data
