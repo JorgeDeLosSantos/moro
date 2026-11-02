@@ -1,4 +1,7 @@
-# Publishing releases to PyPI
+# Releasing Moro to PyPI
+
+Maintainer runbook for configuring and publishing official Moro releases.
+This procedure is not required for ordinary contributions or library usage.
 
 Moro uses GitHub Actions **Trusted Publishing (OIDC)** to upload wheel and
 source distributions to the existing [moro PyPI project](https://pypi.org/project/moro/).
@@ -6,7 +9,7 @@ No PyPI API token or password is stored in GitHub.
 
 Publication is **not** triggered by merging a pull request or pushing a
 Git tag. A maintainer must explicitly **publish a stable GitHub Release**.
-The workflow is defined in `.github/workflows/publish.yml`.
+The workflow is defined in [`.github/workflows/publish.yml`](workflows/publish.yml).
 
 ## One-time configuration
 
@@ -49,23 +52,25 @@ and [using Trusted Publishing](https://docs.pypi.org/trusted-publishers/using-a-
 
 ## Release procedure
 
-1. Integrate the reviewed release candidate into `master`. Ensure that
-   the CI suite, documentation, wheel and sdist smoke tests have passed.
-2. Update `pyproject.toml`, `moro/version.py`, `CHANGELOG.md`, and the
-   release notes for the exact version. These must be committed before
-   tagging.
+1. Prepare the release candidate with matching versions in
+   `pyproject.toml` and `moro/version.py`, an updated `CHANGELOG.md`,
+   and the release notes. Run the CI suite, documentation build, and
+   wheel and sdist smoke tests. Merge the reviewed candidate into `master`.
+2. Confirm that the released version and notes are committed on `master`
+   and that the required checks passed **before** creating the tag.
 3. Create an **unprefixed**, preferably annotated Git tag on the
    reviewed commit of `master`:
 
    ```bash
    git switch master
    git pull --ff-only origin master
-   git tag -a 0.6.0 -m "Moro 0.6.0"
-   git push origin 0.6.0
+   # Replace X.Y.Z with the version being published.
+   git tag -a X.Y.Z -m "Moro X.Y.Z"
+   git push origin X.Y.Z
    ```
 
 4. On GitHub, go to **Releases → Draft a new release**. Select the existing
-   tag `0.6.0` and use the title `Moro 0.6.0`. Review the release notes.
+   tag `X.Y.Z` and use the title `Moro X.Y.Z`. Review the release notes.
 5. Click **Publish release** (not `Save draft`). This triggers the
    `Publish to PyPI` workflow. A prerelease is intentionally skipped.
 6. If the `pypi` environment requires approval, approve the deployment.
@@ -76,13 +81,14 @@ and [using Trusted Publishing](https://docs.pypi.org/trusted-publishers/using-a-
    a new environment:
 
    ```bash
-   python -m pip install "moro==0.6.0"
+   python -m pip install "moro==X.Y.Z"
    python -c "import moro; print(moro.__version__)"
    ```
 
 8. Synchronize `develop` with the released `master` after publication.
 
-Replace `0.6.0` with the release version in future releases.
+Replace `X.Y.Z` with the intended release version throughout this
+procedure; the commands are examples, not literal version identifiers.
 
 ## Safeguards and limitations
 
@@ -100,8 +106,9 @@ Replace `0.6.0` with the release version in future releases.
 - PyPI versions are immutable; do not try to replace the files of an
   already published version. If a correction is needed, release a new
   version (for example `0.6.1`).
-- The end-to-end OIDC upload cannot be validated by pull-request CI:
-  the first real release tests the trusted-publisher handshake.
+- An end-to-end OIDC upload cannot be validated by pull-request CI alone.
+  Moro 0.6.0 successfully exercised the live publishing workflow;
+  subsequent releases must still be checked in GitHub Actions and PyPI.
 
 Historical tags may contain a `v` prefix. From `0.5.0` onward, Moro
 uses **unprefixed release tags** (`0.5.0`, `0.6.0`, and so on). Do not

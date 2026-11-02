@@ -106,5 +106,5 @@ The independent `publish.yml` workflow successfully published 0.6.0
 using PyPI Trusted Publishing and the `pypi` GitHub environment.
 This first live stable-release publication also validated the OIDC
 publisher handshake beyond pull-request CI. See
-[Publishing releases to PyPI](../../source/development/publishing.md)
+[Moro release runbook](../../../.github/RELEASING.md)
 for the reusable procedure, including unprefixed tags such as `0.6.0`.
