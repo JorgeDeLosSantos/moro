@@ -14,7 +14,7 @@ $$
 \{p(q)\mid q\in\mathcal Q\}.
 $$
 
-In Moro 0.5.0, this set is approximated numerically through random sampling.
+Moro approximates this set numerically through random sampling.
 
 ## Joint-space sampling
 
@@ -147,4 +147,4 @@ Because each Cartesian point retains its generating joint configuration, a sampl
 - filtering by configuration;
 - branch comparison.
 
-Moro 0.5.0 does not compute these automatically. Workspace sampling remains focused on positional reachability.
+Moro does not compute these automatically. Workspace sampling remains focused on positional reachability.

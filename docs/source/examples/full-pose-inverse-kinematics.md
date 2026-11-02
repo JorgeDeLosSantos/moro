@@ -1,6 +1,6 @@
 # Full-Pose Inverse Kinematics
 
-This example introduces Moro 0.5.0 full-pose inverse kinematics through four complementary workflows.
+This example introduces Moro's full-pose inverse kinematics through four complementary workflows.
 
 ## 1. FK to IK round trip
 

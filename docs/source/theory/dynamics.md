@@ -110,7 +110,7 @@ $$
 =\tau_i.
 $$
 
-In Moro 0.5.0 these equations are returned by
+These equations are returned by
 
 ```python
 robot.euler_lagrange_equations()
@@ -153,7 +153,7 @@ M(q)\ddot q+C(q,\dot q)\dot q+G(q)=\tau
 }.
 $$
 
-In Moro 0.5.0 this symbolic matrix equation is returned by
+This symbolic matrix equation is returned by
 
 ```python
 robot.dynamic_model()
@@ -287,6 +287,6 @@ A numerical integrator such as RK45 may show small energy drift; conservation sh
 
 ## Physical scope
 
-The 0.5.0 numerical model is unconstrained rigid-body joint dynamics. It does not include friction, contacts, impacts, actuator dynamics, torque saturation, joint-stop physics, closed-chain constraints or collision response.
+The numerical model covers unconstrained rigid-body joint dynamics. It does not include friction, contacts, impacts, actuator dynamics, torque saturation, joint-stop physics, closed-chain constraints or collision response.
 
 Configured joint limits are therefore not automatically enforced during forward simulation.

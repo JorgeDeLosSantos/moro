@@ -1,6 +1,6 @@
 # Dynamic Model of a Planar 2R Manipulator
 
-This example develops the symbolic dynamic model of a planar two-link manipulator and connects it with the numerical dynamics API introduced in Moro 0.5.0.
+This example develops the symbolic dynamic model of a planar two-link manipulator and connects it with Moro's numerical dynamics API.
 
 We will:
 
@@ -147,7 +147,7 @@ $$
 
 ## Euler-Lagrange equations
 
-Moro 0.5.0 exposes the per-joint Euler-Lagrange equations through:
+Moro exposes the per-joint Euler-Lagrange equations through:
 
 ```python
 equations = robot.euler_lagrange_equations()
@@ -268,7 +268,7 @@ This workflow is useful when the symbolic expressions themselves are part of the
 
 ## Numerical inverse dynamics API
 
-Moro 0.5.0 also provides a dedicated numerical layer:
+Moro also provides a dedicated numerical layer:
 
 ```python
 from moro.dynamics import inverse_dynamics
