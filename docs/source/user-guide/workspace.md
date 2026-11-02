@@ -1,6 +1,6 @@
 # Workspace Sampling
 
-Moro 0.5.0 provides numerical sampling of the reachable end-effector position workspace of a serial manipulator.
+Moro provides numerical sampling of the reachable end-effector position workspace of a serial manipulator.
 
 The feature approximates
 
@@ -74,7 +74,7 @@ $$
 q_{i,\min}<q_{i,\max}.
 $$
 
-Degenerate intervals are intentionally rejected in 0.5.0.
+Degenerate intervals are rejected.
 
 Default robot limits are modeling conveniences and may not represent the physical range of a particular mechanism, especially for prismatic joints.
 
@@ -193,11 +193,11 @@ fig, ax = plot_workspace(
 )
 ```
 
-Workspace visualization is Matplotlib-only in 0.5.0.
+Workspace visualization currently uses Matplotlib.
 
 ## What workspace sampling does not compute
 
-The 0.5.0 feature does not attempt to compute:
+Workspace sampling does not attempt to compute:
 
 - exact boundaries;
 - convex hulls;

@@ -450,7 +450,7 @@ The `J_point()` interface makes it possible to compute these quantities without 
 
 ## Task-space Jacobians and Cartesian velocity
 
-Moro 0.5.0 adds a functional differential-kinematics layer in `moro.differential_kinematics`. It reuses `robot.J` as the geometric source of truth and selects only the task components needed by the analysis.
+Moro provides a functional differential-kinematics layer in `moro.differential_kinematics`. It reuses `robot.J` as the geometric source of truth and selects only the task components needed by the analysis.
 
 ```python
 from moro.differential_kinematics import (

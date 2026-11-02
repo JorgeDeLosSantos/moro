@@ -139,7 +139,7 @@ After assigning masses, centers of mass, inertia tensors, and gravity, the symbo
 model = robot.dynamic_model()
 ```
 
-In Moro 0.5.0, `dynamic_model()` returns the matrix-form equation
+`dynamic_model()` returns the matrix-form equation
 
 ```text
 M(q) qdd + C(q, qd) qd + G(q) = tau
