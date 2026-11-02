@@ -6,7 +6,7 @@ $$
 x=x(t).
 $$
 
-Moro 0.5.0 provides compact numerical point-to-point trajectories using polynomial interpolation.
+Moro provides compact numerical point-to-point trajectories using polynomial interpolation.
 
 ## Normalized time
 

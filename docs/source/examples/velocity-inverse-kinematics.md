@@ -1,6 +1,6 @@
 # Velocity inverse kinematics for a planar 2R robot
 
-This example shows the main Moro 0.5.0 differential-kinematics workflow:
+This example shows a differential-kinematics workflow in Moro:
 
 1. define a robot;
 2. inspect a task Jacobian;

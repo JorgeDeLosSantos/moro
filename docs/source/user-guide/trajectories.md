@@ -1,6 +1,6 @@
 # Trajectory Generation
 
-Moro 0.5.0 provides numerical point-to-point trajectory generation in joint space and Cartesian position space.
+Moro provides numerical point-to-point trajectory generation in joint space and Cartesian position space.
 
 The trajectory module is independent of `Robot`: it does not inspect robot geometry, joint types, joint limits, inverse kinematics, dynamics, collisions, or visualization state.
 
@@ -197,4 +197,4 @@ Animation timing still uses the backend's interval-style controls. Passing `traj
 
 ## Scope
 
-Moro 0.5.0 trajectory generation intentionally does not include waypoints, splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, or dynamic-feasibility planning.
+The trajectory-generation API does not include waypoints, splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, or dynamic-feasibility planning.

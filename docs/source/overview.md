@@ -10,7 +10,7 @@ Rather than hiding the underlying mathematics behind a highly abstract interface
 
 ## Main capabilities
 
-Moro 0.6.0 provides tools for:
+Moro provides tools for:
 
 * modeling serial robotic manipulators with revolute and prismatic joints;
 * working with rotation matrices, homogeneous transformations, Euler/Tait-Bryan angles, axis-angle, quaternions, and rotation vectors;
@@ -99,7 +99,7 @@ The library is particularly useful when the equations and conventions themselves
 
 The current scope remains centered on serial robotic manipulators and educational analysis. Moro intentionally does not attempt to be a complete robot-software or physics-simulation framework.
 
-Capabilities outside the 0.6.0 scope include:
+Capabilities not currently included are:
 
 * general motion and path planning;
 * collision detection and collision-aware IK;

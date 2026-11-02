@@ -88,8 +88,8 @@ For a first complete example, continue with the [Quick Start](quick-start).
 
 ## Interactive visualization requirements
 
-In Moro 0.6.0, `RobotVisualizer.plot()` and `RobotVisualizer.animate()`
-return an `IPython.display.HTML` Three.js viewer by default. In Jupyter
+`RobotVisualizer.plot()` and `RobotVisualizer.animate()` return an
+`IPython.display.HTML` Three.js viewer by default. In Jupyter
 or Colab, evaluate the returned object as the final expression in the
 cell, or display it explicitly with `IPython.display.display`.
 

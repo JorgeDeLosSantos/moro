@@ -84,5 +84,4 @@ benefit from symbolic kinematics and dynamics.
    :caption: Development
 
    development/contributing
-   development/publishing
    development/naming_conventions
