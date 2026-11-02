@@ -1,7 +1,7 @@
 # Moro 0.6.0 — Release preparation (V7)
 
-**State:** release candidate integrated into `master` via PR #30; `develop` synchronized.
-**Publishing:** NOT YET published to PyPI, no tag or GitHub Release created.
+**State:** 0.6.0 released; `develop` synchronized with `master` at publication.
+**Publishing:** GitHub Release `0.6.0` published and PyPI Trusted Publishing workflow completed successfully.
 
 ## Scope
 
@@ -9,10 +9,10 @@ This release promotes the completed 0.6.0 visualization enhancements
 to the stable `master` line after the functional work and V6 hardening
 have been integrated into `develop`.
 
-The source version metadata on `master` is set to `0.6.0`;
-this alone is not a publication. The `CHANGELOG.md` release date was
-set to `2026-11-01` before integration. The tag and PyPI upload remain
-separate operations.
+The source version metadata on `master` is `0.6.0` and the `CHANGELOG.md`
+release date is `2026-11-01`. The annotated `0.6.0` tag points to commit
+`8cc7d2e`, and the GitHub Release was published on 2026-11-02 UTC.
+Publication through PyPI Trusted Publishing was triggered separately.
 
 ## Main changes
 
@@ -63,14 +63,15 @@ For offline contexts or standard scripts use Matplotlib explicitly.
 - [x] Review remaining version-sensitive files and release
   documentation after the final CI run.
 - [x] Release candidate merged into `master` following explicit approval.
-- [ ] Register the `publish.yml` Trusted Publisher on the existing PyPI
+- [x] Register the `publish.yml` Trusted Publisher on the existing PyPI
   project and configure GitHub environment `pypi`.
 - [x] Set the release date in the changelog before tagging.
-- [ ] After publisher configuration, create an annotated tag `0.6.0`
+- [x] After publisher configuration, create an annotated tag `0.6.0`
   on the final merged release commit, then explicitly publish the
   GitHub Release to trigger the Trusted Publishing workflow.
 - [ ] Confirm PyPI package metadata and installation by version.
 - [x] Synchronize `develop` from `master` after PR #30 integration.
+- [x] Confirm the GitHub Actions build and PyPI publishing jobs succeed.
 
 ## Release verification
 
@@ -84,6 +85,11 @@ packaged HTML/JS resources.
 as errors. Its deployment step is skipped on PRs; site deployment only
 occurs when changes reach `master`.
 
+The [0.6.0 GitHub Release](https://github.com/JorgeDeLosSantos/moro/releases/tag/0.6.0)
+and the [publishing workflow](https://github.com/JorgeDeLosSantos/moro/actions/runs/41395593575)
+confirm successful package build and publication to PyPI. Independent
+installation verification from PyPI itself remains unchecked.
+
 ## Not in scope
 
 No new kinematics, simulation or rendering capabilities; no refactor of
@@ -96,11 +102,9 @@ The release should preserve the user-validated interactive behavior.
 
 ## Automated publishing extension
 
-After PR #30, the independent `publish.yml` workflow can automate the
-final upload using PyPI Trusted Publishing and a protected `pypi`
-GitHub environment. Register the publisher and configure the environment
-before publishing the release. See
+The independent `publish.yml` workflow successfully published 0.6.0
+using PyPI Trusted Publishing and the `pypi` GitHub environment.
+This first live stable-release publication also validated the OIDC
+publisher handshake beyond pull-request CI. See
 [Publishing releases to PyPI](../../source/development/publishing.md)
-for the reusable operational procedure, with unprefixed tags such as
-`0.6.0`. The first OIDC upload requires a real stable GitHub Release;
-pull-request CI cannot validate the external PyPI trust handshake.
+for the reusable procedure, including unprefixed tags such as `0.6.0`.
