@@ -644,13 +644,13 @@ solution.message
 Convergence requires **both**
 
 $
-\|e_p\|\le \texttt{position_tol}
+\|e_p\|\le \texttt{position\_tol}
 $
 
 and
 
 $
-\|e_R\|\le \texttt{orientation_tol}.
+\|e_R\|\le \texttt{orientation\_tol}.
 $
 
 The optional `position_weight` and `orientation_weight` affect the numerical optimization path, but not the convergence definition.
