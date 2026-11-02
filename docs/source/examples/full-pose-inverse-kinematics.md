@@ -98,9 +98,9 @@ orientation_dominant = solve_pose_ik(
 Both solves use the same physical convergence conditions:
 
 $$
-\|e_p\|\le\texttt{position_tol},
+\|e_p\|\le\texttt{position\_tol},
 \qquad
-\|e_R\|\le\texttt{orientation_tol}.
+\|e_R\|\le\texttt{orientation\_tol}.
 $$
 
 Weights do not redefine success.
