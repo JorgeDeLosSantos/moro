@@ -1,39 +1,39 @@
-# V5-B2 — Comparación de juntas: esquemática y sólida
+# V5-B2 — Comparing schematic and solid joint representations
 
-Esta comparación permite explorar dos alternativas en Three.js **sin cambiar
-la representación general predeterminada de Moro**:
+This notebook comparison explores two Three.js representations of
+revolute (R) and prismatic (P) joints:
 
-- **schematic**: arcos/flechas y guías en forma de líneas. Funciona también
-  en Matplotlib.
-- **solid**: cilindro azul para R, prisma rectangular naranja para P, alineados
-  con `JointData.axis` y centrados en `JointData.origin`. Es la opción
-  predeterminada **dentro del modo cinemático**, pero `simple` sigue siendo
-  el modo predeterminado general.
+- **schematic**: arcs, arrows, and guide lines representing joint motion.
+  This representation is also available in Matplotlib.
+- **solid**: a blue cylinder for R and an orange rectangular prism for P,
+  aligned with `JointData.axis` and centered on `JointData.origin`.
+  This is the default appearance within the `kinematic` representation.
 
-La variante superpuesta `hybrid` se descartó después de la inspección visual:
-añadía demasiada información a la escena.
+The combined `hybrid` representation was discarded after visual inspection
+because it added excessive visual information to the scene.
 
-Los sólidos son **símbolos de movimiento**; no describen los componentes
-físicos del robot. Los elementos prismáticos no se deslizan de manera
-independiente a lo largo del parámetro DH `d_i`; muestran dónde está el
-**eje de movimiento**, mientras la geometría DH sigue reflejando la
-configuración evaluada.
+The solids are **kinematic motion symbols**, not models of the robot's
+physical actuators or hardware. In particular, a prismatic symbol does not
+slide independently along its DH displacement parameter `d_i`. It indicates
+the location and direction of the **joint motion axis**, while the evaluated
+DH geometry reflects the robot's current configuration.
 
-Todas las dimensiones proceden de `VisualizationLayout` y
-`joint_scale`. Los sólidos son un 20 % menores que el primer prototipo y
-se colorean según el tipo: R `#0072B2`, P `#D55E00`. Los colores pueden
-configurarse mediante `revolute_color` y `prismatic_color`. El radio
-y la longitud de los volúmenes son independientes
-de que las distancias estén expresadas en m o mm. Los objetos de Three.js
-se conservan entre fotogramas; se actualizan su origen y dirección.
+All dimensions are derived from `VisualizationLayout` and `joint_scale`.
+The solids were reduced by 20% relative to the first prototype and use
+joint-type colors: R `#0072B2` and P `#D55E00`. The colors can be changed
+independently with `revolute_color` and `prismatic_color`. The nominal
+radii and lengths scale consistently with the robot's linear units,
+including meters and millimeters. Three.js objects are reused between
+animation frames; their positions and orientations are updated in place.
 
-**Limitación deliberada:** `solid` solo está disponible en Three.js.
-Matplotlib requiere `joint_appearance="schematic"` cuando se solicita
-`joint_representation="kinematic"`.
+**Intentional limitation:** `solid` is only supported in Three.js.
+Matplotlib requires `joint_appearance="schematic"` when
+`joint_representation="kinematic"` is requested.
 
-## Comparador mínimo para notebook / Colab
+## Minimal notebook / Colab comparison
 
-Instala la rama `feat/0.6.0-joint-symbols` y reinicia el kernel. Ejecuta:
+Use Moro 0.6.0 (or the `release/0.6.0` candidate before publication)
+and restart the notebook kernel after installation or updating:
 
 ```python
 from sympy import symbols, pi
@@ -44,15 +44,15 @@ from IPython.display import display
 q1, q2, d3 = symbols("q1 q2 d3")
 
 robots = {
-    "RR planar": (
+    "Planar RR": (
         Robot((0.7, 0, 0, q1), (0.5, 0, 0, q2)),
         {q1: 0.4, q2: -0.6},
     ),
-    "RP espacial": (
+    "Spatial RP": (
         Robot((0.7, pi/2, 0.2, q1, "r"), (0.4, 0, d3, 0, "p")),
         {q1: 0.4, d3: 0.35},
     ),
-    "RRP espacial": (
+    "Spatial RRP": (
         Robot(
             (0.7, pi/2, 0.2, q1, "r"),
             (0.4, -pi/3, 0.1, q2, "r"),
@@ -76,16 +76,16 @@ for name, (robot, q) in robots.items():
         )
 ```
 
-Para comparar la apariencia, intenta con
-`joint_scale=0.7`, `1.0` y `1.4`. También es útil ocultar los frames
-(`show_frames=False`) y la base (`show_base=False`) de manera independiente.
+To compare the two appearances, try `joint_scale=0.7`, `1.0`, and
+`1.4`. Hiding coordinate frames (`show_frames=False`) and the base
+(`show_base=False`) independently can also help assess readability.
 
-## Animación prismática de referencia
+## Reference prismatic-joint animation
 
 ```python
 from numpy import linspace
 
-robot, _ = robots["RP espacial"]
+robot, _ = robots["Spatial RP"]
 configurations = [
     {q1: 0.5, d3: float(d)}
     for d in linspace(-0.3, 0.5, 25)
@@ -102,16 +102,28 @@ display(
 )
 ```
 
-El resultado esperado es que el símbolo P permanezca sobre su eje,
-mientras cambia el segmento DH asociado al desplazamiento de la segunda junta (`d_2`, representado por el símbolo Python `d3` en este ejemplo).
+The expected behavior is that the P motion symbol remains aligned with
+its joint axis, while the evaluated DH segment associated with the
+second joint's displacement changes (`d_2`, represented by the Python
+symbol `d3` in this example).
 
-## Pautas para elegir variante
+## Evaluation criteria and final V5-B2 decision
 
-Considera legibilidad de R/P, orientación de ejes oblicuos, visibilidad
-de los segmentos DH, superposición en la base, comportamiento con zoom,
-comportamiento de los controles y consistencia entre m y mm.
+Compare R/P legibility, oblique-axis orientation, visibility of DH
+segments, overlap near the base, zoom behavior, camera interactions,
+and visual consistency across meters and millimeters.
 
-Se conserva `joint_representation="simple"` como predeterminado global.
-En el modo cinemático, Three.js utiliza `solid` salvo indicación contraria;
-la representación `schematic` se mantiene como alternativa. La eventual
-adaptación de sólidos a Matplotlib se evaluará por separado.
+**V5-B2 decision:** `solid` is the default appearance when the
+`kinematic` representation is selected in Three.js; `schematic`
+remains available as an alternative. Matplotlib continues to support
+schematic kinematic joints, but not solid R/P symbols.
+
+**Subsequent V5-C2 change:** Moro 0.6.0 uses
+`joint_representation="auto"` as its general default. Three.js
+resolves `auto` to solid kinematic joints when complete joint metadata
+is available; Matplotlib and legacy scenes without that metadata
+retain simple spherical markers. Users can explicitly request
+`joint_representation="simple"` in either backend.
+
+The possibility of implementing solid R/P symbols in Matplotlib
+remains a separate future consideration.
