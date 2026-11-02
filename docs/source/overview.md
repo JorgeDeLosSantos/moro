@@ -10,7 +10,7 @@ Rather than hiding the underlying mathematics behind a highly abstract interface
 
 ## Main capabilities
 
-Moro 0.5.x provides tools for:
+Moro 0.6.0 provides tools for:
 
 * modeling serial robotic manipulators with revolute and prismatic joints;
 * working with rotation matrices, homogeneous transformations, Euler/Tait-Bryan angles, axis-angle, quaternions, and rotation vectors;
@@ -27,8 +27,9 @@ Moro 0.5.x provides tools for:
 * evaluating inverse and forward dynamics numerically;
 * integrating the equations of motion with numerical generalized-force inputs;
 * sampling reachable Cartesian workspace over finite joint domains;
-* plotting robotic manipulators and sampled workspaces;
-* animating robot motion using Matplotlib and Three.js-based visualization backends.
+* plotting robotic manipulators with interactive Three.js by default (or explicitly with Matplotlib), and plotting sampled workspaces with Matplotlib;
+* animating robot motion with Three.js by default and with Matplotlib as an explicit alternative;
+* rendering evaluated DH geometry and solid/schematic R/P joint symbols with consistent scale and automatic framing.
 
 Most kinematic and dynamic quantities can still be represented symbolically, allowing the user to inspect the equations generated for a manipulator before substituting numerical values.
 
@@ -98,7 +99,7 @@ The library is particularly useful when the equations and conventions themselves
 
 The current scope remains centered on serial robotic manipulators and educational analysis. Moro intentionally does not attempt to be a complete robot-software or physics-simulation framework.
 
-Capabilities outside the 0.5.x scope include:
+Capabilities outside the 0.6.0 scope include:
 
 * general motion and path planning;
 * collision detection and collision-aware IK;
@@ -124,4 +125,4 @@ For detailed descriptions of classes, functions, parameters, and return values, 
 
 For the mathematical background behind the implemented methods, see the **Theory** section.
 
-For migration notes and the main 0.5.0 changes, see the **Release Notes** section.
+For the latest visualization changes and backend migration, see the **Moro 0.6.0 Release Notes** section.

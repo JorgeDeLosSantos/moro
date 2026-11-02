@@ -193,13 +193,20 @@ A particular configuration can then be plotted using the same dictionary of nume
 viz.plot(values)
 ```
 
-By default, `RobotVisualizer` uses the Matplotlib backend.
+By default, `RobotVisualizer` uses **Three.js** to return an interactive
+`IPython.display.HTML` viewer, particularly convenient in Jupyter and Colab.
+Revolute and prismatic joints are represented by distinct solid symbols when
+the robot provides their kinematic metadata.
 
-The Three.js backend can also be selected explicitly:
+Matplotlib remains available explicitly when a figure and axes are needed:
 
 ```python
-viz.plot(values, backend="threejs")
+fig, ax = viz.plot(values, backend="matplotlib")
 ```
+
+Likewise, `viz.animate(configurations)` returns an interactive Three.js
+animation by default, while `backend="matplotlib"` returns a
+`matplotlib.animation.FuncAnimation`.
 
 The visualization module can also animate sequences of robot configurations. These capabilities are covered in more detail in the **Visualization** section of the User Guide.
 

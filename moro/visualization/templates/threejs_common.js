@@ -79,18 +79,30 @@ window.MoroThreeJS = (function() {
         window.__moroThreeReadyPromise.then(onReady).catch(onError);
     }
 
-    function resolveStyle(style, sceneScale) {
+    function resolveStyle(style, sceneScale, layout) {
+        // The Python backend resolves world-space sizes once per animation.
+        // Legacy standalone payloads without a layout keep their old fallback.
+        function autoSize(key, legacyFallback) {
+            if (layout && layout[key] != null) {
+                var value = Number(layout[key]);
+                if (Number.isFinite(value) && value > 0) {
+                    return value;
+                }
+            }
+            return legacyFallback;
+        }
+
         return {
-            frameScale: style.frame_scale !== null
+            frameScale: style.frame_scale != null
                 ? Number(style.frame_scale)
-                : Math.max(sceneScale / 6, 1.0),
-            jointRadius: style.joint_size !== null
+                : autoSize('frame_length', Math.max(sceneScale / 6, 1.0)),
+            jointRadius: style.joint_size != null
                 ? Number(style.joint_size)
-                : Math.max(sceneScale * 0.02, 0.4),
-            baseRadius: style.base_size !== null
+                : autoSize('joint_radius', Math.max(sceneScale * 0.02, 0.4)),
+            baseRadius: style.base_size != null
                 ? Number(style.base_size)
-                : Math.max(sceneScale * 0.03, 0.6),
-            linkRadius: Math.max(sceneScale * 0.015, 0.3)
+                : autoSize('base_radius', Math.max(sceneScale * 0.03, 0.6)),
+            linkRadius: autoSize('link_radius', Math.max(sceneScale * 0.015, 0.3))
                 * (Number(style.link_linewidth) / 3)
         };
     }
@@ -155,7 +167,125 @@ window.MoroThreeJS = (function() {
         return trajectoryLine;
     }
 
+    function resolveCameraFit(framing, aspect, fovDegrees) {
+        // The Python backend owns the spatial bounds and margin. Only the
+        // camera's viewport-dependent projection is computed here.
+        var radius = Number(framing.fit_radius);
+        if (!Number.isFinite(radius) || radius <= 0) {
+            throw new Error('A positive finite fit_radius is required.');
+        }
+        var ratio = Number(aspect);
+        if (!Number.isFinite(ratio) || ratio <= 0) {
+            throw new Error('Camera aspect ratio must be positive.');
+        }
+
+        var vertical = THREE.MathUtils.degToRad(fovDegrees);
+        var horizontal = 2 * Math.atan(Math.tan(vertical / 2) * ratio);
+        var smallestHalfFov = Math.min(vertical, horizontal) / 2;
+        // Sphere fitting works for all preset orientations, including the
+        // isometric and top views, without adding unit-specific floors.
+        var distance = radius / Math.sin(smallestHalfFov);
+        var orthoHalfHeight = radius / Math.min(1, ratio);
+        var nearPlane = (distance - radius) * 0.1;
+        var farPlane = distance + radius * 4;
+
+        return {
+            distance: distance,
+            nearPlane: nearPlane,
+            farPlane: farPlane,
+            orthoHalfHeight: orthoHalfHeight,
+            orthoHalfWidth: orthoHalfHeight * ratio
+        };
+    }
+
+    function resetCameraFraming(options) {
+        // Restore the original projection after camera switches or zoom.
+        var fit = resolveCameraFit(
+            options.framing, options.aspect, options.perspectiveCamera.fov
+        );
+        var perspective = options.perspectiveCamera;
+        var orthographic = options.orthographicCamera;
+        perspective.aspect = options.aspect;
+        perspective.near = fit.nearPlane;
+        perspective.far = fit.farPlane;
+        perspective.zoom = 1;
+        perspective.updateProjectionMatrix();
+
+        orthographic.left = -fit.orthoHalfWidth;
+        orthographic.right = fit.orthoHalfWidth;
+        orthographic.top = fit.orthoHalfHeight;
+        orthographic.bottom = -fit.orthoHalfHeight;
+        orthographic.near = -fit.farPlane;
+        orthographic.far = fit.farPlane;
+        orthographic.zoom = 1;
+        orthographic.updateProjectionMatrix();
+        return fit;
+    }
+
+    function fitCameraView(options) {
+        // Refit the shared Python-computed scene bounds WITHOUT resetting
+        // the viewing direction or changing the active camera / animation.
+        // The active projection is restored after OrbitControls zoom/pan.
+        var camera = options.camera;
+        var controls = options.controls;
+        var framing = options.framing;
+        if (!camera || !controls || !framing || !Array.isArray(framing.center)) {
+            throw new Error('fitCameraView requires a camera, controls and framing.');
+        }
+
+        // Capture direction before replacing the orbit target. Recenter in
+        // world space; do not change the camera's "up" vector.
+        var offset = new THREE.Vector3().subVectors(
+            camera.position, controls.target
+        );
+        var distanceToTarget = offset.length();
+        if (!Number.isFinite(distanceToTarget) || distanceToTarget === 0) {
+            offset.set(1, 1, 1);
+        }
+        offset.normalize();
+
+        var fit = resetCameraFraming({
+            perspectiveCamera: options.perspectiveCamera,
+            orthographicCamera: options.orthographicCamera,
+            framing: framing,
+            aspect: options.aspect
+        });
+        var target = new THREE.Vector3().fromArray(framing.center);
+        controls.target.copy(target);
+        camera.position.copy(target).addScaledVector(offset, fit.distance);
+        camera.lookAt(target);
+        controls.update();
+        return fit;
+    }
+
     function createCameras(options) {
+        if (options.framing) {
+            var ratio = toFiniteNumber(options.aspect, 1);
+            var fit = resolveCameraFit(options.framing, ratio, 50);
+            var perspective = new THREE.PerspectiveCamera(
+                50, ratio, fit.nearPlane, fit.farPlane
+            );
+            var orthographic = new THREE.OrthographicCamera(
+                -fit.orthoHalfWidth,
+                fit.orthoHalfWidth,
+                fit.orthoHalfHeight,
+                -fit.orthoHalfHeight,
+                -fit.farPlane,
+                fit.farPlane
+            );
+            perspective.up.set(0, 0, 1);
+            orthographic.up.set(0, 0, 1);
+            return {
+                perspectiveCamera: perspective,
+                orthographicCamera: orthographic,
+                nearPlane: fit.nearPlane,
+                farPlane: fit.farPlane,
+                aspect: ratio,
+                distance: fit.distance
+            };
+        }
+
+        // Compatibility path for older JavaScript payloads without framing.
         var sceneScale = Math.max(toFiniteNumber(options.sceneScale, 0), 1);
         var aspect = toFiniteNumber(options.aspect, 1);
 
@@ -227,13 +357,15 @@ window.MoroThreeJS = (function() {
 
         controls.enableDamping = true;
         controls.dampingFactor = 0.1;
+        // Standard OrbitControls interaction works with touchpads:
+        // left-drag orbit, right-drag pan, wheel/pinch zoom.
         controls.mouseButtons = {
-            LEFT: THREE.MOUSE.PAN,
-            MIDDLE: THREE.MOUSE.ROTATE,
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
             RIGHT: THREE.MOUSE.PAN
         };
         controls.touches = {
-            ONE: THREE.TOUCH.PAN,
+            ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
         };
 
@@ -263,6 +395,15 @@ window.MoroThreeJS = (function() {
                 position.set(
                     target.x,
                     target.y - distance,
+                    target.z
+                );
+                break;
+            case 'right':
+                // Look from +X toward the scene center; keep +Z vertical.
+                camera.up.set(0, 0, 1);
+                position.set(
+                    target.x + distance,
+                    target.y,
                     target.z
                 );
                 break;
@@ -400,15 +541,20 @@ window.MoroThreeJS = (function() {
         };
     }
 
-    function createLights(scene, sceneScale) {
+    function createLights(scene, sceneScale, sceneCenter) {
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
+        var center = sceneCenter || new THREE.Vector3(0, 0, 0);
         var dl1 = new THREE.DirectionalLight(0xffffff, 0.5);
-        dl1.position.set(sceneScale, sceneScale, sceneScale);
+        dl1.position.copy(center).add(
+            new THREE.Vector3(sceneScale, sceneScale, sceneScale)
+        );
         scene.add(dl1);
 
         var dl2 = new THREE.DirectionalLight(0xffffff, 0.3);
-        dl2.position.set(-sceneScale, -sceneScale, -sceneScale);
+        dl2.position.copy(center).add(
+            new THREE.Vector3(-sceneScale, -sceneScale, -sceneScale)
+        );
         scene.add(dl2);
 
         return {
@@ -452,7 +598,9 @@ window.MoroThreeJS = (function() {
         var direction = new THREE.Vector3().subVectors(end, start);
         var length = direction.length();
 
-        if (length < 1e-6) {
+        // No absolute length cutoff: 1e-9 meters and 1e-6 millimeters
+        // must render equivalently when the scene is rescaled.
+        if (!Number.isFinite(length) || length === 0) {
             return null;
         }
 
@@ -524,9 +672,8 @@ window.MoroThreeJS = (function() {
         var d = (uDotW - uDotV * vDotW) / det;
         var a = (vDotW - uDotV * uDotW) / det;
 
-        // Split only when both portions are significant (absolute threshold),
-        // consistent with the 1e-6 convention used elsewhere in this file.
-        if (Math.abs(d) < 1e-6 || Math.abs(a) < 1e-6) {
+        // An absent contribution is degenerate regardless of model units.
+        if (d === 0 || a === 0) {
             return null;
         }
 
@@ -537,6 +684,108 @@ window.MoroThreeJS = (function() {
         );
 
         return corner;
+    }
+
+    function createJointSymbolLines(robotGroup, data, style) {
+        // World-space paths are computed once in Python and identical to the
+        // paths used by Matplotlib and shared scene framing.
+        var lines = [];
+        (data.joint_symbols || []).forEach(function(symbol) {
+            symbol.paths.forEach(function(path) {
+                var points = path.map(function(position) {
+                    return new THREE.Vector3().fromArray(position);
+                });
+                var line = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints(points),
+                    new THREE.LineBasicMaterial({
+                        color: symbol.kind === 'r'
+                            ? (style.revolute_color || style.joint_color)
+                            : (style.prismatic_color || style.joint_color)
+                    })
+                );
+                line.frustumCulled = false; // coordinates move during animation
+                robotGroup.add(line);
+                lines.push(line);
+            });
+        });
+        return lines;
+    }
+
+    function updateJointSymbolLines(lines, data) {
+        var pathIndex = 0;
+        (data.joint_symbols || []).forEach(function(symbol) {
+            symbol.paths.forEach(function(path) {
+                var attribute = lines[pathIndex].geometry.attributes.position;
+                if (attribute.count !== path.length) {
+                    throw new Error('Inconsistent joint symbol path vertex count.');
+                }
+                for (var i = 0; i < path.length; i++) {
+                    attribute.setXYZ(i, path[i][0], path[i][1], path[i][2]);
+                }
+                attribute.needsUpdate = true;
+                pathIndex++;
+            });
+        });
+        if (pathIndex !== lines.length) {
+            throw new Error('Inconsistent joint symbol line count.');
+        }
+    }
+
+    function orientJointSolid(mesh, solid) {
+        // Explicit roll orientation: local X follows the preceding DH
+        // frame X, local Y the joint's motion axis, and local Z completes
+        // a right-handed basis. This aligns prism faces with the guides.
+        var x = new THREE.Vector3().fromArray(solid.transverse).normalize();
+        var y = new THREE.Vector3().fromArray(solid.axis).normalize();
+        var z = new THREE.Vector3().crossVectors(x, y).normalize();
+        mesh.quaternion.setFromRotationMatrix(
+            new THREE.Matrix4().makeBasis(x, y, z)
+        );
+    }
+
+    function createJointSolidMeshes(robotGroup, data, style) {
+        // Python resolves dimensions and world-space motion axes. These
+        // cylinders and boxes are idealized motion symbols, not CAD parts.
+        var meshes = [];
+        (data.joint_solids || []).forEach(function(solid) {
+            var geometry = solid.kind === 'r'
+                ? new THREE.CylinderGeometry(
+                    solid.radius, solid.radius, solid.length, 24
+                )
+                : new THREE.BoxGeometry(
+                    solid.width, solid.length, solid.depth
+                );
+            var material = new THREE.MeshPhongMaterial({
+                color: solid.kind === 'r'
+                    ? (style.revolute_color || style.joint_color)
+                    : (style.prismatic_color || style.joint_color),
+                shininess: 55
+            });
+            var mesh = new THREE.Mesh(geometry, material);
+            mesh.userData.jointIndex = solid.index;
+            mesh.userData.jointKind = solid.kind;
+            mesh.position.fromArray(solid.origin);
+            orientJointSolid(mesh, solid);
+            robotGroup.add(mesh);
+            meshes.push(mesh);
+        });
+        return meshes;
+    }
+
+    function updateJointSolidMeshes(meshes, data) {
+        var solids = data.joint_solids || [];
+        if (solids.length !== meshes.length) {
+            throw new Error('Inconsistent joint solid mesh count.');
+        }
+        solids.forEach(function(solid, index) {
+            var mesh = meshes[index];
+            if (mesh.userData.jointIndex !== solid.index ||
+                mesh.userData.jointKind !== solid.kind) {
+                throw new Error('Inconsistent joint solid identity.');
+            }
+            mesh.position.fromArray(solid.origin);
+            orientJointSolid(mesh, solid);
+        });
     }
 
     function createRobotMeshes(options) {
@@ -556,59 +805,98 @@ window.MoroThreeJS = (function() {
                 side: THREE.DoubleSide
             });
 
-            for (var i = 0; i < joints.length - 1; i++) {
-                var start = new THREE.Vector3().fromArray(joints[i]);
-                var end = new THREE.Vector3().fromArray(joints[i + 1]);
-
-                var corner = null;
-                if (frames[i] && frames[i + 1]) {
-                    corner = computeLinkCorner(
-                        start,
-                        end,
-                        new THREE.Vector3().fromArray(frames[i].z),
-                        new THREE.Vector3().fromArray(frames[i + 1].x)
-                    );
-                }
-
-                if (corner !== null) {
-                    var offsetCylinder = createCylinderBetweenPoints(
-                        start,
-                        corner,
-                        resolvedStyle.linkRadius,
-                        8,
-                        linkMat
-                    );
-                    var lengthCylinder = createCylinderBetweenPoints(
-                        corner,
-                        end,
-                        resolvedStyle.linkRadius,
-                        8,
-                        linkMat
-                    );
-
-                    if (offsetCylinder !== null) {
-                        robotGroup.add(offsetCylinder);
-                    }
-                    if (lengthCylinder !== null) {
-                        robotGroup.add(lengthCylinder);
-                    }
-                } else {
+            var dhSegments = data.dh_segments;
+            if (Array.isArray(dhSegments) && dhSegments.length > 0) {
+                // Python is the single source of truth for classic DH
+                // geometry: (d_i, a_i) endpoints are already evaluated.
+                dhSegments.forEach(function(segment) {
                     var link = createCylinderBetweenPoints(
-                        start,
-                        end,
+                        new THREE.Vector3().fromArray(segment.start),
+                        new THREE.Vector3().fromArray(segment.end),
                         resolvedStyle.linkRadius,
                         8,
                         linkMat
                     );
-
                     if (link !== null) {
                         robotGroup.add(link);
+                    }
+                });
+            } else {
+                // Fallback for hand-built scenes without DH metadata.
+                for (var i = 0; i < joints.length - 1; i++) {
+                    var start = new THREE.Vector3().fromArray(joints[i]);
+                    var end = new THREE.Vector3().fromArray(joints[i + 1]);
+
+                    var corner = null;
+                    if (frames[i] && frames[i + 1]) {
+                        corner = computeLinkCorner(
+                            start,
+                            end,
+                            new THREE.Vector3().fromArray(frames[i].z),
+                            new THREE.Vector3().fromArray(frames[i + 1].x)
+                        );
+                    }
+
+                    if (corner !== null) {
+                        var offsetCylinder = createCylinderBetweenPoints(
+                            start,
+                            corner,
+                            resolvedStyle.linkRadius,
+                            8,
+                            linkMat
+                        );
+                        var lengthCylinder = createCylinderBetweenPoints(
+                            corner,
+                            end,
+                            resolvedStyle.linkRadius,
+                            8,
+                            linkMat
+                        );
+
+                        if (offsetCylinder !== null) {
+                            robotGroup.add(offsetCylinder);
+                        }
+                        if (lengthCylinder !== null) {
+                            robotGroup.add(lengthCylinder);
+                        }
+                    } else {
+                        var link = createCylinderBetweenPoints(
+                            start,
+                            end,
+                            resolvedStyle.linkRadius,
+                            8,
+                            linkMat
+                        );
+
+                        if (link !== null) {
+                            robotGroup.add(link);
+                        }
                     }
                 }
             }
         }
 
-        if (style.show_joints) {
+        if (style.show_joints && style.joint_representation === 'kinematic') {
+            if (style.joint_appearance === 'schematic') {
+                createJointSymbolLines(robotGroup, data, style);
+            }
+            if (style.joint_appearance === 'solid') {
+                createJointSolidMeshes(robotGroup, data, style);
+            }
+            if (style.show_base && joints.length > 0) {
+                var baseSymbolMaterial = new THREE.MeshPhongMaterial({
+                    color: style.base_color, shininess: 50
+                });
+                var baseSymbolMarker = new THREE.Mesh(
+                    new THREE.SphereGeometry(resolvedStyle.baseRadius, 16, 16),
+                    baseSymbolMaterial
+                );
+                baseSymbolMarker.position.fromArray(joints[0]);
+                robotGroup.add(baseSymbolMarker);
+            }
+        }
+
+        if (style.show_joints && style.joint_representation !== 'kinematic') {
             var jointMat = new THREE.MeshPhongMaterial({
                 color: style.joint_color,
                 shininess: 50
@@ -680,9 +968,71 @@ window.MoroThreeJS = (function() {
             ? data.frames.length
             : 0;
 
+        var referenceSegments = referenceData.dh_segments;
+        var actualSegments = data.dh_segments;
+        var expectedDH = Array.isArray(referenceSegments) &&
+            referenceSegments.length > 0;
+        var actualDH = Array.isArray(actualSegments) &&
+            actualSegments.length > 0;
+        var dhMismatch = expectedDH !== actualDH;
+
+        if (expectedDH && actualDH) {
+            dhMismatch = referenceSegments.length !== actualSegments.length;
+            if (!dhMismatch) {
+                for (var k = 0; k < referenceSegments.length; k++) {
+                    if (
+                        referenceSegments[k].row_index !== actualSegments[k].row_index ||
+                        referenceSegments[k].kind !== actualSegments[k].kind
+                    ) {
+                        dhMismatch = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        var referenceSymbols = referenceData.joint_symbols || [];
+        var actualSymbols = data.joint_symbols || [];
+        var symbolMismatch = referenceSymbols.length !== actualSymbols.length;
+        if (!symbolMismatch) {
+            for (var s = 0; s < referenceSymbols.length; s++) {
+                var refSymbol = referenceSymbols[s];
+                var nextSymbol = actualSymbols[s];
+                if (refSymbol.index !== nextSymbol.index ||
+                    refSymbol.kind !== nextSymbol.kind ||
+                    refSymbol.paths.length !== nextSymbol.paths.length) {
+                    symbolMismatch = true;
+                    break;
+                }
+                for (var p = 0; p < refSymbol.paths.length; p++) {
+                    if (refSymbol.paths[p].length !== nextSymbol.paths[p].length) {
+                        symbolMismatch = true;
+                        break;
+                    }
+                }
+                if (symbolMismatch) { break; }
+            }
+        }
+
+        var referenceSolids = referenceData.joint_solids || [];
+        var actualSolids = data.joint_solids || [];
+        var solidMismatch = referenceSolids.length !== actualSolids.length;
+        if (!solidMismatch) {
+            for (var u = 0; u < referenceSolids.length; u++) {
+                if (referenceSolids[u].index !== actualSolids[u].index ||
+                    referenceSolids[u].kind !== actualSolids[u].kind) {
+                    solidMismatch = true;
+                    break;
+                }
+            }
+        }
+
         if (
             expectedJointCount !== actualJointCount ||
-            expectedFrameCount !== actualFrameCount
+            expectedFrameCount !== actualFrameCount ||
+            dhMismatch ||
+            symbolMismatch ||
+            solidMismatch
         ) {
             throw new Error(
                 'Inconsistent robot topology between animation frames.'
@@ -716,20 +1066,44 @@ window.MoroThreeJS = (function() {
                 1,
                 8
             );
-
-            for (var i = 0; i < joints.length - 1; i++) {
-                // Two segments per link geometry: one for the DH offset (d)
-                // and one for the DH length (a). A degenerated segment simply
-                // stays hidden while it is not part of the current link.
-                var linkMeshOffset = new THREE.Mesh(linkGeometry, linkMaterial);
-                var linkMeshLength = new THREE.Mesh(linkGeometry, linkMaterial);
-                robotGroup.add(linkMeshOffset);
-                robotGroup.add(linkMeshLength);
-                linkMeshes.push(linkMeshOffset, linkMeshLength);
+            var dhSegments = data.dh_segments;
+            var usesDH = Array.isArray(dhSegments) && dhSegments.length > 0;
+            // Retain two reusable meshes per legacy link, or one per
+            // evaluated DH contribution. Degenerate segments keep a hidden
+            // mesh so changing prismatic configurations never rebuilds it.
+            var linkCount = usesDH
+                ? dhSegments.length
+                : 2 * Math.max(joints.length - 1, 0);
+            for (var i = 0; i < linkCount; i++) {
+                var mesh = new THREE.Mesh(linkGeometry, linkMaterial);
+                robotGroup.add(mesh);
+                linkMeshes.push(mesh);
             }
         }
 
-        if (style.show_joints) {
+        var jointSymbolLines = [];
+        var jointSolidMeshes = [];
+        if (style.show_joints && style.joint_representation === 'kinematic') {
+            if (style.joint_appearance === 'schematic') {
+                jointSymbolLines = createJointSymbolLines(robotGroup, data, style);
+            }
+            if (style.joint_appearance === 'solid') {
+                jointSolidMeshes = createJointSolidMeshes(robotGroup, data, style);
+            }
+            if (style.show_base && joints.length > 0) {
+                var baseSymbolMesh = new THREE.Mesh(
+                    new THREE.SphereGeometry(resolvedStyle.baseRadius, 16, 16),
+                    new THREE.MeshPhongMaterial({
+                        color: style.base_color, shininess: 50
+                    })
+                );
+                baseSymbolMesh.position.fromArray(joints[0]);
+                robotGroup.add(baseSymbolMesh);
+                jointMeshes.push(baseSymbolMesh);
+            }
+        }
+
+        if (style.show_joints && style.joint_representation !== 'kinematic') {
             var jointMaterial = new THREE.MeshPhongMaterial({
                 color: style.joint_color,
                 shininess: 50
@@ -775,6 +1149,8 @@ window.MoroThreeJS = (function() {
             referenceData: data,
             linkMeshes: linkMeshes,
             jointMeshes: jointMeshes,
+            jointSymbolLines: jointSymbolLines,
+            jointSolidMeshes: jointSolidMeshes,
             frameHelpers: frameHelpers,
             _tmp: {
                 start: new THREE.Vector3(),
@@ -795,7 +1171,7 @@ window.MoroThreeJS = (function() {
 
         var length = tmp.direction.length();
 
-        if (!Number.isFinite(length) || length < 1e-6) {
+        if (!Number.isFinite(length) || length === 0) {
             mesh.visible = false;
             return;
         }
@@ -818,37 +1194,61 @@ window.MoroThreeJS = (function() {
         var i;
 
         if (style.show_links) {
-            for (i = 0; i < joints.length - 1; i++) {
-                var linkIndex = i * 2;
-                var offsetMesh = robotObjects.linkMeshes[linkIndex];
-                var lengthMesh = robotObjects.linkMeshes[linkIndex + 1];
-
-                tmp.start.fromArray(joints[i]);
-                tmp.end.fromArray(joints[i + 1]);
-
-                var corner = null;
-                if (frames[i] && frames[i + 1]) {
-                    tmp.zAxis.fromArray(frames[i].z);
-                    tmp.xAxis.fromArray(frames[i + 1].x);
-                    corner = computeLinkCorner(
-                        tmp.start,
-                        tmp.end,
-                        tmp.zAxis,
-                        tmp.xAxis
-                    );
+            var segments = data.dh_segments;
+            if (Array.isArray(segments) && segments.length > 0) {
+                // One persistent mesh for each ordered evaluated segment.
+                // Only positions and visibility change between frames.
+                for (i = 0; i < segments.length; i++) {
+                    tmp.start.fromArray(segments[i].start);
+                    tmp.end.fromArray(segments[i].end);
+                    paintCylinder(robotObjects.linkMeshes[i], tmp.start, tmp.end, tmp);
                 }
+            } else {
+                // Legacy scenes preserve reconstructed corners/direct links.
+                for (i = 0; i < joints.length - 1; i++) {
+                    var linkIndex = i * 2;
+                    var offsetMesh = robotObjects.linkMeshes[linkIndex];
+                    var lengthMesh = robotObjects.linkMeshes[linkIndex + 1];
 
-                if (corner !== null) {
-                    paintCylinder(offsetMesh, tmp.start, corner, tmp);
-                    paintCylinder(lengthMesh, corner, tmp.end, tmp);
-                } else {
-                    paintCylinder(offsetMesh, tmp.start, tmp.end, tmp);
-                    lengthMesh.visible = false;
+                    tmp.start.fromArray(joints[i]);
+                    tmp.end.fromArray(joints[i + 1]);
+
+                    var corner = null;
+                    if (frames[i] && frames[i + 1]) {
+                        tmp.zAxis.fromArray(frames[i].z);
+                        tmp.xAxis.fromArray(frames[i + 1].x);
+                        corner = computeLinkCorner(
+                            tmp.start,
+                            tmp.end,
+                            tmp.zAxis,
+                            tmp.xAxis
+                        );
+                    }
+
+                    if (corner !== null) {
+                        paintCylinder(offsetMesh, tmp.start, corner, tmp);
+                        paintCylinder(lengthMesh, corner, tmp.end, tmp);
+                    } else {
+                        paintCylinder(offsetMesh, tmp.start, tmp.end, tmp);
+                        lengthMesh.visible = false;
+                    }
                 }
             }
         }
 
-        if (style.show_joints) {
+        if (style.show_joints && style.joint_representation === 'kinematic') {
+            if (style.joint_appearance === 'schematic') {
+                updateJointSymbolLines(robotObjects.jointSymbolLines, data);
+            }
+            if (style.joint_appearance === 'solid') {
+                updateJointSolidMeshes(robotObjects.jointSolidMeshes, data);
+            }
+            if (style.show_base && robotObjects.jointMeshes.length > 0) {
+                robotObjects.jointMeshes[0].position.fromArray(joints[0]);
+            }
+        }
+
+        if (style.show_joints && style.joint_representation !== 'kinematic') {
             for (i = 0; i < robotObjects.jointMeshes.length; i++) {
                 var jointMesh = robotObjects.jointMeshes[i];
                 jointMesh.position.fromArray(joints[i]);
@@ -918,6 +1318,9 @@ window.MoroThreeJS = (function() {
         assertRobotTopology: assertRobotTopology,
         clearGroup: clearGroup,
         createCameras: createCameras,
+        resolveCameraFit: resolveCameraFit,
+        resetCameraFraming: resetCameraFraming,
+        fitCameraView: fitCameraView,
         createCylinderBetweenPoints: createCylinderBetweenPoints,
         createGrid: createGrid,
         createLights: createLights,

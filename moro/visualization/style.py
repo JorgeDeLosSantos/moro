@@ -1,6 +1,8 @@
 """Backend-independent visualization style configuration."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+import math
+from typing import Literal
 
 
 @dataclass(slots=True)
@@ -20,6 +22,21 @@ class VisualizationStyle:
         Highlight the base joint when joints are visible.
     show_grid : bool
         Draw the reference grid.
+    joint_representation : str
+        'auto' (default) selects backend-appropriate joint markers: R/P solids
+        in Three.js if joint metadata exists, otherwise spheres; Matplotlib
+        uses spheres. 'simple' forces spheres; 'kinematic' requests R/P
+        geometry explicitly.
+    joint_scale : float
+        Finite positive dimensionless factor for kinematic joint symbols.
+    joint_appearance : str
+        'solid' (default within kinematic mode, Three.js) or 'schematic'
+        (also available in Matplotlib). In 'auto' mode, Three.js uses 'solid'
+        when full joint metadata is available.
+    revolute_color : str
+        Color of kinematic revolute joint symbols or solid cylinders.
+    prismatic_color : str
+        Color of kinematic prismatic joint symbols or solid prisms.
     link_color : str
         Color used for links.
     joint_color : str
@@ -27,13 +44,16 @@ class VisualizationStyle:
     base_color : str
         Color used for the base joint.
     frame_scale : float or None
-        Length of frame axes. If None, derive it from the scene dimension.
+        Length of frame axes in robot units. If None, use the shared layout.
     joint_size : float or None
-        Joint size. If None, derive it from the scene dimension.
+        Explicit size: Matplotlib marker area factor (s=size*100 in pt²),
+        or Three.js world-space radius. If None, use the backend adapter.
     base_size : float or None
-        Base size. If None, derive it from the scene dimension.
+        Base marker size with the same backend-specific semantics as
+        joint_size. If None, use the backend adapter.
     link_linewidth : float
-        Link thickness. Three.js interprets it as a relative thickness factor.
+        Link thickness in Matplotlib points; Three.js uses it as a
+        multiplicative factor relative to its nominal link radius (value/3).
     show_trajectory : bool
         Draw end-effector Cartesian trajectory in animations.
     trajectory_color : str
@@ -64,8 +84,72 @@ class VisualizationStyle:
     trajectory_linewidth: float = 2
     trajectory_mode: str = "full"
 
+    # Appended (rather than inserted before colors) to preserve the
+    # dataclass's previously supported positional-argument order.
+    joint_representation: Literal["auto", "simple", "kinematic"] = "auto"
+    joint_scale: float = 1.0
+    joint_appearance: Literal["schematic", "solid"] = "solid"
+    revolute_color: str = "#0072B2"
+    prismatic_color: str = "#D55E00"
+
     def __post_init__(self):
+        if self.joint_appearance not in {"schematic", "solid"}:
+            raise ValueError(
+                "joint_appearance must be 'schematic' or 'solid'."
+            )
+        for name in ("revolute_color", "prismatic_color"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must be a non-empty color string.")
+        if self.joint_representation not in {'auto', 'simple', 'kinematic'}:
+            raise ValueError(
+                "joint_representation must be 'auto', 'simple' or 'kinematic'."
+            )
+        if isinstance(self.joint_scale, bool):
+            raise ValueError('joint_scale must be a finite positive number.')
+        try:
+            scale = float(self.joint_scale)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError('joint_scale must be a finite positive number.') from exc
+        if not math.isfinite(scale) or scale <= 0:
+            raise ValueError('joint_scale must be a finite positive number.')
+        self.joint_scale = scale
         if self.trajectory_mode not in {"full", "trace"}:
             raise ValueError(
                 "trajectory_mode must be either 'full' or 'trace'"
             )
+
+
+def resolve_joint_style(
+    style: VisualizationStyle,
+    *,
+    backend: Literal["threejs", "matplotlib"],
+    scenes,
+) -> VisualizationStyle:
+    """Resolve 'auto' for a specific backend without mutating user styles.
+
+    Three.js uses kinematic R/P joints only when every scene has joint
+    metadata. Manually constructed SceneData without joint_data falls back
+    to legacy spheres. Explicit 'kinematic' remains strict downstream.
+    """
+    if backend not in {"threejs", "matplotlib"}:
+        raise ValueError("Unknown visualization backend.")
+    if style.joint_representation != "auto":
+        return style
+
+    has_all_joint_data = bool(scenes) and all(
+        bool(scene.joint_data)
+        and len(scene.joint_data) == len(scene.joints) - 1
+        and len(scene.frames) == len(scene.joints)
+        and all(
+            joint.index == index
+            for index, joint in enumerate(scene.joint_data, start=1)
+        )
+        for scene in scenes
+    )
+    representation = (
+        "kinematic"
+        if backend == "threejs" and has_all_joint_data
+        else "simple"
+    )
+    return replace(style, joint_representation=representation)

@@ -4,14 +4,15 @@
 
 ## Requirements
 
-Moro 0.5.x requires **Python 3.11 or newer**.
+Moro requires **Python 3.11 or newer**.
 
 The main runtime dependencies are:
 
 * [SymPy](https://www.sympy.org/) for symbolic computation;
 * [NumPy](https://numpy.org/) for numerical arrays and linear algebra;
 * [Matplotlib](https://matplotlib.org/) for plotting and visualization;
-* [SciPy](https://scipy.org/) for numerical time integration.
+* [SciPy](https://scipy.org/) for numerical time integration;
+* [IPython](https://ipython.org/) for the interactive HTML output of the default Three.js backend.
 
 These dependencies are installed automatically when `moro` is installed with `pip`.
 
@@ -50,10 +51,12 @@ This installs `moro` together with its required dependencies.
 To install the current development state directly from GitHub:
 
 ```bash
-pip install git+https://github.com/JorgeDeLosSantos/moro.git
+pip install git+https://github.com/JorgeDeLosSantos/moro.git@develop
 ```
 
-Development versions may include new features, fixes, or API changes that are still being tested.
+The `develop` branch contains changes being prepared for the next release.
+The default GitHub branch is the stable integration branch and may not yet
+include them. Development versions may contain API changes still under test.
 
 For contributing to the project or working with an editable local installation, see the **Development** section of the documentation.
 
@@ -83,6 +86,24 @@ from moro import Robot
 
 For a first complete example, continue with the [Quick Start](quick-start).
 
+## Interactive visualization requirements
+
+In Moro 0.6.0, `RobotVisualizer.plot()` and `RobotVisualizer.animate()`
+return an `IPython.display.HTML` Three.js viewer by default. In Jupyter
+or Colab, evaluate the returned object as the final expression in the
+cell, or display it explicitly with `IPython.display.display`.
+
+The viewer loads Three.js and OrbitControls scripts from a CDN, so the
+browser needs network access to those external resources. It is not
+an offline browser bundle.
+
+For a normal Python script, a GUI Matplotlib figure, or an offline
+rendering workflow, select the other backend explicitly:
+
+```python
+fig, ax = viz.plot(values, backend="matplotlib")
+```
+
 ## Updating moro
 
 To update an existing stable installation to the latest version available on PyPI, run:
@@ -94,7 +115,7 @@ pip install --upgrade moro
 If you installed the development version from GitHub and want to reinstall the latest repository state, use:
 
 ```bash
-pip install --upgrade --force-reinstall git+https://github.com/JorgeDeLosSantos/moro.git
+pip install --upgrade --force-reinstall git+https://github.com/JorgeDeLosSantos/moro.git@develop
 ```
 
 ## Troubleshooting
@@ -129,7 +150,7 @@ Check your Python version with:
 python --version
 ```
 
-Moro 0.5.x requires Python 3.11 or newer.
+Moro requires Python 3.11 or newer.
 
 ### Problems after upgrading
 

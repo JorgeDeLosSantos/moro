@@ -1,7 +1,10 @@
 """Visualization tools for serial robots."""
 
-from .data import FrameData, SceneData
+from .data import DHSegmentData, FrameData, JointData, SceneData
 from .evaluation import evaluate_robot
+from .framing import SceneBounds, SceneFraming, compute_scene_bounds, resolve_framing, union_bounds
+from .layout import VisualizationLayout, resolve_layout
+from .scaling import resolve_reference_length
 from .matplotlib_backend import MatplotlibBackend
 from .style import VisualizationStyle
 from .threejs_backend import ThreeJSBackend
@@ -27,6 +30,16 @@ __all__ = [
     "evaluate_robot",
     "SceneData",
     "FrameData",
+    "DHSegmentData",
+    "JointData",
+    "resolve_reference_length",
+    "VisualizationLayout",
+    "resolve_layout",
+    "SceneBounds",
+    "SceneFraming",
+    "compute_scene_bounds",
+    "union_bounds",
+    "resolve_framing",
     "VisualizationStyle",
     "plot_workspace",
 ]

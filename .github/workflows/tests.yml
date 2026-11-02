@@ -44,7 +44,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
-          python -m pip install pytest ipython
+          python -m pip install pytest
 
       - name: Run test suite
         run: python -m pytest -q
@@ -65,8 +65,11 @@ jobs:
 
       - name: Build wheel and sdist
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build twine
           python -m build
+
+      - name: Validate distribution metadata
+        run: python -m twine check dist/*
 
       - name: Install wheel in a clean virtual environment
         run: |
@@ -74,20 +77,78 @@ jobs:
           /tmp/moro-package-smoke/bin/python -m pip install --upgrade pip
           /tmp/moro-package-smoke/bin/python -m pip install dist/*.whl
 
+      - name: Install sdist in a clean virtual environment
+        run: |
+          python -m venv /tmp/moro-sdist-smoke
+          /tmp/moro-sdist-smoke/bin/python -m pip install --upgrade pip
+          /tmp/moro-sdist-smoke/bin/python -m pip install dist/*.tar.gz
+
+      - name: Smoke test installed sdist
+        working-directory: /tmp
+        run: |
+          /tmp/moro-sdist-smoke/bin/python - <<'PY'
+          import moro
+          from pathlib import Path
+          from importlib.metadata import version
+          from importlib.resources import files
+          from IPython.display import HTML
+          from sympy import Symbol
+          from moro.visualization import RobotVisualizer
+
+          assert moro.__version__ == version("moro")
+          assert "site-packages" in Path(moro.__file__).parts, moro.__file__
+          resources = files("moro.visualization.templates")
+          for name in ("threejs_viewer.html", "threejs_animation.html", "threejs_common.js"):
+              assert resources.joinpath(name).is_file()
+
+          q = Symbol("q")
+          viz = RobotVisualizer(moro.Robot((0.5, 0, 0, q, "r")))
+          assert isinstance(viz.plot({q: 0.2}), HTML)
+          assert isinstance(viz.animate([{q: 0.0}, {q: 0.3}]), HTML)
+          print("Moro installed-sdist visualization smoke test passed.")
+          PY
+
       - name: Smoke test installed package
+        # Running from the checkout would let the source tree shadow the
+        # installed wheel on sys.path. Use a directory outside the repo.
+        working-directory: /tmp
         run: |
           /tmp/moro-package-smoke/bin/python - <<'PY'
           import moro
+          from importlib.metadata import version
           from importlib.resources import files
+          from pathlib import Path
+          from IPython.display import HTML
+          from sympy import Symbol
           from moro.differential_kinematics import solve_velocity_ik
           from moro.inverse_kinematics import solve_pose_ik
           from moro.trajectory import joint_trajectory
           from moro.dynamics import simulate
           from moro.workspace import sample_workspace
-          from moro.visualization import plot_workspace
+          from moro.visualization import RobotVisualizer, plot_workspace
 
-          assert moro.__version__ == "0.5.0"
-          template = files("moro.visualization.templates").joinpath("threejs_viewer.html")
-          assert template.is_file()
-          print("Moro distribution smoke test passed.")
+          # Version consistency, without hard-coding the previous release.
+          assert moro.__version__ == version("moro")
+          assert "site-packages" in Path(moro.__file__).parts, moro.__file__
+
+          resources = files("moro.visualization.templates")
+          for template_name in (
+              "threejs_viewer.html", "threejs_animation.html", "threejs_common.js"
+          ):
+              assert resources.joinpath(template_name).is_file()
+
+          # Exercise both default render paths from the installed wheel,
+          # not from the editable checkout used by the test matrix.
+          q = Symbol("q")
+          robot = moro.Robot((0.5, 0, 0, q, "r"))
+          viz = RobotVisualizer(robot)
+          plot = viz.plot({q: 0.2})
+          animation = viz.animate([{q: 0.0}, {q: 0.3}], interval=50)
+          assert isinstance(plot, HTML)
+          assert isinstance(animation, HTML)
+          assert '"joint_representation": "kinematic"' in plot.data
+          assert '"joint_solids"' in plot.data
+          assert '"interval": 50.0' in animation.data
+          assert '"joint_solids"' in animation.data
+          print("Moro installed-wheel visualization smoke test passed.")
           PY

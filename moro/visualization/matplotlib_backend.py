@@ -3,8 +3,36 @@
 import numpy as np
 
 from .data import SceneData
-from .style import VisualizationStyle
+from .framing import SceneFraming, resolve_framing
+from .joint_symbols import build_joint_symbols
+from .layout import VisualizationLayout, resolve_layout
+from .style import VisualizationStyle, resolve_joint_style
 from .threejs_backend import _extract_end_effector_trajectory
+
+
+def _marker_area_from_world_radius(
+    ax, radius: float, visible_half_extent: float
+) -> float:
+    """Map a nominal world radius to Matplotlib scatter marker area in pt².
+
+    Matplotlib's scatter markers are display-space objects. This approximate
+    conversion uses the *resolved visible span*, not a unit-specific nominal
+    span. Exact apparent size can vary under perspective/zoom.
+    """
+    extent = ax.get_window_extent()
+    viewport_points = min(extent.width, extent.height) * 72.0 / ax.figure.dpi
+    diameter_points = (radius / visible_half_extent) * viewport_points
+    return diameter_points ** 2
+
+
+def _apply_framing(ax, framing: SceneFraming) -> None:
+    """Apply a world-space cubic framing without imposing an absolute floor."""
+    center = framing.center
+    half = framing.half_extent
+    ax.set_xlim(center[0] - half, center[0] + half)
+    ax.set_ylim(center[1] - half, center[1] + half)
+    ax.set_zlim(center[2] - half, center[2] + half)
+    ax.set_box_aspect((1, 1, 1))
 
 
 class MatplotlibBackend:
@@ -17,6 +45,8 @@ class MatplotlibBackend:
         figsize=(10, 8),
         view_init=(30, 30),
         style: VisualizationStyle | None = None,
+        layout: VisualizationLayout | None = None,
+        framing: SceneFraming | None = None,
     ):
         """Render one robot configuration on a Matplotlib 3D axis."""
         import matplotlib.pyplot as plt
@@ -30,52 +60,115 @@ class MatplotlibBackend:
 
         if style is None:
             style = VisualizationStyle()
+        style = resolve_joint_style(
+            style, backend="matplotlib", scenes=[scene_data]
+        )
+        if (
+            style.show_joints
+            and style.joint_representation == "kinematic"
+            and style.joint_appearance != "schematic"
+        ):
+            raise ValueError(
+                "joint_appearance='solid' is available only in Three.js; "
+                "use joint_appearance='schematic' in Matplotlib."
+            )
+
+        if layout is None:
+            layout = resolve_layout([scene_data])
+        if framing is None:
+            framing = resolve_framing([scene_data], layout=layout, style=style)
 
         joints = scene_data.joints
         frames = scene_data.frames
-        dim = scene_data.dimension
 
-        frame_scale = dim / 5 if style.frame_scale is None else style.frame_scale
-        joint_size = (
-            max(dim * 0.025, 0.1)
-            if style.joint_size is None
-            else style.joint_size
+        frame_scale = (
+            layout.frame_length if style.frame_scale is None else style.frame_scale
         )
-        base_size = (
-            max(dim * 0.035, 0.15)
-            if style.base_size is None
-            else style.base_size
+        # Preserve explicit Matplotlib marker-size semantics: s = size * 100
+        # in points squared. Automatic sizes use the nominal world-space
+        # radii resolved in the common VisualizationLayout.
+        joint_area = (
+            _marker_area_from_world_radius(
+                ax, layout.joint_radius, framing.half_extent
+            )
+            if style.joint_size is None else style.joint_size * 100
+        )
+        base_area = (
+            _marker_area_from_world_radius(
+                ax, layout.base_radius, framing.half_extent
+            )
+            if style.base_size is None else style.base_size * 100
         )
 
         if style.show_links:
-            xs = [joint[0] for joint in joints]
-            ys = [joint[1] for joint in joints]
-            zs = [joint[2] for joint in joints]
-            ax.plot(
-                xs,
-                ys,
-                zs,
-                "o-",
-                color=style.link_color,
-                linewidth=style.link_linewidth,
-                markersize=0,
-            )
+            if scene_data.dh_segments:
+                # Draw the evaluated DH contributions directly instead of a
+                # diagonal between consecutive frame origins. Retain zero
+                # length segments in SceneData, but do not draw empty lines.
+                for segment in scene_data.dh_segments:
+                    if np.array_equal(segment.start, segment.end):
+                        continue
+                    ax.plot(
+                        (segment.start[0], segment.end[0]),
+                        (segment.start[1], segment.end[1]),
+                        (segment.start[2], segment.end[2]),
+                        color=style.link_color,
+                        linewidth=style.link_linewidth,
+                    )
+            else:
+                # Legacy scenes constructed without evaluated DH geometry.
+                xs = [joint[0] for joint in joints]
+                ys = [joint[1] for joint in joints]
+                zs = [joint[2] for joint in joints]
+                ax.plot(
+                    xs,
+                    ys,
+                    zs,
+                    "o-",
+                    color=style.link_color,
+                    linewidth=style.link_linewidth,
+                    markersize=0,
+                )
 
         if style.show_joints:
-            for index, position in enumerate(joints):
-                if index == 0 and not style.show_base:
-                    continue
-
-                color = style.base_color if index == 0 else style.joint_color
-                size = base_size if index == 0 else joint_size
-                ax.scatter(
-                    position[0],
-                    position[1],
-                    position[2],
-                    color=color,
-                    s=size * 100,
-                    zorder=10,
+            if style.joint_representation == "kinematic":
+                symbols = build_joint_symbols(
+                    scene_data, layout=layout, style=style
                 )
+                for symbol in symbols:
+                    for path in symbol["paths"]:
+                        coords = np.asarray(path, dtype=float)
+                        ax.plot(
+                            coords[:, 0], coords[:, 1], coords[:, 2],
+                            color=(
+                                style.revolute_color if symbol["kind"] == "r"
+                                else style.prismatic_color
+                            ),
+                            linewidth=style.link_linewidth,
+                            zorder=12,
+                        )
+                # The original base marker remains independent from joint 1.
+                if style.show_base and joints:
+                    position = joints[0]
+                    ax.scatter(
+                        position[0], position[1], position[2],
+                        color=style.base_color, s=base_area, zorder=10,
+                    )
+            else:
+                for index, position in enumerate(joints):
+                    if index == 0 and not style.show_base:
+                        continue
+
+                    color = style.base_color if index == 0 else style.joint_color
+                    marker_area = base_area if index == 0 else joint_area
+                    ax.scatter(
+                        position[0],
+                        position[1],
+                        position[2],
+                        color=color,
+                        s=marker_area,
+                        zorder=10,
+                    )
 
         if style.show_frames:
             for frame in frames:
@@ -94,9 +187,7 @@ class MatplotlibBackend:
                         arrow_length_ratio=0.2,
                     )
 
-        ax.set_xlim(-dim, dim)
-        ax.set_ylim(-dim, dim)
-        ax.set_zlim(-dim, dim)
+        _apply_framing(ax, framing)
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
@@ -113,6 +204,8 @@ class MatplotlibBackend:
         interval=100,
         figsize=(10, 8),
         style: VisualizationStyle | None = None,
+        layout: VisualizationLayout | None = None,
+        framing: SceneFraming | None = None,
         **kwargs,
     ):
         """
@@ -137,40 +230,33 @@ class MatplotlibBackend:
 
         if style is None:
             style = VisualizationStyle()
+        style = resolve_joint_style(
+            style, backend="matplotlib", scenes=scene_data_list
+        )
+        if (
+            style.show_joints
+            and style.joint_representation == "kinematic"
+            and style.joint_appearance != "schematic"
+        ):
+            raise ValueError(
+                "joint_appearance='solid' is available only in Three.js; "
+                "use joint_appearance='schematic' in Matplotlib."
+            )
+        if layout is None:
+            layout = resolve_layout(scene_data_list)
 
-        dim = max(scene.dimension for scene in scene_data_list)
+        if framing is None:
+            framing = resolve_framing(
+                scene_data_list, layout=layout, style=style
+            )
+
         trajectory_points = np.array(
             _extract_end_effector_trajectory(scene_data_list),
             dtype=float,
         )
 
-        bounds_points: list[np.ndarray] = []
-        for scene in scene_data_list:
-            if scene.joints:
-                bounds_points.append(np.asarray(scene.joints, dtype=float))
-            if scene.frames:
-                bounds_points.append(np.asarray([
-                    frame.position
-                    for frame in scene.frames
-                ], dtype=float))
-
-        if style.show_trajectory and trajectory_points.size > 0:
-            bounds_points.append(trajectory_points)
-
-        if bounds_points:
-            stacked = np.vstack(bounds_points)
-            mins = stacked.min(axis=0)
-            maxs = stacked.max(axis=0)
-            center = (mins + maxs) / 2
-            half_extent = max(np.max(maxs - mins) / 2, dim)
-        else:
-            center = np.zeros(3, dtype=float)
-            half_extent = dim
-
         def apply_global_limits():
-            ax.set_xlim(center[0] - half_extent, center[0] + half_extent)
-            ax.set_ylim(center[1] - half_extent, center[1] + half_extent)
-            ax.set_zlim(center[2] - half_extent, center[2] + half_extent)
+            _apply_framing(ax, framing)
 
         def init():
             apply_global_limits()
@@ -185,6 +271,8 @@ class MatplotlibBackend:
                 scene_data_list[frame_index],
                 style=style,
                 ax=ax,
+                layout=layout,
+                framing=framing,
                 **kwargs,
             )
 

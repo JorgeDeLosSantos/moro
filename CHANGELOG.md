@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-01
+
+### Added
+
+* Evaluated classic Denavit–Hartenberg translation segments (signed `d` and `a` contributions) in `SceneData`, with the original frame transformations preserved. Zero-length segments retain their topology for animations.
+* Kinematic joint metadata for revolute and prismatic axes, plus user-selectable schematic and solid joint representations in Three.js, including distinct configurable R/P colors. Matplotlib supports schematic kinematic symbols.
+* Backend-independent visualization layout, scale resolution, scene bounds, and framing. Automatic camera fitting and stable animation framing handle offset robots, folded configurations, and changes of linear units (for example meters versus millimeters).
+* Three.js `Right` camera preset and `Fit View` that recenters/rescales without changing viewing direction, projection mode, or animation playback.
+* Configurable Three.js animation `interval` in positive finite milliseconds (default 100).
+
+### Changed
+
+* **Breaking:** `RobotVisualizer.plot()` and `RobotVisualizer.animate()` now use **Three.js** by default and return `IPython.display.HTML`. Use `backend="matplotlib"` explicitly to obtain a Matplotlib `(fig, ax)` pair or `FuncAnimation`.
+* `VisualizationStyle(joint_representation="auto")` is the default. With complete evaluated joint metadata, Three.js renders solid R/P joints; Matplotlib and legacy manually created scenes use spherical markers. Explicit `"simple"` and `"kinematic"` remain supported. User-supplied style instances are not mutated during backend resolution.
+* Three.js navigation uses familiar touchpad/mouse interactions: primary-button drag or one-finger touch to orbit, right-button drag to pan, and wheel/pinch to zoom.
+* Three.js toolbar shows `Front`, `Right`, `Top`, `Isometric`, and `Fit View`; `Fit View` replaces the ambiguous `Reset` camera action.
+* `IPython` is now an explicitly declared runtime dependency for the default HTML output.
+* The wheel installation smoke test checks that visualizer HTML/JS templates are actually installed and tests the default static and animated entry points from outside the source checkout.
+
+### Compatibility notes
+
+* Existing notebooks or scripts that unpack `fig, ax = viz.plot(...)` or rely on `FuncAnimation` from `viz.animate(...)` must now specify `backend="matplotlib"`.
+* Arguments specific to Matplotlib (`ax`, `figsize`, `view_init`) and Three.js (`width`, `height`) are **not** automatically translated across backends.
+* Solid kinematic joint geometry is currently Three.js-only; use `joint_appearance="schematic"` for an explicit kinematic representation in Matplotlib.
+* The Three.js HTML viewer still loads Three.js/OrbitControls from a CDN; browser network access is required. Choose Matplotlib explicitly for ordinary scripts or offline visualization.
+* Animation framing covers the supplied sampled configurations, not the continuous swept volume between samples. The Three.js `interval` controls display playback timing, not a physical simulation time grid.
+
 ## [0.5.0] - 2026-10-01
 
 ### Added
