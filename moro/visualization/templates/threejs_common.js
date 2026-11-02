@@ -416,10 +416,12 @@ window.MoroThreeJS = (function() {
                 );
                 break;
             case 'isometric':
+                // Front-right-above octant, consistent with Front (-Y)
+                // and Right (+X), with +Z vertical.
                 camera.up.set(0, 0, 1);
                 position.set(
                     target.x + distance,
-                    target.y + distance * 0.8,
+                    target.y - distance * 0.8,
                     target.z + distance
                 );
                 break;
