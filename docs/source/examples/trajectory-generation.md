@@ -122,4 +122,4 @@ viz.animate(traj.q)
 
 The visualization layer accepts the matrix structurally and does not import or depend on `JointTrajectory`.
 
-For nonuniform `traj.t`, the animation still uses the backend interval controls; exact variable-time playback is outside Moro 0.5.0.
+For nonuniform `traj.t`, the animation still uses the backend interval controls; exact variable-time playback is not currently supported.

@@ -106,4 +106,4 @@ The condition number is one while manipulability is small. This illustrates that
 
 ## Interpretation cautions
 
-Manipulability depends on the chosen task and units. A task that mixes translational and angular rows also mixes their scales. Moro 0.5.0 does not introduce a characteristic length or automatic weighting, so the task should be chosen explicitly according to the quantity being studied.
+Manipulability depends on the chosen task and units. A task that mixes translational and angular rows also mixes their scales. Moro does not apply a characteristic length or automatic weighting, so the task should be chosen explicitly according to the quantity being studied.

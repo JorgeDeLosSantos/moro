@@ -271,7 +271,7 @@ A deeper treatment of Lie groups and Lie algebras is outside the scope of this s
 
 ## Validating rigid transformations in Moro
 
-Moro 0.5.0 distinguishes between a matrix that merely has shape $4\times4$ and a matrix that is a valid rigid transformation in $SE(3)$.
+Moro distinguishes between a matrix that merely has shape $4\times4$ and a matrix that is a valid rigid transformation in $SE(3)$.
 
 The public predicate
 
@@ -460,7 +460,7 @@ $
 $
 ```
 
-In Moro 0.5.0, `invhtm(T, tol=...)` validates that `T` is a rigid transformation in $SE(3)$ before applying this structured inverse. A matrix that is merely $4\times4$ but does not represent a valid rigid pose is rejected.
+`invhtm(T, tol=...)` validates that `T` is a rigid transformation in $SE(3)$ before applying this structured inverse. A matrix that is merely $4\times4$ but does not represent a valid rigid pose is rejected.
 
 ## Pure translations
 

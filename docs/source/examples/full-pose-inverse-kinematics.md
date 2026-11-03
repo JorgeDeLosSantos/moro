@@ -1,6 +1,6 @@
 # Full-Pose Inverse Kinematics
 
-This example introduces Moro 0.5.0 full-pose inverse kinematics through four complementary workflows.
+This example introduces Moro's full-pose inverse kinematics through four complementary workflows.
 
 ## 1. FK to IK round trip
 
@@ -98,9 +98,9 @@ orientation_dominant = solve_pose_ik(
 Both solves use the same physical convergence conditions:
 
 $$
-\|e_p\|\le\texttt{position_tol},
+\|e_p\|\le\texttt{position\_tol},
 \qquad
-\|e_R\|\le\texttt{orientation_tol}.
+\|e_R\|\le\texttt{orientation\_tol}.
 $$
 
 Weights do not redefine success.

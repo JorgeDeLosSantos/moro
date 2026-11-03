@@ -594,11 +594,11 @@ $$
 \dot q_i=\operatorname{clip}(\dot q_i^\star,\dot q_{i,min},\dot q_{i,max}).
 $$
 
-After clipping, the achieved velocity and residual are recomputed from the returned joint velocity. Moro 0.5.0 does not solve a constrained least-squares redistribution problem after saturation.
+After clipping, the achieved velocity and residual are recomputed from the returned joint velocity. Moro does not solve a constrained least-squares redistribution problem after saturation.
 
 ## Numerical singularity and manipulability metrics
 
-Moro 0.5.0 analyzes local kinematic capability from the **selected task Jacobian**, not necessarily from all six rows of the geometric Jacobian.
+Moro analyzes local kinematic capability from the **selected task Jacobian**, not necessarily from all six rows of the geometric Jacobian.
 
 For
 
@@ -697,7 +697,7 @@ This does **not** imply that `is_singular()` must be true. An $m\times n$ Jacobi
 
 Manipulability is scale sensitive. Translational rows, angular rows, revolute coordinates, and prismatic coordinates generally carry different units.
 
-Moro 0.5.0 does not introduce characteristic-length normalization or automatic weighting. Reduced translational or angular tasks are therefore often easier to interpret physically than a mixed full-twist manipulability value.
+Moro does not apply characteristic-length normalization or automatic weighting. Reduced translational or angular tasks are therefore often easier to interpret physically than a mixed full-twist manipulability value.
 
 ### Metrics answer different questions
 

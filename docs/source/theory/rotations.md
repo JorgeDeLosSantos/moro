@@ -516,7 +516,7 @@ Tait--Bryan sequences are widely used in applications involving concepts such as
 However, the terms **roll**, **pitch**, and **yaw** should not be treated as universal synonyms for $\phi$, $\theta$, and $\psi$. Their precise interpretation depends on the selected sequence and on whether the rotations are intrinsic or extrinsic.
 
 ```{note}
-Moro 0.5.0 supports all six Tait--Bryan sequences in `eul2rot` and `rot2eul`, using the same intrinsic/extrinsic convention as for proper Euler sequences.
+Moro supports all six Tait--Bryan sequences in `eul2rot` and `rot2eul`, using the same intrinsic/extrinsic convention as for proper Euler sequences.
 ```
 
 ## Canonical Euler-angle ranges

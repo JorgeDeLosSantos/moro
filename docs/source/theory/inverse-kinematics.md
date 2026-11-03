@@ -42,7 +42,7 @@ R_d & p_d\\
 \end{bmatrix},
 $
 
-Moro 0.5.0 solves both translation and orientation.
+Moro's full-pose IK solver addresses both translation and orientation.
 
 The position residual is
 

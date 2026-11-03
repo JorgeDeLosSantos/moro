@@ -54,7 +54,7 @@ G = robot.gravity_vector()
 
 ### Euler-Lagrange equations
 
-Moro 0.5.0 exposes the per-joint Euler-Lagrange equations explicitly through:
+Moro exposes the per-joint Euler-Lagrange equations explicitly through:
 
 ```python
 equations = robot.euler_lagrange_equations()
@@ -94,7 +94,7 @@ G(q)
 $$
 
 :::{important}
-This is a breaking API change in Moro 0.5.0. In 0.4.x, `dynamic_model()` returned the Euler-Lagrange equation list. Use `euler_lagrange_equations()` for that representation in 0.5.0.
+Since Moro 0.5.0, `dynamic_model()` returns the matrix-form manipulator equation. In Moro 0.4.x, it returned the per-joint Euler-Lagrange equations. Use `euler_lagrange_equations()` for that representation in current versions.
 :::
 
 `dynamic_model_matrix_form()` remains temporarily available as a deprecated alias of `dynamic_model()`.
@@ -401,4 +401,4 @@ Numerical dynamics does **not** enforce `robot.joint_limits`.
 
 A simulated state may cross a configured limit because clipping is not a physically valid model of a mechanical stop.
 
-Moro 0.5.0 does not introduce contact dynamics, impacts, friction, actuator dynamics, torque saturation, constrained dynamics or a controller framework.
+The numerical dynamics API does not model contact dynamics, impacts, friction, actuator dynamics, torque saturation, constrained dynamics, or a controller framework.

@@ -15,7 +15,7 @@ $$
 
 the inverse-kinematics solver searches for a joint configuration $q$ such that the end-effector position is sufficiently close to the target.
 
-Position IK remains fully supported, and Moro 0.5.0 also adds full-pose IK with a numerical SE(3) target.
+Moro supports both position IK and full-pose IK, using a numerical SE(3) target for the latter.
 
 This section focuses on practical use of the inverse-kinematics API. For the mathematical background of the numerical methods, see **Theory → Inverse Kinematics**.
 
@@ -644,13 +644,13 @@ solution.message
 Convergence requires **both**
 
 $
-\|e_p\|\le \texttt{position_tol}
+\|e_p\|\le \texttt{position\_tol}
 $
 
 and
 
 $
-\|e_R\|\le \texttt{orientation_tol}.
+\|e_R\|\le \texttt{orientation\_tol}.
 $
 
 The optional `position_weight` and `orientation_weight` affect the numerical optimization path, but not the convergence definition.

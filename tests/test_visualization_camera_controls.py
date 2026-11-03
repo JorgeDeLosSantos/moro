@@ -54,6 +54,25 @@ def test_right_preset_looks_from_positive_x_with_positive_z_up():
     assert "case 'isometric':" in src
 
 
+def test_isometric_preset_matches_front_right_and_z_up_convention():
+    src = _source("threejs_common.js")
+    iso = src.split("case 'isometric':", 1)[1].split("default:", 1)[0]
+
+    # The isometric camera combines Front (-Y), Right (+X) and Top (+Z).
+    assert "camera.up.set(0, 0, 1)" in iso
+    assert "target.x + distance" in iso
+    assert "target.y - distance * 0.8" in iso
+    assert "target.z + distance" in iso
+    assert "target.y + distance * 0.8" not in iso
+
+
+def test_both_threejs_viewers_initialize_from_shared_isometric_preset():
+    for template_name in ("threejs_viewer.html", "threejs_animation.html"):
+        html = _source(template_name)
+        assert "setView('isometric'" in html
+        assert "window.MoroThreeJS.setPresetView({" in html
+
+
 def test_fit_helper_recenters_preserving_active_orientation_and_projection():
     src = _source("threejs_common.js")
     helper = src.split("function fitCameraView(options)", 1)[1].split(

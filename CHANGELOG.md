@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-03
+
+### Changed
+
+* The Three.js isometric preset now views the robot from the `(+X, -Y, +Z)` octant, consistent with the existing Front, Right, and Top preset directions. Both static views and animations share this orientation; the coordinate convention and robot geometry are unchanged.
+
+### Fixed
+
+* Corrected MathJax rendering of full-pose inverse-kinematics convergence tolerances in the user guide and worked example.
+
+### Documentation
+
+* Made living documentation describe the current API without unnecessary historical version labels, while retaining version-specific migration notes and release history.
+* Moved PyPI publication instructions to the maintainer runbook at `.github/RELEASING.md` and removed the page from the public Sphinx navigation.
+
+### Compatibility
+
+* No public API removals or changes in computational behavior. Previously deprecated APIs remain available in the 0.6.x series.
+
+
 ## [0.6.0] - 2026-11-01
 
 ### Added
