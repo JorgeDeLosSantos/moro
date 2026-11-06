@@ -14,6 +14,8 @@ __all__ = [
     "PositionTrajectory",
     "joint_trajectory",
     "position_trajectory",
+    "joint_waypoint_trajectory",
+    "position_waypoint_trajectory",
 ]
 
 
@@ -330,6 +332,165 @@ def _polynomial_trajectory(
         af=af,
     )
 
+
+def _prepare_waypoints(waypoints, *, cartesian):
+    """Normalize time-major waypoint rows without consulting a Robot."""
+    values = _as_real_float_array(waypoints, name="waypoints")
+    if cartesian:
+        if values.ndim != 2 or values.shape[1] != 3:
+            raise ValueError("Cartesian waypoints must have shape (K, 3).")
+    else:
+        if values.ndim == 1:
+            values = values[:, None]
+        if values.ndim != 2 or values.shape[1] < 1:
+            raise ValueError(
+                "Joint waypoints must have shape (K, dof), "
+                "or (K,) for one degree of freedom."
+            )
+
+    if values.shape[0] < 2:
+        raise ValueError("waypoints must contain at least two rows.")
+    return values
+
+
+def _prepare_waypoint_times(waypoint_times, count):
+    """Validate one finite, strictly increasing arrival time per waypoint."""
+    times = _as_real_float_array(
+        waypoint_times, name="waypoint_times", ndim=1
+    )
+    if times.size != count:
+        raise ValueError(
+            f"waypoint_times must contain {count} times; got {times.size}."
+        )
+    durations = np.diff(times)
+    if np.any(durations <= 0) or not np.all(np.isfinite(durations)):
+        raise ValueError(
+            "waypoint_times must be strictly increasing with finite durations."
+        )
+    return times
+
+
+def _prepare_waypoint_samples(
+    waypoint_times, *, sample_times, samples_per_segment
+):
+    """Resolve exact sample times or an inclusive grid for each segment."""
+    if sample_times is not None and samples_per_segment is not None:
+        raise ValueError(
+            "sample_times and samples_per_segment cannot both be specified."
+        )
+
+    if sample_times is not None:
+        times = _as_real_float_array(
+            sample_times, name="sample_times", ndim=1
+        )
+        if times.size < 2:
+            raise ValueError("sample_times must contain at least two values.")
+        if np.any(np.diff(times) <= 0):
+            raise ValueError("sample_times must be strictly increasing.")
+        if times[0] != waypoint_times[0] or times[-1] != waypoint_times[-1]:
+            raise ValueError(
+                "sample_times must begin and end at the first and last "
+                "waypoint_times, respectively."
+            )
+        return times
+
+    count = 51 if samples_per_segment is None else samples_per_segment
+    if (
+        isinstance(count, (bool, np.bool_))
+        or not isinstance(count, (int, np.integer))
+        or count < 2
+    ):
+        raise ValueError("samples_per_segment must be an integer >= 2.")
+
+    segments = [
+        np.linspace(t0, tf, count)[:-1]
+        for t0, tf in zip(waypoint_times[:-1], waypoint_times[1:])
+    ]
+    times = np.concatenate((*segments, waypoint_times[-1:]))
+    if not np.all(np.isfinite(times)) or np.any(np.diff(times) <= 0):
+        raise ValueError(
+            "Automatic sampling requires distinguishable, increasing "
+            "floating-point times; reduce samples_per_segment or rescale time."
+        )
+    return times
+
+
+def _piecewise_linear_trajectory(waypoints, waypoint_times, sample_times):
+    """Evaluate linear segments; a knot belongs to its right-hand segment."""
+    durations = np.diff(waypoint_times)
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        slopes = np.diff(waypoints, axis=0) / durations[:, None]
+    if not np.all(np.isfinite(slopes)):
+        raise ValueError("Waypoint segment velocities must be finite.")
+
+    positions = np.empty((sample_times.size, waypoints.shape[1]), dtype=float)
+    velocities = np.empty_like(positions)
+    accelerations = np.empty_like(positions)
+
+    for i in range(waypoints.shape[0] - 1):
+        start = np.searchsorted(sample_times, waypoint_times[i], side="left")
+        stop = (
+            sample_times.size
+            if i == waypoints.shape[0] - 2
+            else np.searchsorted(
+                sample_times, waypoint_times[i + 1], side="left"
+            )
+        )
+        _, x, xd, xdd = _evaluate_polynomial_segment(
+            waypoints[i],
+            waypoints[i + 1],
+            waypoint_times[i],
+            waypoint_times[i + 1],
+            sample_times[start:stop],
+            method="linear",
+        )
+        positions[start:stop] = x
+        velocities[start:stop] = xd
+        accelerations[start:stop] = xdd
+
+    return sample_times, positions, velocities, accelerations
+
+
+def _prepare_linear_waypoint_request(
+    waypoints,
+    waypoint_times,
+    *,
+    cartesian,
+    method,
+    derivative_policy,
+    velocities,
+    accelerations,
+    sample_times,
+    samples_per_segment,
+):
+    """Validate the linear-only first waypoint increment (PR-A2)."""
+    method = _normalize_method(method)
+    if method != "linear":
+        raise ValueError(
+            "Waypoint trajectories support only method='linear' in PR-A2; "
+            "cubic and quintic interpolation are planned for PR-A3."
+        )
+    if not isinstance(derivative_policy, str):
+        raise ValueError("derivative_policy must be 'zero' for linear interpolation.")
+    if derivative_policy.lower() != "zero":
+        raise ValueError("derivative_policy must be 'zero' for linear interpolation.")
+    if velocities is not None or accelerations is not None:
+        raise ValueError(
+            "Linear waypoint interpolation does not accept velocities "
+            "or accelerations."
+        )
+
+    values = _prepare_waypoints(waypoints, cartesian=cartesian)
+    times = _prepare_waypoint_times(waypoint_times, values.shape[0])
+    samples = _prepare_waypoint_samples(
+        times,
+        sample_times=sample_times,
+        samples_per_segment=samples_per_segment,
+    )
+    return values, times, samples
+
+
+
 @dataclass
 class JointTrajectory:
     """Numerical joint-space trajectory sampled at explicit times."""
@@ -484,3 +645,66 @@ def position_trajectory(
         af=af_vec,
     )
     return PositionTrajectory(time, p, v, a, method)
+
+def joint_waypoint_trajectory(
+    waypoints,
+    waypoint_times,
+    *,
+    method="linear",
+    derivative_policy="zero",
+    velocities=None,
+    accelerations=None,
+    sample_times=None,
+    samples_per_segment=None,
+):
+    """Generate a sampled piecewise-linear joint-space waypoint trajectory.
+
+    This PR-A2 implementation supports linear interpolation only.
+    The finalized 0.7.0 contract will add cubic and quintic methods in A3,
+    with quintic becoming the default before the release.
+    """
+    values, times, samples = _prepare_linear_waypoint_request(
+        waypoints,
+        waypoint_times,
+        cartesian=False,
+        method=method,
+        derivative_policy=derivative_policy,
+        velocities=velocities,
+        accelerations=accelerations,
+        sample_times=sample_times,
+        samples_per_segment=samples_per_segment,
+    )
+    t, q, qd, qdd = _piecewise_linear_trajectory(values, times, samples)
+    return JointTrajectory(t, q, qd, qdd, "linear")
+
+
+def position_waypoint_trajectory(
+    waypoints,
+    waypoint_times,
+    *,
+    method="linear",
+    derivative_policy="zero",
+    velocities=None,
+    accelerations=None,
+    sample_times=None,
+    samples_per_segment=None,
+):
+    """Generate a sampled piecewise-linear Cartesian-position trajectory.
+
+    Cartesian waypoints must have shape (K, 3), including planar paths.
+    Only linear interpolation is supported until PR-A3.
+    """
+    values, times, samples = _prepare_linear_waypoint_request(
+        waypoints,
+        waypoint_times,
+        cartesian=True,
+        method=method,
+        derivative_policy=derivative_policy,
+        velocities=velocities,
+        accelerations=accelerations,
+        sample_times=sample_times,
+        samples_per_segment=samples_per_segment,
+    )
+    t, p, v, a = _piecewise_linear_trajectory(values, times, samples)
+    return PositionTrajectory(t, p, v, a, "linear")
+
