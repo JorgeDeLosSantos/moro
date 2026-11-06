@@ -176,10 +176,19 @@ def _prepare_boundary_conditions(
     )
 
 
-def _polynomial_trajectory(
+def _validated_segment_result(time, x, xd, xdd):
+    """Reject nonfinite polynomial evaluations before results are assembled."""
+    if not all(np.all(np.isfinite(array)) for array in (x, xd, xdd)):
+        raise ValueError("Polynomial segment evaluation produced nonfinite values.")
+    return time, x, xd, xdd
+
+
+def _evaluate_polynomial_segment(
     x0,
     xf,
-    t,
+    t0,
+    tf,
+    sample_times,
     *,
     method,
     v0=None,
@@ -187,9 +196,29 @@ def _polynomial_trajectory(
     a0=None,
     af=None,
 ):
-    """Evaluate linear, cubic, or quintic vector polynomials."""
+    """Evaluate a segment at arbitrary samples, using its true time bounds.
+
+    Empty or single-sample grids are valid for internal piecewise assembly.
+    Unlike point-to-point generation, the sample endpoints need not equal
+    the segment endpoints.
+    """
     method = _normalize_method(method)
-    time = _prepare_time(t)
+    boundaries = _as_real_float_array(
+        [t0, tf], name="segment boundaries", ndim=1
+    )
+    t0, tf = boundaries
+    if tf <= t0:
+        raise ValueError("Segment end time must be greater than start time.")
+    duration = float(tf - t0)
+    if not np.isfinite(duration):
+        raise ValueError("Segment duration must be finite.")
+
+    time = _as_real_float_array(sample_times, name="sample_times", ndim=1)
+    if np.any(np.diff(time) <= 0):
+        raise ValueError("sample_times must be strictly increasing.")
+    if time.size and (time[0] < t0 or time[-1] > tf):
+        raise ValueError("sample_times must lie within segment boundaries.")
+
     x0 = np.asarray(x0, dtype=float).reshape(-1)
     xf = np.asarray(xf, dtype=float).reshape(-1)
 
@@ -205,15 +234,14 @@ def _polynomial_trajectory(
         af=af,
     )
 
-    duration = float(time[-1] - time[0])
-    tau = ((time - time[0]) / duration)[:, None]
+    tau = ((time - t0) / duration)[:, None]
     delta = xf - x0
 
     if method == "linear":
         x = x0 + tau * delta
         xd = np.broadcast_to(delta / duration, x.shape).copy()
         xdd = np.zeros_like(x)
-        return time, x, xd, xdd
+        return _validated_segment_result(time, x, xd, xdd)
 
     if method == "cubic":
         c0 = x0
@@ -224,7 +252,7 @@ def _polynomial_trajectory(
         x = c0 + c1 * tau + c2 * tau**2 + c3 * tau**3
         xd = (c1 + 2.0 * c2 * tau + 3.0 * c3 * tau**2) / duration
         xdd = (2.0 * c2 + 6.0 * c3 * tau) / duration**2
-        return time, x, xd, xdd
+        return _validated_segment_result(time, x, xd, xdd)
 
     c0 = x0
     c1 = duration * v0
@@ -272,8 +300,35 @@ def _polynomial_trajectory(
         + 12.0 * c4 * tau**2
         + 20.0 * c5 * tau**3
     ) / duration**2
-    return time, x, xd, xdd
+    return _validated_segment_result(time, x, xd, xdd)
 
+
+def _polynomial_trajectory(
+    x0,
+    xf,
+    t,
+    *,
+    method,
+    v0=None,
+    vf=None,
+    a0=None,
+    af=None,
+):
+    """Evaluate a point-to-point polynomial on the full supplied time grid."""
+    method = _normalize_method(method)
+    time = _prepare_time(t)
+    return _evaluate_polynomial_segment(
+        x0,
+        xf,
+        time[0],
+        time[-1],
+        time,
+        method=method,
+        v0=v0,
+        vf=vf,
+        a0=a0,
+        af=af,
+    )
 
 @dataclass
 class JointTrajectory:
