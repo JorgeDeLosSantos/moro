@@ -167,7 +167,9 @@ def test_quintic_velocities_prescribed_accelerations_default_zero():
         velocities=[0.0, 0.4, 0.0], method="quintic",
         samples_per_segment=3,
     )
-    np.testing.assert_allclose(q.qd[[0, 2, 4], 0], [0.0, 0.4, 0.0])
+    np.testing.assert_allclose(
+        q.qd[[0, 2, 4], 0], [0.0, 0.4, 0.0], atol=1e-12
+    )
     np.testing.assert_allclose(q.qdd[[0, 2, 4], 0], 0.0, atol=1e-12)
 
 
