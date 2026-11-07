@@ -120,6 +120,8 @@ def test_new_modules_export_the_accepted_public_api():
         "PositionTrajectory",
         "joint_trajectory",
         "position_trajectory",
+        "joint_waypoint_trajectory",
+        "position_waypoint_trajectory",
     }
     assert set(dynamics_all) == {
         "DynamicsSolution",
