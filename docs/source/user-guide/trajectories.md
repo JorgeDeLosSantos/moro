@@ -308,6 +308,79 @@ qd0 = 0.5
 
 For 1-DOF trajectories, scalar derivative conditions are accepted.
 
+## Synchronized trapezoidal joint trajectories (0.7.0 T-04)
+
+Use `joint_trapezoidal_trajectory()` to move from one joint configuration to
+another with zero initial/final velocity. All joints share a normalized
+progress coordinate `s(t)`, producing a straight path in **joint space**.
+The generator automatically selects a triangular or trapezoidal velocity
+profile that respects the prescribed per-joint speed and acceleration
+magnitudes.
+
+```python
+from moro.trajectory import joint_trapezoidal_trajectory
+
+traj = joint_trapezoidal_trajectory(
+    [0.0, 0.0],
+    [1.2, -0.8],
+    v_max=[0.6, 0.4],
+    a_max=[1.0, 0.8],
+    samples=101,
+)
+assert traj.method == "trapezoidal"
+print(traj.profile.kind, traj.duration)
+# trapezoidal 2.6
+```
+
+The `v_max` and `a_max` inputs accept either one positive finite scalar
+(applied to all joint coordinates) or a positive finite vector `(dof,)`.
+With mixed revolute/prismatic joints, a vector is preferable because
+individual limits use angular or linear units as appropriate.
+
+By default the duration is minimal **within the symmetric rest-to-rest,
+straight-joint-path profile family**, not globally time optimal for a
+robot with dynamics, joint-space obstacles, or other constraints. Supply
+`duration=T` to request a longer motion; Moro uniformly stretches the
+minimum-duration profile, decreasing its velocities by `1/alpha` and
+accelerations by `1/alpha**2`, where `alpha=T/T_min`. A shorter requested
+duration is rejected.
+
+```python
+slow = joint_trapezoidal_trajectory(
+    [0.0, 0.0], [1.2, -0.8],
+    v_max=[0.6, 0.4], a_max=[1.0, 0.8],
+    duration=5.2, t0=2.0,
+)
+```
+
+The output remains a `JointTrajectory` containing time-major `t`,
+`q`, `qd` and `qdd` arrays. Its optional frozen
+`TrapezoidalProfileInfo` metadata includes:
+
+- `kind`: `"triangular"`, `"trapezoidal"`, or `"stationary"`;
+- `t_accel`, `t_cruise`, `t_decel`: effective phase durations;
+- `minimum_duration`: the original minimum (or `None` for a hold);
+- `peak_path_speed`, `path_acceleration`: effective magnitudes of the
+  **dimensionless** progress coordinate's derivatives, not joint-specific
+  speeds/accelerations.
+
+A completely stationary trajectory requires an explicit positive
+`duration`, for example `joint_trapezoidal_trajectory(0, 0, v_max=1,
+a_max=1, duration=2)`. The profile type is then `"stationary"`.
+
+The trajectory is C1: acceleration is piecewise constant and generally
+discontinuous at phase boundaries. At interior transition instants,
+sampled acceleration comes from the phase on the right; at the final
+time it comes from the last phase. This method does **not** constrain jerk,
+and it does not validate actuator forces, joint positions or collisions.
+
+The `profile` field is `None` for existing polynomial trajectories. It
+describes the **original generation** and does not update if users edit
+`traj.q` or other sampled arrays; it is not a continuous-time evaluator.
+The new keyword-only dataclass field also appears in
+`dataclasses.fields()` and `dataclasses.asdict()`, but the existing five
+positional constructor arguments are unchanged.
+
 ## Integration with inverse kinematics
 
 Cartesian trajectory generation and inverse kinematics remain separate operations:
@@ -355,4 +428,4 @@ Animation timing still uses the backend's interval-style controls. Passing `traj
 
 ## Scope
 
-Multi-waypoint linear, cubic and quintic interpolation is supported, including PCHIP-style interior slope estimation for cubic interpolation with resting endpoints. Automatic quintic derivative estimation, global splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, and dynamic-feasibility planning remain outside this increment.
+Multi-waypoint linear, cubic and quintic interpolation is supported, including PCHIP-style interior slope estimation for cubic interpolation with resting endpoints. Joint-space point-to-point trapezoidal profiles are also supported. Automatic quintic derivative estimation, global splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, and dynamic-feasibility planning remain outside this increment.
