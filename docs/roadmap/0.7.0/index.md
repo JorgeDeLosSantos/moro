@@ -9,6 +9,12 @@
 
 **Working theme:** Advanced Trajectories & Numerical Exploration.
 
+**Trajectory progress (2026-11-07):** T-01–T-03 (multi-waypoint
+interpolation and C0/C1/C2 continuity) are implemented in `develop` through
+PRs #40–#43. T-04 has an [accepted design proposal](../../design/0.7.0/trapezoidal.md)
+for synchronized rest-to-rest trapezoidal/triangular motion; its implementation
+is still pending. T-05 and T-06 remain separately scoped candidates.
+
 The primary goal inherited from the rolling roadmap is to extend `moro.trajectory` from point-to-point interpolation to **multi-waypoint trajectories and motion profiles**. Complementary improvements emerged from practical use: more consistent visualization parameters, reusable inverse dynamics over sampled motion, and improved sampled-workspace exploration.
 
 Preserve the project principles:
@@ -39,7 +45,7 @@ The following item IDs are local to this roadmap.
 | **T-01** | Multi-waypoint joint and Cartesian-position trajectories | Prescribe ordered waypoints, associated with a clearly defined time convention. |
 | **T-02** | Piecewise polynomial interpolation | Extend existing `linear`, `cubic`, `quintic` capabilities to multiple segments where mathematically appropriate. |
 | **T-03** | Continuity across segments | Specify and validate position/velocity/acceleration continuity (`C0`, `C1`, `C2`) as appropriate to interpolation method and boundary conditions. |
-| **T-04** | Trapezoidal velocity profile | Add a teaching-friendly accelerate–cruise–decelerate motion profile, with clear endpoint and duration conventions. |
+| **T-04** | Trapezoidal velocity profile | [Designed separately](../../design/0.7.0/trapezoidal.md): synchronized rest-to-rest joint motion, triangular/trapezoidal phases, optional prescribed duration, and typed profile metadata. Implementation pending. |
 | **T-06** | Physical-time playback | Improve animation interoperability so trajectory time samples, especially nonuniform time grids, can be honored instead of implicitly treating frames as equally spaced. |
 | **M-01** | API cleanup and compatibility | Complete intended deprecation cleanup and document migrations. |
 
