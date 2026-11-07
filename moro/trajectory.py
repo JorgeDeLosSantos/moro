@@ -1,4 +1,4 @@
-"""Numerical point-to-point trajectory generation.
+"""Numerical point-to-point and multi-waypoint trajectory generation.
 
 This module provides compact, robot-independent polynomial trajectory
 generation in joint space and Cartesian position space.
@@ -418,43 +418,100 @@ def _prepare_waypoint_samples(
     return times
 
 
-def _piecewise_linear_trajectory(waypoints, waypoint_times, sample_times):
-    """Evaluate linear segments; a knot belongs to its right-hand segment."""
-    durations = np.diff(waypoint_times)
-    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
-        slopes = np.diff(waypoints, axis=0) / durations[:, None]
-    if not np.all(np.isfinite(slopes)):
-        raise ValueError("Waypoint segment velocities must be finite.")
+def _prepare_waypoint_derivatives(
+    values, *, method, derivative_policy, velocities, accelerations
+):
+    """Return shared waypoint derivatives for piecewise Hermite segments."""
+    if not isinstance(derivative_policy, str):
+        raise ValueError("derivative_policy must be 'zero'.")
+    policy = derivative_policy.lower()
+    if policy != "zero":
+        if policy == "shape_preserving":
+            raise ValueError(
+                "derivative_policy='shape_preserving' is planned for PR-A4."
+            )
+        raise ValueError("derivative_policy must be 'zero'.")
+
+    if method == "linear":
+        if velocities is not None or accelerations is not None:
+            raise ValueError(
+                "Linear waypoint interpolation does not accept velocities "
+                "or accelerations."
+            )
+        return None, None
+
+    if method == "cubic" and accelerations is not None:
+        raise ValueError(
+            "Cubic waypoint interpolation does not accept accelerations."
+        )
+
+    expected = values.shape
+
+    def normalize(data, name):
+        if data is None:
+            return np.zeros(expected, dtype=float)
+        array = _as_real_float_array(data, name=name)
+        if len(expected) == 2 and expected[1] == 1 and array.ndim == 1:
+            array = array[:, None]
+        if array.shape != expected:
+            raise ValueError(f"{name} must have shape {expected}.")
+        return array
+
+    v = normalize(velocities, "velocities")
+    a = normalize(accelerations, "accelerations") if method == "quintic" else None
+    return v, a
+
+
+def _piecewise_polynomial_trajectory(
+    waypoints, waypoint_times, sample_times, *,
+    method, velocities=None, accelerations=None,
+):
+    """Evaluate piecewise polynomials with shared waypoint derivatives.
+
+    The right-hand segment owns every interior knot. The final knot belongs
+    to the final segment; derivatives there use its left-hand limit.
+    """
+    if method == "linear":
+        durations = np.diff(waypoint_times)
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            slopes = np.diff(waypoints, axis=0) / durations[:, None]
+        if not np.all(np.isfinite(slopes)):
+            raise ValueError("Waypoint segment velocities must be finite.")
 
     positions = np.empty((sample_times.size, waypoints.shape[1]), dtype=float)
-    velocities = np.empty_like(positions)
-    accelerations = np.empty_like(positions)
+    velocity_samples = np.empty_like(positions)
+    acceleration_samples = np.empty_like(positions)
 
     for i in range(waypoints.shape[0] - 1):
         start = np.searchsorted(sample_times, waypoint_times[i], side="left")
         stop = (
             sample_times.size
             if i == waypoints.shape[0] - 2
-            else np.searchsorted(
-                sample_times, waypoint_times[i + 1], side="left"
-            )
+            else np.searchsorted(sample_times, waypoint_times[i + 1], side="left")
         )
+        kwargs = {}
+        if method != "linear":
+            kwargs.update(v0=velocities[i], vf=velocities[i + 1])
+        if method == "quintic":
+            kwargs.update(a0=accelerations[i], af=accelerations[i + 1])
+
         _, x, xd, xdd = _evaluate_polynomial_segment(
             waypoints[i],
             waypoints[i + 1],
             waypoint_times[i],
             waypoint_times[i + 1],
             sample_times[start:stop],
-            method="linear",
+            method=method,
+            **kwargs,
         )
         positions[start:stop] = x
-        velocities[start:stop] = xd
-        accelerations[start:stop] = xdd
+        velocity_samples[start:stop] = xd
+        acceleration_samples[start:stop] = xdd
 
-    return sample_times, positions, velocities, accelerations
+    return sample_times, positions, velocity_samples, acceleration_samples
 
 
-def _prepare_linear_waypoint_request(
+def _prepare_waypoint_request(
     waypoints,
     waypoint_times,
     *,
@@ -466,31 +523,23 @@ def _prepare_linear_waypoint_request(
     sample_times,
     samples_per_segment,
 ):
-    """Validate the linear-only first waypoint increment (PR-A2)."""
+    """Prepare a validated robot-independent piecewise polynomial request."""
     method = _normalize_method(method)
-    if method != "linear":
-        raise ValueError(
-            "Waypoint trajectories support only method='linear' in PR-A2; "
-            "cubic and quintic interpolation are planned for PR-A3."
-        )
-    if not isinstance(derivative_policy, str):
-        raise ValueError("derivative_policy must be 'zero' for linear interpolation.")
-    if derivative_policy.lower() != "zero":
-        raise ValueError("derivative_policy must be 'zero' for linear interpolation.")
-    if velocities is not None or accelerations is not None:
-        raise ValueError(
-            "Linear waypoint interpolation does not accept velocities "
-            "or accelerations."
-        )
-
     values = _prepare_waypoints(waypoints, cartesian=cartesian)
     times = _prepare_waypoint_times(waypoint_times, values.shape[0])
+    derivatives = _prepare_waypoint_derivatives(
+        values,
+        method=method,
+        derivative_policy=derivative_policy,
+        velocities=velocities,
+        accelerations=accelerations,
+    )
     samples = _prepare_waypoint_samples(
         times,
         sample_times=sample_times,
         samples_per_segment=samples_per_segment,
     )
-    return values, times, samples
+    return values, times, samples, derivatives
 
 
 
@@ -653,20 +702,19 @@ def joint_waypoint_trajectory(
     waypoints,
     waypoint_times,
     *,
-    method="linear",
+    method="quintic",
     derivative_policy="zero",
     velocities=None,
     accelerations=None,
     sample_times=None,
     samples_per_segment=None,
 ):
-    """Generate a sampled piecewise-linear joint-space waypoint trajectory.
+    """Generate piecewise linear, cubic or quintic joint-space trajectories.
 
-    This PR-A2 implementation supports linear interpolation only.
-    The finalized 0.7.0 contract will add cubic and quintic methods in A3,
-    with quintic becoming the default before the release.
+    The default zero-derivative policy stops at each waypoint. Full velocity
+    and acceleration arrays may override defaults when supported by method.
     """
-    values, times, samples = _prepare_linear_waypoint_request(
+    values, times, samples, (v, a) = _prepare_waypoint_request(
         waypoints,
         waypoint_times,
         cartesian=False,
@@ -677,27 +725,30 @@ def joint_waypoint_trajectory(
         sample_times=sample_times,
         samples_per_segment=samples_per_segment,
     )
-    t, q, qd, qdd = _piecewise_linear_trajectory(values, times, samples)
-    return JointTrajectory(t, q, qd, qdd, "linear")
+    normalized_method = _normalize_method(method)
+    t, q, qd, qdd = _piecewise_polynomial_trajectory(
+        values, times, samples,
+        method=normalized_method, velocities=v, accelerations=a,
+    )
+    return JointTrajectory(t, q, qd, qdd, normalized_method)
 
 
 def position_waypoint_trajectory(
     waypoints,
     waypoint_times,
     *,
-    method="linear",
+    method="quintic",
     derivative_policy="zero",
     velocities=None,
     accelerations=None,
     sample_times=None,
     samples_per_segment=None,
 ):
-    """Generate a sampled piecewise-linear Cartesian-position trajectory.
+    """Generate piecewise polynomial Cartesian-position trajectories.
 
-    Cartesian waypoints must have shape (K, 3), including planar paths.
-    Only linear interpolation is supported until PR-A3.
+    Cartesian waypoints and derivative matrices must have shape (K, 3).
     """
-    values, times, samples = _prepare_linear_waypoint_request(
+    values, times, samples, (v, a) = _prepare_waypoint_request(
         waypoints,
         waypoint_times,
         cartesian=True,
@@ -708,6 +759,9 @@ def position_waypoint_trajectory(
         sample_times=sample_times,
         samples_per_segment=samples_per_segment,
     )
-    t, p, v, a = _piecewise_linear_trajectory(values, times, samples)
-    return PositionTrajectory(t, p, v, a, "linear")
-
+    normalized_method = _normalize_method(method)
+    t, p, v_samples, a_samples = _piecewise_polynomial_trajectory(
+        values, times, samples,
+        method=normalized_method, velocities=v, accelerations=a,
+    )
+    return PositionTrajectory(t, p, v_samples, a_samples, normalized_method)
