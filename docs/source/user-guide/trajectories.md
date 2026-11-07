@@ -1,6 +1,6 @@
 # Trajectory Generation
 
-Moro provides numerical trajectory generation in joint space and Cartesian position space, including point-to-point interpolation and piecewise-linear waypoint trajectories.
+Moro provides numerical trajectory generation in joint space and Cartesian position space, including point-to-point interpolation and piecewise polynomial waypoint trajectories.
 
 The trajectory module is independent of `Robot`: it does not inspect robot geometry, joint types, joint limits, inverse kinematics, dynamics, collisions, or visualization state.
 
@@ -81,14 +81,13 @@ cart.a.shape == (N, 3)
 
 Two-component planar inputs are intentionally not promoted to three dimensions.
 
-## Multi-waypoint trajectories (0.7.0, PR-A2)
+## Multi-waypoint trajectories (0.7.0, PR-A2/A3)
 
-The first multi-waypoint increment introduces `joint_waypoint_trajectory()`
-and `position_waypoint_trajectory()`. **Only `method="linear"` is available
-in this increment**. Cubic/quintic waypoint interpolation, prescribed derivatives,
-and shape-preserving estimation are reserved for PR-A3/A4. The waypoint
-function default will change to `"quintic"` when A3 lands; pass
-`method="linear"` explicitly when linear interpolation is intended.
+`joint_waypoint_trajectory()` and `position_waypoint_trajectory()`
+generate piecewise **linear**, **cubic Hermite**, and **quintic Hermite**
+trajectories. The default method is `"quintic"`, as with the point-to-point
+API. Use `method="linear"` explicitly for piecewise-linear interpolation.
+The automatic shape-preserving cubic derivative policy is reserved for PR-A4.
 
 ### Joint waypoints
 
@@ -150,20 +149,57 @@ not** appear among the output samples; the underlying interpolation still
 passes through them. `sample_times` and `samples_per_segment` are mutually
 exclusive.
 
-### Segment joins and limitations
+### Polynomial continuity and waypoint derivatives
 
-Linear interpolation has continuous position (C0), piecewise-constant
-velocity, and zero acceleration **inside** each segment. Velocity may jump at
-an interior waypoint, so this output does not model instantaneous physical
-acceleration or actuator feasibility.
+The interpolation methods guarantee the following time-domain continuity
+at waypoints when using their documented boundary conditions:
+
+| Method | Shared boundary quantities | Continuity |
+| --- | --- | --- |
+| `linear` | Positions only | C0 |
+| `cubic` | Position and velocity | C1 |
+| `quintic` | Position, velocity and acceleration | C2 |
+
+Linear interpolation has piecewise-constant velocity and zero acceleration
+**inside** each segment. It can exhibit a velocity jump at a waypoint;
+the returned acceleration is not an impulse model and cannot be used as a
+physical feasibility certificate. A cubic can have discontinuous acceleration
+at joins; a quintic shares the supplied acceleration at joins.
+
+By default, `derivative_policy="zero"` sets omitted waypoint velocities and
+(for quintic) accelerations to zero. This produces a **stop** at every
+waypoint, not a positive-duration dwell. Supply a complete
+`velocities` array (shape `(K, dof)` or `(K, 3)`) to pass
+interior waypoints without stopping. With `method="quintic"`, you can
+also provide an `accelerations` array of the same shape. A 1-DOF
+joint trajectory accepts `(K,)` for either derivative array.
+
+```python
+from moro.trajectory import joint_waypoint_trajectory
+
+traj = joint_waypoint_trajectory(
+    [[0.0, 0.0], [0.5, 0.3], [1.2, -0.2]],
+    [0.0, 1.0, 2.5],
+    method="quintic",
+    velocities=[[0, 0], [0.3, -0.2], [0, 0]],
+    accelerations=[[0, 0], [0, 0], [0, 0]],
+    samples_per_segment=51,
+)
+```
+
+For `method="cubic"`, accelerations must be omitted. Linear interpolation
+does not accept derivative arrays. Partial derivative matrices and scalar
+broadcasting across waypoints are not supported. For now,
+`derivative_policy="shape_preserving"` is rejected (planned for PR-A4).
+Explicitly provided derivatives may cause overshoot or exceed the robot's
+physical limits: no automatic time allocation or limit checking is performed.
 
 At each interior waypoint the stored derivative belongs to the **segment
 on the right**; at the final waypoint it belongs to the last segment.
-Consecutive waypoints with the same position are allowed, including
-stationary segments. Waypoint times must still be strictly increasing.
-The first increment does not accept explicit velocities or accelerations;
-`derivative_policy="zero"` is accepted as the default but does not force
-linear-segment velocities to zero.
+For C1/C2 continuous derivatives this distinction is immaterial, but
+for discontinuous derivatives (e.g. linear velocity, cubic acceleration)
+it determines the reported value. Consecutive waypoints with the same
+position are allowed. Waypoint times must still be strictly increasing.
 
 ## Interpolation methods
 
@@ -281,4 +317,4 @@ Animation timing still uses the backend's interval-style controls. Passing `traj
 
 ## Scope
 
-The current multi-waypoint API is limited to linear position interpolation; cubic/quintic waypoint interpolation, derivative estimation, splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, and dynamic-feasibility planning remain outside this first increment.
+Multi-waypoint linear, cubic and quintic interpolation is supported. Automatic shape-preserving derivative estimation, global splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, and dynamic-feasibility planning remain outside this increment.
