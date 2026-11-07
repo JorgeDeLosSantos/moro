@@ -1,4 +1,4 @@
-"""Multi-waypoint linear interpolation (0.7.0 PR-A2)."""
+"""Multi-waypoint interpolation regression tests (0.7.0 A2/A3)."""
 
 import numpy as np
 import pytest
@@ -16,7 +16,7 @@ from moro.trajectory import (
 def test_joint_waypoints_and_time_major_shapes():
     waypoints = [[0.0, 1.0], [2.0, -1.0], [3.0, 0.0], [0.0, 2.0]]
     times = [5.0, 6.0, 8.0, 9.0]
-    traj = joint_waypoint_trajectory(waypoints, times, samples_per_segment=3)
+    traj = joint_waypoint_trajectory(waypoints, times, method="linear", samples_per_segment=3)
     assert isinstance(traj, JointTrajectory)
     assert traj.method == "linear"
     assert traj.dof == 2
@@ -38,7 +38,7 @@ def test_cartesian_waypoints_support_planar_path_with_z():
         [2.0, -1.0, 0.0],
     ])
     result = position_waypoint_trajectory(
-        points, [0.0, 1.0, 3.0], samples_per_segment=2
+        points, [0.0, 1.0, 3.0], method="linear", samples_per_segment=2
     )
     assert isinstance(result, PositionTrajectory)
     assert result.p.shape == result.v.shape == result.a.shape == (3, 3)
@@ -70,7 +70,7 @@ def test_nonuniform_explicit_sample_times_are_preserved():
     samples = np.array([2.0, 2.1, 2.4, 3.5, 4.0, 5.8, 6.0])
     points = [0.0, 2.0, 5.0, 1.0]
     traj = joint_waypoint_trajectory(
-        points, [2.0, 3.0, 4.5, 6.0], sample_times=samples
+        points, [2.0, 3.0, 4.5, 6.0], method="linear", sample_times=samples
     )
     np.testing.assert_array_equal(traj.t, samples)
     assert 3.0 not in traj.t
@@ -106,7 +106,7 @@ def test_linear_two_waypoint_equivalence_joint_and_position():
 
     old_cart = position_trajectory([0, 0, 0], [1, 2, 3], t, method="linear")
     new_cart = position_waypoint_trajectory(
-        [[0, 0, 0], [1, 2, 3]], [1.0, 3.0], sample_times=t
+        [[0, 0, 0], [1, 2, 3]], [1.0, 3.0], method="linear", sample_times=t
     )
     for a, b in zip(
         (new_cart.t, new_cart.p, new_cart.v, new_cart.a),
@@ -118,7 +118,7 @@ def test_linear_two_waypoint_equivalence_joint_and_position():
 def test_linear_corner_uses_right_hand_velocity_and_final_left_hand():
     traj = joint_waypoint_trajectory(
         [0.0, 1.0, -1.0], [0.0, 1.0, 3.0],
-        sample_times=[0.0, 0.5, 1.0, 2.0, 3.0],
+        method="linear", sample_times=[0.0, 0.5, 1.0, 2.0, 3.0],
     )
     np.testing.assert_allclose(traj.qd[:, 0], [1.0, 1.0, -1.0, -1.0, -1.0])
     np.testing.assert_array_equal(traj.qdd, np.zeros((5, 1)))
@@ -126,7 +126,7 @@ def test_linear_corner_uses_right_hand_velocity_and_final_left_hand():
 
 def test_repeated_positions_and_stationary_segments_are_allowed():
     traj = joint_waypoint_trajectory(
-        [0, 1, 1, 2], [0, 1, 2, 3], samples_per_segment=3
+        [0, 1, 1, 2], [0, 1, 2, 3], method="linear", samples_per_segment=3
     )
     np.testing.assert_allclose(traj.q[2:5, 0], [1.0, 1.0, 1.0])
     np.testing.assert_allclose(traj.qd[2:4, 0], [0.0, 0.0])
@@ -238,8 +238,6 @@ def test_sampling_controls_are_mutually_exclusive():
 @pytest.mark.parametrize(
     "method,policy,velocities,accelerations",
     [
-        ("cubic", "zero", None, None),
-        ("quintic", "zero", None, None),
         ("invalid", "zero", None, None),
         ("linear", "shape_preserving", None, None),
         ("linear", 2, None, None),
@@ -276,5 +274,5 @@ def test_outputs_do_not_alias_user_inputs():
 def test_overflowing_segment_slopes_are_rejected():
     with pytest.raises(ValueError, match="velocities must be finite"):
         joint_waypoint_trajectory(
-            [-1e308, 1e308], [0.0, 1.0], samples_per_segment=2
+            [-1e308, 1e308], [0.0, 1.0], method="linear", samples_per_segment=2
         )
