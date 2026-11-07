@@ -362,7 +362,10 @@ def _prepare_waypoint_times(waypoint_times, count):
         raise ValueError(
             f"waypoint_times must contain {count} times; got {times.size}."
         )
-    durations = np.diff(times)
+    # Subtracting two finite but extreme values can overflow; treat such
+    # durations as invalid input without emitting an avoidable RuntimeWarning.
+    with np.errstate(over="ignore", invalid="ignore"):
+        durations = np.diff(times)
     if np.any(durations <= 0) or not np.all(np.isfinite(durations)):
         raise ValueError(
             "waypoint_times must be strictly increasing with finite durations."
