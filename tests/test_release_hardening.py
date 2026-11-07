@@ -122,6 +122,8 @@ def test_new_modules_export_the_accepted_public_api():
         "position_trajectory",
         "joint_waypoint_trajectory",
         "position_waypoint_trajectory",
+        "joint_trapezoidal_trajectory",
+        "TrapezoidalProfileInfo",
     }
     assert set(dynamics_all) == {
         "DynamicsSolution",
