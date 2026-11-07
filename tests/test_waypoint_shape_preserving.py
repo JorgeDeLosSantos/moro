@@ -119,12 +119,11 @@ def test_coordinate_wise_reversals_plateaus_and_mixed_data():
     for k in range(len(times) - 1):
         samples = trajectory.q[24*k:24*(k+1)+1]
         for col in range(values.shape[1]):
-            np.testing.assert_array_less(
-                np.min(samples[:, col]) - 1e-12,
-                max(values[k, col], values[k+1, col]) + 1e-12,
-            )
             assert np.min(samples[:, col]) >= (
                 min(values[k, col], values[k+1, col]) - 1e-12
+            )
+            assert np.max(samples[:, col]) <= (
+                max(values[k, col], values[k+1, col]) + 1e-12
             )
 
 
