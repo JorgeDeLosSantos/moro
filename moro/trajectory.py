@@ -981,7 +981,8 @@ def _prepare_trapezoidal_joint_limit(value, dof, *, name):
     # Check booleans explicitly, including object arrays containing mixed
     # numerical and boolean entries. Limit arrays must contain real values.
     if np.iscomplexobj(raw) or any(
-        isinstance(item, (bool, np.bool_)) for item in raw
+        isinstance(item, (bool, np.bool_))
+        for item in np.asarray(value, dtype=object).flat
     ):
         raise ValueError(f"{name} must contain real positive numbers, not bools.")
     limits = _as_real_float_array(value, name=name, ndim=1)
