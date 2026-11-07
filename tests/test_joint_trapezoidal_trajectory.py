@@ -211,7 +211,7 @@ def test_trapezoidal_metadata_is_typed_immutable_and_serializable():
         )
     with pytest.raises(ValueError, match="profile.duration"):
         JointTrajectory(
-            [0.0, 2.0], [[0.0], [1.0]],
+            [0.0, 3.0], [[0.0], [1.0]],
             [[0.0], [0.0]], [[0.0], [0.0]], "trapezoidal",
             profile=traj.profile,
         )
