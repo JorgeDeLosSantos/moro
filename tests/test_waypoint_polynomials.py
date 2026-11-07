@@ -204,7 +204,7 @@ def test_derivative_time_scaling(method):
         ("linear", "zero", None, [0, 0]),
         ("cubic", "zero", None, [0, 0]),
         ("quintic", "shape_preserving", None, None),
-        ("cubic", "shape_preserving", None, None),
+        ("linear", "shape_preserving", None, None),
         ("cubic", "unknown", None, None),
     ],
 )

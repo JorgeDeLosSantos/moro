@@ -81,13 +81,15 @@ cart.a.shape == (N, 3)
 
 Two-component planar inputs are intentionally not promoted to three dimensions.
 
-## Multi-waypoint trajectories (0.7.0, PR-A2/A3)
+## Multi-waypoint trajectories (0.7.0, PR-A2–A4)
 
 `joint_waypoint_trajectory()` and `position_waypoint_trajectory()`
 generate piecewise **linear**, **cubic Hermite**, and **quintic Hermite**
 trajectories. The default method is `"quintic"`, as with the point-to-point
 API. Use `method="linear"` explicitly for piecewise-linear interpolation.
-The automatic shape-preserving cubic derivative policy is reserved for PR-A4.
+For cubic trajectories, `derivative_policy="shape_preserving"` estimates
+interior waypoint velocities automatically while keeping the two global
+endpoints at rest.
 
 ### Joint waypoints
 
@@ -189,10 +191,46 @@ traj = joint_waypoint_trajectory(
 
 For `method="cubic"`, accelerations must be omitted. Linear interpolation
 does not accept derivative arrays. Partial derivative matrices and scalar
-broadcasting across waypoints are not supported. For now,
-`derivative_policy="shape_preserving"` is rejected (planned for PR-A4).
+broadcasting across waypoints are not supported.
 Explicitly provided derivatives may cause overshoot or exceed the robot's
 physical limits: no automatic time allocation or limit checking is performed.
+
+### Shape-preserving cubic interpolation
+
+Use `derivative_policy="shape_preserving"` with **`method="cubic"`** to
+estimate waypoint velocities rather than supplying them:
+
+```python
+from moro.trajectory import joint_waypoint_trajectory
+
+traj = joint_waypoint_trajectory(
+    [0.0, 1.0, 1.8, 1.5, 2.5],
+    [0.0, 1.0, 2.5, 3.0, 5.0],
+    method="cubic",
+    derivative_policy="shape_preserving",
+    samples_per_segment=51,
+)
+```
+
+The estimated interior velocities use the PCHIP-style weighted harmonic
+mean of neighboring secant slopes, evaluated independently for each joint
+or Cartesian coordinate. They become **zero at local reversals and
+plateaus**. Unlike standard PCHIP endpoint slopes, this policy always
+sets the first and final waypoint velocities to **zero**. With two
+waypoints it therefore reduces to a resting-endpoint cubic.
+
+The resulting trajectory is **C1**, and each coordinate stays between
+the values at the ends of its segment (no component-wise overshoot),
+including when segment durations differ. This property does *not* mean
+that the complete Cartesian path is globally monotone, or that the
+motion satisfies speed/acceleration limits. Acceleration need not be
+continuous.
+
+This policy rejects `velocities` and `accelerations` even if they are
+explicitly all zero. It is unavailable for `linear` or `quintic`:
+quintic automatic derivative estimation is not included in 0.7.0 A4.
+The default remains `derivative_policy="zero"`, which may instead
+accept prescribed full derivative arrays.
 
 At each interior waypoint the stored derivative belongs to the **segment
 on the right**; at the final waypoint it belongs to the last segment.
@@ -317,4 +355,4 @@ Animation timing still uses the backend's interval-style controls. Passing `traj
 
 ## Scope
 
-Multi-waypoint linear, cubic and quintic interpolation is supported. Automatic shape-preserving derivative estimation, global splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, and dynamic-feasibility planning remain outside this increment.
+Multi-waypoint linear, cubic and quintic interpolation is supported, including PCHIP-style interior slope estimation for cubic interpolation with resting endpoints. Automatic quintic derivative estimation, global splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, and dynamic-feasibility planning remain outside this increment.

@@ -418,19 +418,99 @@ def _prepare_waypoint_samples(
     return times
 
 
+def _estimate_shape_preserving_velocities(waypoints, waypoint_times):
+    """Estimate PCHIP-style interior slopes with resting endpoint velocities.
+
+    The harmonic mean is evaluated using normalized time weights and the
+    smaller slope magnitude to avoid unnecessary intermediate overflow.
+    Each coordinate is treated independently; reversals and plateaus stop.
+    """
+    result = np.zeros_like(waypoints, dtype=float)
+    if waypoints.shape[0] <= 2:
+        return result
+
+    durations = np.diff(waypoint_times)
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        secants = np.diff(waypoints, axis=0) / durations[:, None]
+    if not np.all(np.isfinite(secants)):
+        raise ValueError(
+            "shape_preserving requires finite waypoint secant slopes."
+        )
+
+    previous = secants[:-1]
+    following = secants[1:]
+    same_direction = (
+        ((previous > 0) & (following > 0))
+        | ((previous < 0) & (following < 0))
+    )
+    if not np.any(same_direction):
+        return result
+
+    # Durations may be very large: rescale before forming the PCHIP
+    # weights w1 = 2*h_next + h_prev, w2 = h_next + 2*h_prev.
+    h_previous = durations[:-1]
+    h_next = durations[1:]
+    scale = np.maximum(h_previous, h_next)
+    previous_scaled = h_previous / scale
+    next_scaled = h_next / scale
+    w1 = 2.0 * next_scaled + previous_scaled
+    w2 = next_scaled + 2.0 * previous_scaled
+    weight = w1 / (w1 + w2)
+
+    magnitudes_previous = np.abs(previous[same_direction])
+    magnitudes_next = np.abs(following[same_direction])
+    smaller = np.minimum(magnitudes_previous, magnitudes_next)
+
+    # m = 1 / (weight/|d_prev| + (1-weight)/|d_next|).
+    # The scaled form avoids reciprocal overflow for tiny secants.
+    local_weight = np.broadcast_to(weight[:, None], previous.shape)[
+        same_direction
+    ]
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        denominator = (
+            local_weight * (smaller / magnitudes_previous)
+            + (1.0 - local_weight) * (smaller / magnitudes_next)
+        )
+        estimated = smaller / denominator
+
+    if not np.all(np.isfinite(estimated)):
+        raise ValueError(
+            "shape_preserving generated nonfinite waypoint velocities."
+        )
+    result[1:-1][same_direction] = (
+        np.copysign(estimated, previous[same_direction])
+    )
+    return result
+
+
 def _prepare_waypoint_derivatives(
-    values, *, method, derivative_policy, velocities, accelerations
+    values, waypoint_times, *, method, derivative_policy,
+    velocities, accelerations,
 ):
     """Return shared waypoint derivatives for piecewise Hermite segments."""
     if not isinstance(derivative_policy, str):
-        raise ValueError("derivative_policy must be 'zero'.")
+        raise ValueError(
+            "derivative_policy must be 'zero' or 'shape_preserving'."
+        )
     policy = derivative_policy.lower()
-    if policy != "zero":
-        if policy == "shape_preserving":
+    if policy not in ("zero", "shape_preserving"):
+        raise ValueError(
+            "derivative_policy must be 'zero' or 'shape_preserving'."
+        )
+
+    if policy == "shape_preserving":
+        if method != "cubic":
             raise ValueError(
-                "derivative_policy='shape_preserving' is planned for PR-A4."
+                "derivative_policy='shape_preserving' requires method='cubic'."
             )
-        raise ValueError("derivative_policy must be 'zero'.")
+        if velocities is not None or accelerations is not None:
+            raise ValueError(
+                "shape_preserving does not accept explicit velocities "
+                "or accelerations."
+            )
+        return _estimate_shape_preserving_velocities(
+            values, waypoint_times
+        ), None
 
     if method == "linear":
         if velocities is not None or accelerations is not None:
@@ -529,6 +609,7 @@ def _prepare_waypoint_request(
     times = _prepare_waypoint_times(waypoint_times, values.shape[0])
     derivatives = _prepare_waypoint_derivatives(
         values,
+        times,
         method=method,
         derivative_policy=derivative_policy,
         velocities=velocities,
@@ -711,8 +792,9 @@ def joint_waypoint_trajectory(
 ):
     """Generate piecewise linear, cubic or quintic joint-space trajectories.
 
-    The default zero-derivative policy stops at each waypoint. Full velocity
-    and acceleration arrays may override defaults when supported by method.
+    The 'zero' policy stops at every waypoint unless complete derivative
+    arrays are provided. The cubic-only 'shape_preserving' policy estimates
+    interior velocities, with zero velocities at both global endpoints.
     """
     values, times, samples, (v, a) = _prepare_waypoint_request(
         waypoints,
@@ -747,6 +829,8 @@ def position_waypoint_trajectory(
     """Generate piecewise polynomial Cartesian-position trajectories.
 
     Cartesian waypoints and derivative matrices must have shape (K, 3).
+    The cubic-only 'shape_preserving' policy estimates coordinate-wise
+    interior velocities and rests at both endpoints.
     """
     values, times, samples, (v, a) = _prepare_waypoint_request(
         waypoints,
