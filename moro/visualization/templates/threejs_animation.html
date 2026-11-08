@@ -140,9 +140,6 @@ __COMMON_SCRIPT__
                 initRobot___UNIQUE_ID__,
                 function(error) {
                     var status = document.getElementById('status-__UNIQUE_ID__');
-            var timeControl = document.getElementById('time-control-__UNIQUE_ID__');
-            var timeLabel = document.getElementById('time-label-__UNIQUE_ID__');
-            var speedLabel = document.getElementById('speed-label-__UNIQUE_ID__');
                     status.innerHTML = 'Error loading Three.js: ' + error.message;
                     status.style.color = 'red';
                 }
@@ -168,6 +165,9 @@ __COMMON_SCRIPT__
             var playButton = document.getElementById('play-button-__UNIQUE_ID__');
             var cameraSelect = document.getElementById('cam-type-__UNIQUE_ID__');
             var status = document.getElementById('status-__UNIQUE_ID__');
+            var timeControl = document.getElementById('time-control-__UNIQUE_ID__');
+            var timeLabel = document.getElementById('time-label-__UNIQUE_ID__');
+            var speedLabel = document.getElementById('speed-label-__UNIQUE_ID__');
 
             var scene;
             var camera;
