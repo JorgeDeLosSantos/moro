@@ -1,9 +1,9 @@
 # API-001 — Visualizer configuration/parameter normalization
 
-> **Status:** A1 private helpers integrated in PR #52; A2 public visualizer
-> integration implemented in the current increment. A3 user-facing
-> documentation and notebook stabilization remain separate. This design
-> concerns serial kinematic DH visualization, not numerical dynamics.
+> **Status:** A1 private helpers merged through PR #52; A2 public
+> visualizer integration merged through PR #53. A3 documents the new API,
+> provides notebook-ready RR/RP examples and drafts the 0.7.0 migration
+> notes. Moro 0.7.0 as a whole remains unreleased.
 
 ## Public API integrated in A2
 
@@ -86,9 +86,10 @@ A1 introduces the following private functions in
 | `_normalize_visualization_configurations(robot, configurations, parameters=None)` | Normalize animation frames and reuse the validated fixed parameters |
 
 These helpers return ordinary substitution dictionaries suitable for the
-current `evaluate_robot(robot, substitutions)` contract. In A2, only
-`RobotVisualizer` will use the new normalization layer; backends
-continue receiving evaluated `SceneData`, with unchanged time handling.
+existing `evaluate_robot(robot, substitutions)` contract. A2 connects
+`RobotVisualizer.plot()` and `animate()` to this normalization layer;
+the backends continue receiving evaluated `SceneData`, with unchanged
+time handling. The old visualizer-local normalization helpers were removed.
 
 ## Acceptance checks
 
@@ -103,5 +104,9 @@ the public orchestrator. Added regression coverage of named/positional calls,
 both rendering backends, physical-time playback, constant DH geometry, legacy
 full mappings, input nonmutation and the deliberate keyword rename.
 
-A3: refresh user documentation and 0.7.0 release notes; examples and
-complete notebook/backend smoke tests.
+A3: refreshed the Visualization User Guide and Quick Start, updated
+trapezoidal/physical-time examples, added an independent symbolic RR/RP
+notebook example and its executable-code-block smoke test, and drafted
+[unreleased 0.7.0 migration notes](../../source/release-notes/0.7.0.md).
+Interactive Colab rendering of the new symbolic-parameter example remains
+a manual acceptance step before final closure.
