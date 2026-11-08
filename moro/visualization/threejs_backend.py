@@ -14,6 +14,7 @@ import numpy as np
 from .data import SceneData
 from .framing import SceneFraming, resolve_framing
 from .layout import VisualizationLayout, resolve_layout
+from .playback import _normalize_playback_speed, _normalize_playback_times
 from .joint_symbols import build_joint_symbols
 from .joint_solids import build_joint_solids
 from .style import VisualizationStyle, resolve_joint_style
@@ -244,8 +245,14 @@ class ThreeJSBackend:
         layout: VisualizationLayout | None = None,
         framing: SceneFraming | None = None,
         interval: float = 100,
+        relative_times=None,
+        playback_speed: float = 1.0,
     ):
-        """Return an interactive Three.js animation as ``IPython.display.HTML``."""
+        """Return a Three.js animation; optionally follow physical timestamps.
+
+        relative_times is a private normalized-seconds input from the
+        visualizer; without it, the historical fixed-interval mode is kept.
+        """
         from IPython.display import HTML
 
         if not scene_data_list:
@@ -257,6 +264,18 @@ class ThreeJSBackend:
         interval = float(interval)
         if not math.isfinite(interval) or interval <= 0:
             raise ValueError("interval must be a finite positive number of milliseconds.")
+
+        speed = _normalize_playback_speed(playback_speed)
+        if relative_times is None:
+            if speed != 1.0:
+                raise ValueError(
+                    "playback_speed requires physical-time timestamps."
+                )
+            times_payload = None
+        else:
+            times_payload = _normalize_playback_times(
+                relative_times, len(scene_data_list)
+            ).tolist()
 
         if style is None:
             style = VisualizationStyle()
@@ -317,6 +336,9 @@ class ThreeJSBackend:
             "trajectory": _extract_end_effector_trajectory(scene_data_list),
             "interval": interval,
         }
+        if times_payload is not None:
+            animation_payload["relative_times"] = times_payload
+            animation_payload["playback_speed"] = speed
 
         html = _render_html_template(
             "threejs_animation.html",

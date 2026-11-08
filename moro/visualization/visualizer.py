@@ -145,9 +145,8 @@ class RobotVisualizer:
         """Animate joint configurations; return HTML by default.
 
         Legacy interval-based playback and the Matplotlib FuncAnimation
-        return contract remain unchanged. T-06/C1 reserves validated,
-        opt-in physical-time arguments; actual Three.js playback follows
-        in C2, so this increment explicitly rejects time-aware playback.
+        return contract remain unchanged. With times=, Three.js uses the
+        supplied physical timestamps instead of a fixed frame interval.
         """
         configurations = _normalize_configurations(
             self.robot,
@@ -155,6 +154,7 @@ class RobotVisualizer:
         )
 
         speed = _normalize_playback_speed(playback_speed)
+        relative_times = None
         if times is None:
             if speed != 1.0:
                 raise ValueError(
@@ -167,20 +167,14 @@ class RobotVisualizer:
                     "times and interval are alternative playback controls; "
                     "provide only one."
                 )
-            # C1 validates physical sample times without altering the
-            # legacy rendering path or silently applying uniform timing.
-            _normalize_playback_times(times, len(configurations))
+            relative_times = _normalize_playback_times(
+                times, len(configurations)
+            )
             if backend == "matplotlib":
                 raise ValueError(
-                    "Physical-time playback with times= is not supported "
-                    "by Matplotlib. Three.js support is planned for T-06/C2; "
-                    "omit times and specify interval for legacy playback."
-                )
-            if backend == "threejs":
-                raise NotImplementedError(
-                    "Physical-time Three.js playback is not yet enabled: "
-                    "T-06/C1 defines the time contract; C2 adds the "
-                    "browser-clock playback engine."
+                    "Matplotlib does not support physical-time playback "
+                    "with times=; use the Three.js backend or omit times "
+                    "and specify interval for Matplotlib."
                 )
 
         scene_data_list = [
@@ -191,6 +185,9 @@ class RobotVisualizer:
         if backend == "matplotlib":
             return MatplotlibBackend.animate(scene_data_list, **kwargs)
         if backend == "threejs":
+            if relative_times is not None:
+                kwargs["relative_times"] = relative_times
+                kwargs["playback_speed"] = speed
             return ThreeJSBackend.animate(scene_data_list, **kwargs)
 
         raise ValueError(
