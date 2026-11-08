@@ -207,16 +207,18 @@ configurations = [
 viewer = RobotVisualizer(robot).animate(
     configurations,
     backend="threejs",
-    interval=1000.0 * rr.duration / (rr.samples - 1),
+    times=rr.t,
+    playback_speed=1.0,
 )
 display(viewer)
 ```
 
-**Playback note:** the time samples produced by this generator are
-uniform, so `interval` approximates the physical sample spacing in
-milliseconds. The current visualizer uses a fixed playback interval;
-actual real-time scheduling is not guaranteed, and playback at
-nonuniform sample times is separate T-06 work.
+**Playback note:** T-06 uses the physical timestamps returned by this
+generator, so there is no need to manually calculate a millisecond
+`interval`. The player follows a monotonic browser clock but does
+not provide hard real-time guarantees or interpolate configurations.
+For a nonuniform multi-waypoint example and interactive checks,
+see [Physical-Time Animation Playback](physical-time-playback.md).
 
 ## 4. Compare against a quintic trajectory
 
