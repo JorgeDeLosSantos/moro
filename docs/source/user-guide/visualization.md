@@ -347,31 +347,64 @@ viz.animate(configurations, interval=50)
 For Three.js this is a positive finite number and controls the browser's
 playback timer, not the physical time coordinates of a computed trajectory.
 
-### Physical-time playback — T-06 implementation status
+### Physical-time playback in Three.js (T-06)
 
-**The time-aware player is not available yet.** T-06/C1 establishes the
-opt-in input contract for future playback:
+The default Three.js backend can reproduce joint configurations at explicit
+**physical timestamps**, including nonuniform intervals:
 
 ```python
-# Planned for T-06/C2, not yet functional on this increment:
+# For a trajectory with matching time-major q and physical times t:
 viz.animate(traj.q, times=traj.t, playback_speed=1.0)
 ```
 
-The `times` input must have one finite, real, strictly increasing timestamp
-in **seconds** per frame, with at least two timestamps. `playback_speed` is
-a finite positive factor, defaulting to 1.0. The absolute time origin need
-not be zero.
+`times` has one strictly increasing, finite real timestamp in **seconds**
+per frame, with at least two samples. Its first value need not be zero:
+Three.js uses the elapsed time relative to the first timestamp.
+`playback_speed` is a strictly positive finite multiplier (1.0 = nominal
+physical speed, 2.0 = twice as fast, 0.5 = half speed). No intermediate
+joint configurations are interpolated inside the visualizer.
 
-During C1, valid `times` inputs explicitly raise `NotImplementedError`
-for the Three.js backend instead of silently falling back to uniform frame
-playback. For Matplotlib, specifying `times` raises `ValueError` because
-physical-time support is outside the initial T-06 scope. Existing
-`interval` animations on both backends remain fully supported.
+For example, a minimal one-joint animation that holds unevenly spaced
+samples can be created as follows:
 
-Do not combine explicit `times` with `interval`; the two controls are
-mutually exclusive. A non-default `playback_speed` without `times` is
-also invalid. The Three.js clock engine and manual playback controls will
-be implemented separately in C2.
+```python
+from moro import Robot
+from moro.abc import q1
+from moro.visualization import RobotVisualizer
+
+robot = Robot((1.0, 0, 0, q1, "r"))
+viz = RobotVisualizer(robot)
+
+viz.animate(
+    [[0.0], [0.2], [0.5], [0.8], [1.0]],
+    times=[0.0, 0.1, 0.7, 0.8, 1.5],
+)
+```
+
+Playback follows a monotonic browser clock and selects the most recent
+supplied frame at or before the current physical time. The frame slider
+snaps the playback clock to the selected timestamp. Pause preserves the
+elapsed time, Play resumes, and playback stops at the final configuration.
+Pressing Play after completion restarts at the beginning. Camera operations
+and Fit View do not reset playback.
+
+If the browser is slow or a tab has been throttled, frames may be skipped
+to catch up to the physical clock. This is visual playback, **not a
+real-time control guarantee**. The time indicator displays elapsed
+physical time and the playback-speed factor; the slider remains indexed
+by frames.
+
+Do not combine explicit `times` with `interval`. A non-default
+`playback_speed` without `times` is also invalid. The original
+`interval`-based mode remains unchanged and continues looping frames
+uniformly by default.
+
+**Matplotlib limitation:** physical-time playback via `times=` is **not
+supported** in this version. Passing it with
+`backend="matplotlib"` raises a clear `ValueError`. Matplotlib
+continues to support the existing `interval`-based `FuncAnimation`
+workflow; setting a fixed `interval` cannot accurately reproduce
+arbitrary nonuniform physical times.
 
 ## Customizing the visualization
 
