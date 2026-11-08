@@ -208,7 +208,7 @@ the requested physical-time playback.
 Also, `times` and `interval` must not be specified together.
 For background and the timing contract, see
 [Visualization](../user-guide/visualization.md) and the
-[T-06 design](../../design/0.7.0/physical-time-playback.md).
+[T-06 design](https://github.com/JorgeDeLosSantos/moro/blob/develop/docs/design/0.7.0/physical-time-playback.md).
 
 **Teaching question:** Compare the two animations from Section 2.
 How does holding every sample for 150 milliseconds change the student's
