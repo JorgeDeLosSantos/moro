@@ -41,6 +41,7 @@ benefit from symbolic kinematics and dynamics.
    examples/full-pose-inverse-kinematics
    examples/trajectory-generation
    examples/trapezoidal-trajectories
+   examples/physical-time-playback
    examples/cartesian-trajectory-ik
    examples/velocity-inverse-kinematics
    examples/singularity-manipulability

@@ -406,6 +406,27 @@ continues to support the existing `interval`-based `FuncAnimation`
 workflow; setting a fixed `interval` cannot accurately reproduce
 arbitrary nonuniform physical times.
 
+### Backend capability summary
+
+| Animation capability | Three.js (default) | Matplotlib |
+| --- | --- | --- |
+| Fixed `interval` playback | Yes; loops | Yes; `FuncAnimation` |
+| Explicit `times` in seconds | Yes; including nonuniform grids | Not supported (raises `ValueError`) |
+| `playback_speed` with `times` | Yes; finite positive multiplier | Not supported |
+| Pause / resume / frame seek | Yes; synchronized with physical time | Unchanged Matplotlib controls |
+| Physical-time end behavior | Stops at the final configuration | Not applicable |
+| Interpolation of missing samples | No | No T-06 feature |
+| Hard real-time scheduling | Not guaranteed | Not guaranteed |
+
+For an executable two-joint example (including a nonuniform
+multi-waypoint trajectory, a trapezoidal trajectory and a visual
+verification checklist), see
+[Physical-Time Animation Playback](../examples/physical-time-playback.md).
+The behavior is based on a browser monotonic clock; if a notebook
+viewer does not render correctly, check browser console output and
+whether Three.js dependencies loaded, rather than assuming
+`times` was converted into a fixed `interval`.
+
 ## Customizing the visualization
 
 Visual appearance is configured through:

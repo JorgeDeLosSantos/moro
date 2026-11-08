@@ -111,18 +111,25 @@ The time vector remains available as `cart.t`, while the IK result stores the so
 
 ## 4. Joint trajectory plus visualization
 
-A `JointTrajectory` can be animated directly because `traj.q` is a numerical matrix with shape `(N, robot.dof)`:
+A `JointTrajectory` can be animated by passing its numerical joint
+matrix `traj.q` (shape `(N, robot.dof)`) and its time vector `traj.t`
+to the Three.js visualizer:
 
 ```python
 from moro.visualization import RobotVisualizer
 
 viz = RobotVisualizer(robot)
-viz.animate(traj.q)
+viz.animate(traj.q, times=traj.t)
 ```
 
-The visualization layer accepts the matrix structurally and does not import or depend on `JointTrajectory`.
+The visualization layer accepts these arrays structurally and does not
+import or depend on `JointTrajectory`. T-06 reproduces nonuniform
+`traj.t` explicitly; without `times`, the older fixed-`interval`
+mode continues to work and loops. Matplotlib currently supports only
+the fixed-`interval` path.
 
-For nonuniform `traj.t`, the animation still uses the backend interval controls; exact variable-time playback is not currently supported.
+See [Physical-Time Animation Playback](physical-time-playback.md) for
+a runnable RR example with nonuniform sample times.
 
 ## 5. Synchronized trapezoidal joint motion
 

@@ -1,6 +1,6 @@
 # Moro 0.7.0 — Detailed design: physical-time animation playback (T-06)
 
-> **Status:** Design approved and merged in PR #48; C1 contract merged in PR #49; C2 Three.js playback implemented in the current increment, pending review.  
+> **Status:** Design merged in PR #48; C1 input contract merged in PR #49; C2 Three.js engine merged in PR #50; C3 documentation, examples and regression stabilization in progress.  
 > **Scope:** Use explicit trajectory timestamps to reproduce sampled robot configurations with their original, possibly nonuniform timing in Three.js, while preserving the existing fixed-interval mode and documenting Matplotlib limitations.  
 > **Planning reference:** [0.7.0 inventory](../../roadmap/0.7.0/index.md).  
 > **Implementation base:** After T-04/B3 (PR #47), with current `RobotVisualizer.animate()` and backend animation APIs.
@@ -276,7 +276,7 @@ at completion. The built-in frame slider does not interpolate joint data.
 
 Matplotlib `times=` continues to raise a targeted `ValueError` in
 C1/C2/C3. Existing uniform `interval` calls remain usable and unchanged
-throughout. C3 will include notebook smoke checks and final examples.
+throughout. C3 includes a runnable [notebook-style RR example](../../source/examples/physical-time-playback.md), backend capability documentation and additional automated state-machine checks. Interactive Jupyter/Colab browser verification remains a manual acceptance step; Python CI and optional Node tests cannot verify the complete WebGL rendering environment.
 
 ## 9. Work packages
 
@@ -297,8 +297,13 @@ uniform-interval support and documents explicit physical-time
 limitations; no silent fallback; new controls opt-in; no interpolation
 or model-layer coupling.
 
-**Proposed detailed semantics for review:** physical-time mode stops
-on the final frame, Play-after-finish restarts, legacy mode continues
-looping, frame slider seeks to sample timestamps, playback uses a
-monotonic clock, and API uses explicit `times` with optional
-`playback_speed`. No direct `JointTrajectory` input in T-06.
+**Implemented semantics:** physical-time mode stops on the final
+frame, Play-after-finish restarts, legacy mode continues looping,
+the frame slider seeks to sample timestamps, and playback uses a
+monotonic clock. The API accepts explicit `times` and optional
+`playback_speed`. Direct `JointTrajectory` input is not part of T-06.
+
+**Manual acceptance outstanding:** confirm nonuniform playback, pause/resume,
+seeking, repeated start/finish, camera independence and multiple viewers in
+actual Jupyter and Colab environments before declaring browser UX fully
+verified. Capture any browser-specific issues in a follow-up fix.

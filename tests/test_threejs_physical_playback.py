@@ -17,7 +17,7 @@ from IPython.display import HTML
 
 from moro.abc import q1
 from moro.core import Robot
-from moro.trajectory import joint_trapezoidal_trajectory
+from moro.trajectory import joint_trapezoidal_trajectory, joint_waypoint_trajectory
 from moro.visualization import RobotVisualizer
 
 
@@ -241,3 +241,293 @@ def test_browser_pause_resume_seek_finish_and_restart_with_node():
         [4, False, 1.5],
         [0, True, 0.0],
     ]
+
+
+def test_documented_irregular_rr_waypoint_example_payload():
+    """The Jupyter teaching example must work with its actual sample grid."""
+    from moro.abc import q2
+
+    robot = Robot(
+        (1.0, 0, 0, q1, "r"),
+        (0.8, 0, 0, q2, "r"),
+    )
+    visualizer = RobotVisualizer(robot)
+
+    waypoints = np.array([
+        [0.0, 0.0],
+        [0.65, -0.3],
+        [1.2, 0.4],
+    ])
+    sample_times = np.array([
+        0.0, 0.07, 0.20, 0.50, 1.0,
+        1.05, 1.40, 1.70, 2.00, 2.30, 2.60,
+    ])
+    motion = joint_waypoint_trajectory(
+        waypoints,
+        [0.0, 1.0, 2.6],
+        method="cubic",
+        derivative_policy="shape_preserving",
+        sample_times=sample_times,
+    )
+    assert motion.q.shape == (11, 2)
+    np.testing.assert_array_equal(motion.t, sample_times)
+
+    result = visualizer.animate(motion.q, times=motion.t)
+    payload = _animation_payload(result)
+    assert len(payload["frames"]) == len(sample_times)
+    np.testing.assert_allclose(
+        payload["relative_times"], sample_times, atol=1e-14,
+    )
+    assert payload["playback_speed"] == 1.0
+    assert payload["relative_times"][-1] == pytest.approx(2.6)
+
+    legacy = _animation_payload(visualizer.animate(motion.q, interval=150))
+    assert legacy["interval"] == 150.0
+    assert "relative_times" not in legacy
+
+
+def test_documented_rr_trapezoidal_example_has_physical_duration():
+    from moro.abc import q2
+
+    visualizer = RobotVisualizer(Robot(
+        (1.0, 0, 0, q1, "r"),
+        (0.8, 0, 0, q2, "r"),
+    ))
+    trapezoidal = joint_trapezoidal_trajectory(
+        [0.0, 0.0], [1.2, -0.8],
+        v_max=[0.6, 0.4], a_max=[1.0, 0.8],
+        samples=161,
+    )
+    assert np.isclose(trapezoidal.duration, 2.6)
+    html = visualizer.animate(
+        trapezoidal.q, times=trapezoidal.t, playback_speed=0.75
+    )
+    payload = _animation_payload(html)
+    assert len(payload["frames"]) == 161
+    assert payload["relative_times"][-1] == pytest.approx(
+        trapezoidal.duration
+    )
+    assert payload["playback_speed"] == 0.75
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not available")
+def test_browser_variable_speed_seek_when_paused_and_delayed_frame_skip():
+    """Exercise actual C2 state functions under 2x time and stalled rendering."""
+    raw = (
+        files("moro.visualization.templates")
+        .joinpath("threejs_animation.html")
+        .read_text(encoding="utf-8")
+    )
+    opening = "            function displayFrame(index) {"
+    closing = "            function setView(viewName) {"
+    assert opening in raw and closing in raw
+    state_machine = opening + raw.split(opening, 1)[1].split(closing, 1)[0]
+    prelude = """
+        var now = 0;
+        var performance = {now: function() { return now; }};
+        var relativeTimes = [0, 0.1, 0.7, 0.8, 1.5];
+        var framesData = [{}, {}, {}, {}, {}];
+        var hasPhysicalTime = true;
+        var playbackSpeed = 2;
+        var physicalDuration = 1.5;
+        var physicalElapsed = 0;
+        var anchorPhysicalElapsed = 0;
+        var anchorWallMs = 0;
+        var currentFrame = 0;
+        var isPlaying = false;
+        var playInterval = null;
+        var slider = {value: 0};
+        var frameLabel = {textContent: '0'};
+        var timeLabel = {textContent: ''};
+        var playButton = {innerHTML: '', setAttribute: function() {}};
+        var updateRobotObjects = function() {};
+        var updateTrajectoryForFrame = function() {};
+        var animationData = {interval: 100};
+        var window = {
+            setInterval: function() {throw Error('legacy timer must not run');},
+            clearInterval: function() {throw Error('legacy timer must not run');}
+        };
+        function snapshot() {
+            return [currentFrame, isPlaying, Number(physicalElapsed.toFixed(3))];
+        }
+    """
+    scenario = """
+        var result = [];
+        startPlayback();
+        now = 200;
+        syncPhysicalPlayback(now);    // 0.4 seconds of progress at 2x
+        result.push(snapshot());
+        now = 400;
+        syncPhysicalPlayback(now);    // 0.8 seconds, frame 2 may be skipped
+        result.push(snapshot());
+        pausePlayback();
+        goToFrame(1);                 // snap to 0.1 while paused
+        result.push(snapshot());
+        now = 5000;                   // long pause should not advance
+        syncPhysicalPlayback(now);
+        result.push(snapshot());
+        startPlayback();              // resume from 0.1
+        now = 5400;                   // 0.8 additional seconds at double speed
+        syncPhysicalPlayback(now);    // progress 0.9 seconds
+        result.push(snapshot());
+        now = 10000;                  // delayed tab: finish at final frame
+        syncPhysicalPlayback(now);
+        result.push(snapshot());
+        console.log(JSON.stringify(result));
+    """
+    completed = subprocess.run(
+        ["node", "-e", prelude + state_machine + scenario],
+        capture_output=True, text=True, timeout=10, check=True,
+    )
+    assert json.loads(completed.stdout) == [
+        [1, True, 0.4],
+        [3, True, 0.8],
+        [1, False, 0.1],
+        [1, False, 0.1],
+        [3, True, 0.9],
+        [4, False, 1.5],
+    ]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not available")
+def test_browser_legacy_uniform_player_still_loops_and_clears_timer():
+    """Exercise the existing setInterval loop, not only its payload."""
+    raw = (
+        files("moro.visualization.templates")
+        .joinpath("threejs_animation.html")
+        .read_text(encoding="utf-8")
+    )
+    opening = "            function displayFrame(index) {"
+    closing = "            function setView(viewName) {"
+    state_machine = opening + raw.split(opening, 1)[1].split(closing, 1)[0]
+    prelude = """
+        var now = 0;
+        var performance = {now: function() { return now; }};
+        var relativeTimes = null;
+        var framesData = [{}, {}, {}];
+        var hasPhysicalTime = false;
+        var playbackSpeed = 1;
+        var physicalDuration = 0;
+        var physicalElapsed = 0;
+        var anchorPhysicalElapsed = 0;
+        var anchorWallMs = 0;
+        var currentFrame = 0;
+        var isPlaying = false;
+        var playInterval = null;
+        var slider = {value: 0};
+        var frameLabel = {textContent: '0'};
+        var timeLabel = {textContent: ''};
+        var playButton = {innerHTML: '', setAttribute: function() {}};
+        var updateRobotObjects = function() {};
+        var updateTrajectoryForFrame = function() {};
+        var animationData = {interval: 80};
+        var tick;
+        var cleared = 0;
+        var window = {
+            setInterval: function(callback, ms) {
+                if (ms !== 80) {throw Error('incorrect legacy interval');}
+                tick = callback;
+                return 7;
+            },
+            clearInterval: function(id) {
+                if (id !== 7) {throw Error('wrong timer id');}
+                cleared++;
+            }
+        };
+    """
+    scenario = """
+        startPlayback();
+        var results = [[currentFrame, isPlaying]];
+        tick();
+        results.push([currentFrame, isPlaying]);
+        tick();
+        results.push([currentFrame, isPlaying]);
+        tick();                      // legacy mode loops to first sample
+        results.push([currentFrame, isPlaying]);
+        pausePlayback();
+        results.push([currentFrame, isPlaying, cleared, playInterval]);
+        console.log(JSON.stringify(results));
+    """
+    completed = subprocess.run(
+        ["node", "-e", prelude + state_machine + scenario],
+        capture_output=True, text=True, timeout=10, check=True,
+    )
+    assert json.loads(completed.stdout) == [
+        [0, True],
+        [1, True],
+        [2, True],
+        [0, True],
+        [0, False, 1, None],
+    ]
+
+
+def test_browser_time_controls_are_declared_in_animation_initializer():
+    """Catch undeclared timeControl/timeLabel/speedLabel in a real browser."""
+    template = (
+        files("moro.visualization.templates")
+        .joinpath("threejs_animation.html")
+        .read_text(encoding="utf-8")
+    )
+    initializer = template.split(
+        "function initRobot___UNIQUE_ID__() {", 1
+    )[1].split("var scene;", 1)[0]
+    for variable, element in (
+        ("timeControl", "time-control"),
+        ("timeLabel", "time-label"),
+        ("speedLabel", "speed-label"),
+    ):
+        expected = (
+            f"var {variable} = document.getElementById("
+            f"'{element}-__UNIQUE_ID__');"
+        )
+        assert expected in initializer
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not available")
+def test_browser_time_controls_bind_and_update_with_node():
+    """Execute actual initializer's DOM bindings, not just JS syntax."""
+    template = (
+        files("moro.visualization.templates")
+        .joinpath("threejs_animation.html")
+        .read_text(encoding="utf-8")
+    )
+    initializer = template.split(
+        "function initRobot___UNIQUE_ID__() {", 1
+    )[1].split("var scene;", 1)[0]
+    payload = {
+        "frames": [{}, {}],
+        "style": {},
+        "layout": {},
+        "framing": {},
+        "trajectory": [],
+        "relative_times": [0.0, 0.5],
+        "playback_speed": 2.0,
+    }
+    initializer = initializer.replace(
+        "__ANIMATION_DATA__", json.dumps(payload),
+    )
+    source = (
+        '"use strict";\n'
+        "var document = {"
+        "elements: {},"
+        "getElementById: function(id) {"
+        "return this.elements[id] ||= {hidden:true,textContent:''};"
+        "}"
+        "};\n"
+        "function verify() {\n"
+        + initializer
+        + "\ntimeControl.hidden = false;\n"
+        + "speedLabel.textContent = playbackSpeed + '×';\n"
+        + "timeLabel.textContent = physicalDuration.toFixed(2);\n"
+        + "console.log(JSON.stringify(["
+        + "timeControl.hidden, speedLabel.textContent, timeLabel.textContent"
+        + "]));\n}\nverify();"
+    )
+    run = subprocess.run(
+        ["node", "-e", source],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=True,
+    )
+    assert json.loads(run.stdout) == [False, "2×", "0.50"]
