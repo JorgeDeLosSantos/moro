@@ -8,6 +8,7 @@ from moro.core import Robot
 
 from .evaluation import evaluate_robot
 from .matplotlib_backend import MatplotlibBackend
+from .playback import _normalize_playback_speed, _normalize_playback_times
 from .threejs_backend import ThreeJSBackend
 
 
@@ -132,15 +133,55 @@ class RobotVisualizer:
             "Available backends: 'matplotlib', 'threejs'."
         )
 
-    def animate(self, num_vals_list, backend="threejs", **kwargs):
+    def animate(
+        self,
+        num_vals_list,
+        backend="threejs",
+        *,
+        times=None,
+        playback_speed=1.0,
+        **kwargs,
+    ):
         """Animate joint configurations; return HTML by default.
 
-        backend='matplotlib' explicitly returns FuncAnimation instead.
+        Legacy interval-based playback and the Matplotlib FuncAnimation
+        return contract remain unchanged. T-06/C1 reserves validated,
+        opt-in physical-time arguments; actual Three.js playback follows
+        in C2, so this increment explicitly rejects time-aware playback.
         """
         configurations = _normalize_configurations(
             self.robot,
             num_vals_list,
         )
+
+        speed = _normalize_playback_speed(playback_speed)
+        if times is None:
+            if speed != 1.0:
+                raise ValueError(
+                    "playback_speed requires explicit times; "
+                    "use interval for legacy frame playback."
+                )
+        else:
+            if "interval" in kwargs:
+                raise ValueError(
+                    "times and interval are alternative playback controls; "
+                    "provide only one."
+                )
+            # C1 validates physical sample times without altering the
+            # legacy rendering path or silently applying uniform timing.
+            _normalize_playback_times(times, len(configurations))
+            if backend == "matplotlib":
+                raise ValueError(
+                    "Physical-time playback with times= is currently "
+                    "supported only by the Three.js backend; use "
+                    "backend='threejs' or omit times and specify interval."
+                )
+            if backend == "threejs":
+                raise NotImplementedError(
+                    "Physical-time Three.js playback is not yet enabled: "
+                    "T-06/C1 defines the time contract; C2 adds the "
+                    "browser-clock playback engine."
+                )
 
         scene_data_list = [
             evaluate_robot(self.robot, num_vals)
