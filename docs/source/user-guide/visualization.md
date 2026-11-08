@@ -771,7 +771,7 @@ Suppose Cartesian targets `targets` have already been prepared for the
 symbolic RR robot defined above:
 
 ```python
-from moro.ik import solve_position_trajectory
+from moro.inverse_kinematics import solve_position_trajectory
 
 parameters = {l1: 1.0, l2: 0.8}
 trajectory = solve_position_trajectory(
