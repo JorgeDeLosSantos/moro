@@ -123,3 +123,25 @@ viz.animate(traj.q)
 The visualization layer accepts the matrix structurally and does not import or depend on `JointTrajectory`.
 
 For nonuniform `traj.t`, the animation still uses the backend interval controls; exact variable-time playback is not currently supported.
+
+## 5. Synchronized trapezoidal joint motion
+
+Moro also provides a **limit-driven** point-to-point generator:
+
+```python
+from moro.trajectory import joint_trapezoidal_trajectory
+
+trapezoidal = joint_trapezoidal_trajectory(
+    [0.0, 0.0], [1.2, -0.8],
+    v_max=[0.6, 0.4], a_max=[1.0, 0.8],
+)
+```
+
+Its velocity is piecewise linear with a constant-speed phase when the
+distance is sufficient; otherwise the speed profile is triangular. Unlike
+quintic interpolation, it directly enforces the supplied speed and
+acceleration limits along a straight path in joint space.
+
+For complete R/RR code, physical-limit checks, plots and a same-duration
+quintic comparison, see
+[Trapezoidal Joint-Space Trajectories](trapezoidal-trajectories.md).
