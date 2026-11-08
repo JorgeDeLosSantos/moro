@@ -172,9 +172,9 @@ class RobotVisualizer:
             )
             if backend == "matplotlib":
                 raise ValueError(
-                    "Physical-time playback with times= is supported only "
-                    "by the Three.js backend; use backend='threejs' or omit "
-                    "times and specify interval."
+                    "Matplotlib does not support physical-time playback "
+                    "with times=; use the Three.js backend or omit times "
+                    "and specify interval for Matplotlib."
                 )
 
         scene_data_list = [
