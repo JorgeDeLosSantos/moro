@@ -781,7 +781,7 @@ def test_robot_visualizer_animate_empty_list_raises(simple_robot):
 
     with pytest.raises(
         ValueError,
-        match="num_vals_list must contain at least one configuration",
+        match="configurations must contain at least one frame",
     ):
         viz.animate([])
 
