@@ -260,7 +260,23 @@ browser behavior; supplement with interactive Jupyter/Colab manual checks
 of pause, resume, seeking and nonuniform timing. Keep visual regression
 requirements proportionate to repository infrastructure.
 
-## 8. Work packages
+## 8. C1 safe-increment policy
+
+C1 intentionally adds the public keyword-only input contract, private
+validation helpers, compatibility tests and clear backend error paths
+**without activating** the Three.js physical-time mode. Until C2 has
+implemented and verified timestamped browser playback, a valid request
+with `times=` on Three.js must raise `NotImplementedError` describing
+the pending C2 engine. This prevents the current `setInterval` timer
+from silently presenting variable-time data as uniformly spaced.
+
+Matplotlib `times=` continues to raise a targeted `ValueError` in
+C1/C2/C3. Existing uniform `interval` calls remain usable and
+unchanged throughout. C2 removes the provisional Three.js
+`NotImplementedError` guard, passes validated relative times to the
+HTML payload and activates the new monotonic-clock playback path.
+
+## 9. Work packages
 
 | Increment | Scope | Exit criterion |
 | --- | --- | --- |
@@ -272,7 +288,7 @@ C3 does **not** require implementing physical-time Matplotlib playback.
 A separate future issue or scoped increment may address Matplotlib
 only after its semantics have been proven reliable.
 
-## 9. Proposed decisions
+## 10. Proposed decisions
 
 **Adopted for design:** Three.js first; Matplotlib retains legacy
 uniform-interval support and documents explicit physical-time
