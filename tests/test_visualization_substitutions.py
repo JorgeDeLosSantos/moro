@@ -218,13 +218,15 @@ def test_composite_joint_with_plain_symbols_requires_full_mapping():
         )
 
 
-def test_full_expression_substitution_is_not_mistaken_for_missing_parameter():
+def test_symbolic_dh_fragment_key_does_not_replace_required_symbol():
     L = sp.Symbol("L")
     robot = Robot((L / 2, 0, 0, q1, "r"))
-    result = _normalize_visualization_substitutions(
-        robot, {L / 2: 1.0, q1: 0.5}
-    )
-    assert evaluate_robot(robot, result)
+    # The expanded transform may contain L*cos(q1)/2, not the literal L/2.
+    # Accepting L/2 as the only substitution could thus fail downstream.
+    with pytest.raises(ValueError, match="Missing model parameters: L"):
+        _normalize_visualization_substitutions(
+            robot, {L / 2: 1.0, q1: 0.5}
+        )
 
 
 def test_animation_normalizes_parameters_once_and_returns_separate_mappings(rr):
