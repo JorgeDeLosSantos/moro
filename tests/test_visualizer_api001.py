@@ -128,7 +128,9 @@ def test_named_animation_parameters_times_and_speed_threejs(symbolic_rr):
     assert len(payload["frames"]) == 4
     np.testing.assert_allclose(payload["relative_times"], t)
     assert payload["playback_speed"] == 1.5
-    assert "interval" not in payload
+    # The backend retains the legacy interval field in its serialized
+    # payload; relative_times selects physical-time mode in the viewer.
+    assert payload["interval"] == 100.0
     np.testing.assert_array_equal(q, original_q)
     np.testing.assert_array_equal(t, original_t)
     assert constants == {l1: 1.0, l2: 0.8}
