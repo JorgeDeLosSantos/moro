@@ -173,15 +173,50 @@ def _normalize_joint_configuration(robot: Robot, configuration) -> dict:
 def _validate_dh_substitutions(robot: Robot, substitutions: dict) -> None:
     """Check DH rows directly, including legacy expression-key substitutions.
 
-    This check is based on the evaluated DH expressions rather than requiring
-    that every free symbol appear literally as a dictionary key: a legacy
-    configuration may legitimately substitute a complete DH subexpression.
+    Constant parameters are required as atomic Symbol keys, ensuring that
+    substitution also resolves the expanded homogeneous transformations.
+    The exact composite joint expression may still be substituted by a
+    legacy mapping key.
     """
     joint_atoms = _joint_atoms(robot)
+    replacements = {
+        joint: sp.Dummy(f"_moro_joint_{i}")
+        for i, joint in enumerate(sorted(joint_atoms, key=sp.default_sort_key))
+    }
+    dummies = set(replacements.values())
+    joint_fields = ("theta", "d")
+
     for row_index, row in enumerate(robot.dh_parameters, start=1):
+        joint_expression = sp.sympify(robot.qs[row_index - 1])
+        joint_field = joint_fields[robot.joint_types[row_index - 1] == "p"]
         for name, source in zip(_DH_NAMES, row):
+            expression = sp.sympify(source)
+
+            # The original scene evaluator substitutes against symbolic
+            # transformations, not the literal DH-table expressions.
+            # Substituting a fragment (e.g. L/2) without assigning L can
+            # appear valid in the table but leave symbolic entries in T_i0.
+            # Require atomic DH parameters, except when an entire composite
+            # joint expression is supplied as a legacy mapping key.
+            entire_joint_substituted = (
+                name == joint_field
+                and expression == joint_expression
+                and expression in substitutions
+            )
+            if not entire_joint_substituted:
+                required = (
+                    expression.xreplace(replacements).free_symbols
+                    - dummies - {t}
+                )
+                missing = required - set(substitutions)
+                if missing:
+                    labels = ", ".join(map(str, sorted(
+                        missing, key=sp.default_sort_key
+                    )))
+                    raise ValueError(f"Missing model parameters: {labels}")
+
             try:
-                evaluated = sp.sympify(source).subs(substitutions)
+                evaluated = expression.subs(substitutions)
             except (TypeError, ValueError, AttributeError, sp.SympifyError) as exc:
                 raise ValueError(
                     f"Could not evaluate DH row {row_index} parameter '{name}'."
