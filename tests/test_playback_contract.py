@@ -1,4 +1,4 @@
-"""T-06/C1 physical-time contract tests without activating browser playback."""
+"""T-06 physical-time validation and backwards compatibility tests."""
 
 import numpy as np
 import pytest
@@ -134,12 +134,20 @@ def test_explicit_times_with_matplotlib_reports_backend_limitation(visualizer):
         )
 
 
-def test_threejs_time_mode_explicitly_waits_for_c2_not_silent_uniform(visualizer):
-    with pytest.raises(NotImplementedError, match="C2"):
-        visualizer.animate([[0], [1]], times=[0.0, 1.0])
+def test_threejs_time_mode_is_available_without_silent_uniform_fallback(visualizer):
+    result = visualizer.animate(
+        [[0.0], [0.25], [0.5]],
+        times=[0.0, 0.1, 1.0],
+        playback_speed=1.5,
+    )
+    assert isinstance(result, HTML)
+    assert '"relative_times": [0.0, 0.1, 1.0]' in result.data
+    assert '"playback_speed": 1.5' in result.data
+    assert "frameIndexAtTime" in result.data
+    assert "performance.now()" in result.data
 
 
-def test_public_times_validation_precedes_staged_engine(visualizer):
+def test_public_times_validation_precedes_rendering(visualizer):
     with pytest.raises(ValueError, match="strictly increasing"):
         visualizer.animate([[0], [1]], times=[1.0, 1.0])
 
