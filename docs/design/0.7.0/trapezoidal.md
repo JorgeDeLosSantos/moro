@@ -1,6 +1,6 @@
 # Moro 0.7.0 — Detailed design: synchronized trapezoidal motion (T-04)
 
-> **Status:** Accepted architectural decisions; implementation pending.  
+> **Status:** Implemented in B1 (#45) and B2 (#46); B3 examples and regression stabilization included in the current increment.  
 > **Scope:** Point-to-point, rest-to-rest, synchronized joint-space motion with acceleration/cruise/deceleration phases and prescribed or minimum duration.  
 > **Planning reference:** [0.7.0 inventory](../../roadmap/0.7.0/index.md); [multi-waypoint polynomial design](trajectory.md) (T-01–T-03, merged through PR #43).
 
@@ -183,7 +183,7 @@ Recommended sequence:
 | **B2 — Joint API + metadata** | New public generator, normalized joint limits, `JointTrajectory` optional profile, method-validation split | Sync multi-DOF and 1-DOF tests, stationary movement, compatibility; no existing polynomial regression |
 | **B3 — Documentation and stabilization** | Teaching examples (R/RR), comparative plots vs quintic, API docs/migration, complete regression | CI green on supported Python versions, docs build, release scope review |
 
-A design-only pull request can establish the contract before B1. Implementation PRs should build sequentially on updated `develop`, pass existing CI and avoid merging without review.
+The design-only PR #44 was merged before B1. The private scalar core (PR #45) and public joint-space API with metadata (PR #46) are integrated. B3 adds a [teaching example](../../source/examples/trapezoidal-trajectories.md), theory updates and additional public-result regression tests. Continue to require full CI and review before integration.
 
 ## 9. Required tests and acceptance
 
