@@ -347,6 +347,32 @@ viz.animate(configurations, interval=50)
 For Three.js this is a positive finite number and controls the browser's
 playback timer, not the physical time coordinates of a computed trajectory.
 
+### Physical-time playback — T-06 implementation status
+
+**The time-aware player is not available yet.** T-06/C1 establishes the
+opt-in input contract for future playback:
+
+```python
+# Planned for T-06/C2, not yet functional on this increment:
+viz.animate(traj.q, times=traj.t, playback_speed=1.0)
+```
+
+The `times` input must have one finite, real, strictly increasing timestamp
+in **seconds** per frame, with at least two timestamps. `playback_speed` is
+a finite positive factor, defaulting to 1.0. The absolute time origin need
+not be zero.
+
+During C1, valid `times` inputs explicitly raise `NotImplementedError`
+for the Three.js backend instead of silently falling back to uniform frame
+playback. For Matplotlib, specifying `times` raises `ValueError` because
+physical-time support is outside the initial T-06 scope. Existing
+`interval` animations on both backends remain fully supported.
+
+Do not combine explicit `times` with `interval`; the two controls are
+mutually exclusive. A non-default `playback_speed` without `times` is
+also invalid. The Three.js clock engine and manual playback controls will
+be implemented separately in C2.
+
 ## Customizing the visualization
 
 Visual appearance is configured through:
