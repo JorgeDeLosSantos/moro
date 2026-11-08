@@ -1,6 +1,6 @@
 # Moro 0.7.0 — Detailed design: physical-time animation playback (T-06)
 
-> **Status:** Design proposal incorporating the approved Three.js-first scope; **implementation pending**.  
+> **Status:** Design approved and merged in PR #48; C1 contract merged in PR #49; C2 Three.js playback implemented in the current increment, pending review.  
 > **Scope:** Use explicit trajectory timestamps to reproduce sampled robot configurations with their original, possibly nonuniform timing in Three.js, while preserving the existing fixed-interval mode and documenting Matplotlib limitations.  
 > **Planning reference:** [0.7.0 inventory](../../roadmap/0.7.0/index.md).  
 > **Implementation base:** After T-04/B3 (PR #47), with current `RobotVisualizer.animate()` and backend animation APIs.
@@ -262,19 +262,21 @@ requirements proportionate to repository infrastructure.
 
 ## 8. C1 safe-increment policy
 
-C1 intentionally adds the public keyword-only input contract, private
-validation helpers, compatibility tests and clear backend error paths
-**without activating** the Three.js physical-time mode. Until C2 has
-implemented and verified timestamped browser playback, a valid request
-with `times=` on Three.js must raise `NotImplementedError` describing
-the pending C2 engine. This prevents the current `setInterval` timer
-from silently presenting variable-time data as uniformly spaced.
+C1 added the public keyword-only input contract, private validation
+helpers, compatibility tests and explicit backend error paths, without
+activating Three.js physical-time playback until C2.
+
+C2 removes the provisional Three.js `NotImplementedError` guard,
+serializes validated relative timestamps and speed in the HTML payload,
+and selects frames using `performance.now()` in the existing
+`requestAnimationFrame` loop. The legacy `setInterval` path is retained
+only when `times` is absent. Pausing preserves elapsed time; seeking
+reanchors the running clock; the final configuration remains displayed
+at completion. The built-in frame slider does not interpolate joint data.
 
 Matplotlib `times=` continues to raise a targeted `ValueError` in
-C1/C2/C3. Existing uniform `interval` calls remain usable and
-unchanged throughout. C2 removes the provisional Three.js
-`NotImplementedError` guard, passes validated relative times to the
-HTML payload and activates the new monotonic-clock playback path.
+C1/C2/C3. Existing uniform `interval` calls remain usable and unchanged
+throughout. C3 will include notebook smoke checks and final examples.
 
 ## 9. Work packages
 
