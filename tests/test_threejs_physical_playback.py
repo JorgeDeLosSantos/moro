@@ -459,3 +459,75 @@ def test_browser_legacy_uniform_player_still_loops_and_clears_timer():
         [0, True],
         [0, False, 1, None],
     ]
+
+
+def test_browser_time_controls_are_declared_in_animation_initializer():
+    """Catch undeclared timeControl/timeLabel/speedLabel in a real browser."""
+    template = (
+        files("moro.visualization.templates")
+        .joinpath("threejs_animation.html")
+        .read_text(encoding="utf-8")
+    )
+    initializer = template.split(
+        "function initRobot___UNIQUE_ID__() {", 1
+    )[1].split("var scene;", 1)[0]
+    for variable, element in (
+        ("timeControl", "time-control"),
+        ("timeLabel", "time-label"),
+        ("speedLabel", "speed-label"),
+    ):
+        expected = (
+            f"var {variable} = document.getElementById("
+            f"'{element}-__UNIQUE_ID__');"
+        )
+        assert expected in initializer
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not available")
+def test_browser_time_controls_bind_and_update_with_node():
+    """Execute actual initializer's DOM bindings, not just JS syntax."""
+    template = (
+        files("moro.visualization.templates")
+        .joinpath("threejs_animation.html")
+        .read_text(encoding="utf-8")
+    )
+    initializer = template.split(
+        "function initRobot___UNIQUE_ID__() {", 1
+    )[1].split("var scene;", 1)[0]
+    payload = {
+        "frames": [{}, {}],
+        "style": {},
+        "layout": {},
+        "framing": {},
+        "trajectory": [],
+        "relative_times": [0.0, 0.5],
+        "playback_speed": 2.0,
+    }
+    initializer = initializer.replace(
+        "__ANIMATION_DATA__", json.dumps(payload),
+    )
+    source = (
+        '"use strict";\n'
+        "var document = {"
+        "elements: {},"
+        "getElementById: function(id) {"
+        "return this.elements[id] ||= {hidden:true,textContent:''};"
+        "}"
+        "};\n"
+        "function verify() {\n"
+        + initializer
+        + "\ntimeControl.hidden = false;\n"
+        + "speedLabel.textContent = playbackSpeed + '×';\n"
+        + "timeLabel.textContent = physicalDuration.toFixed(2);\n"
+        + "console.log(JSON.stringify(["
+        + "timeControl.hidden, speedLabel.textContent, timeLabel.textContent"
+        + "]));\n}\nverify();"
+    )
+    run = subprocess.run(
+        ["node", "-e", source],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=True,
+    )
+    assert json.loads(run.stdout) == [False, "2×", "0.50"]
