@@ -15,8 +15,9 @@ PRs #40–#43. T-04 was designed in PR #44 and completed through
 B1/B2/B3 (PRs #45–#47), including
 [R/RR teaching examples](../../source/examples/trapezoidal-trajectories.md)
 and analytic limit regressions. T-05 remains a separate P1 candidate.
-T-06 has a [Three.js-first design proposal](../../design/0.7.0/physical-time-playback.md);
-its implementation is still pending.
+T-06 has an [approved Three.js-first design](../../design/0.7.0/physical-time-playback.md);
+C1 stages input validation and error contracts, without activating
+physical-time playback until C2.
 
 The primary goal inherited from the rolling roadmap is to extend `moro.trajectory` from point-to-point interpolation to **multi-waypoint trajectories and motion profiles**. Complementary improvements emerged from practical use: more consistent visualization parameters, reusable inverse dynamics over sampled motion, and improved sampled-workspace exploration.
 
@@ -49,7 +50,7 @@ The following item IDs are local to this roadmap.
 | **T-02** | Piecewise polynomial interpolation | Extend existing `linear`, `cubic`, `quintic` capabilities to multiple segments where mathematically appropriate. |
 | **T-03** | Continuity across segments | Specify and validate position/velocity/acceleration continuity (`C0`, `C1`, `C2`) as appropriate to interpolation method and boundary conditions. |
 | **T-04** | Trapezoidal velocity profile | [Designed](../../design/0.7.0/trapezoidal.md) and implemented (B1/B2): synchronized rest-to-rest joint motion, triangular/trapezoidal phases, optional prescribed duration and typed profile metadata; B3 adds examples and validation. |
-| **T-06** | Physical-time playback | [Design proposal](../../design/0.7.0/physical-time-playback.md): opt-in timestamped playback in Three.js, including nonuniform times, pause/resume/seek and explicit Matplotlib limitations. Implementation pending. |
+| **T-06** | Physical-time playback | [Designed](../../design/0.7.0/physical-time-playback.md): C1 contracts/guards are staged; actual Three.js timestamped playback (including pause/resume/seek) follows in C2, with Matplotlib explicitly limited to fixed `interval`. |
 | **M-01** | API cleanup and compatibility | Complete intended deprecation cleanup and document migrations. |
 
 **T-05 — Basic kinematic limits** is P1 for now: velocity/acceleration constraints can rapidly expand into time allocation and feasibility policy. The limited subset needs design before it is treated as release core.
