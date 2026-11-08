@@ -163,3 +163,81 @@ def test_browser_animation_template_javascript_syntax_with_node(tmp_path):
         capture_output=True, text=True, timeout=10,
     )
     assert completed.returncode == 0, completed.stderr
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not available")
+def test_browser_pause_resume_seek_finish_and_restart_with_node():
+    """Exercise the real template functions with a synthetic monotonic clock."""
+    raw = (
+        files("moro.visualization.templates")
+        .joinpath("threejs_animation.html")
+        .read_text(encoding="utf-8")
+    )
+    opening = "            function displayFrame(index) {"
+    closing = "            function setView(viewName) {"
+    assert opening in raw and closing in raw
+    state_machine = opening + raw.split(opening, 1)[1].split(closing, 1)[0]
+    prelude = """
+        var now = 0;
+        var performance = {now: function() { return now; }};
+        var relativeTimes = [0, 0.1, 0.7, 0.8, 1.5];
+        var framesData = [{}, {}, {}, {}, {}];
+        var hasPhysicalTime = true;
+        var playbackSpeed = 1;
+        var physicalDuration = 1.5;
+        var physicalElapsed = 0;
+        var anchorPhysicalElapsed = 0;
+        var anchorWallMs = 0;
+        var currentFrame = 0;
+        var isPlaying = false;
+        var playInterval = null;
+        var slider = {value: 0};
+        var frameLabel = {textContent: '0'};
+        var timeLabel = {textContent: ''};
+        var playButton = {innerHTML: '', setAttribute: function() {}};
+        var updateRobotObjects = function() {};
+        var updateTrajectoryForFrame = function() {};
+        var animationData = {interval: 100};
+        var window = {
+            setInterval: function() {throw Error('legacy timer must not run');},
+            clearInterval: function() {throw Error('legacy timer must not run');}
+        };
+        function snapshot() {
+            return [currentFrame, isPlaying, Number(physicalElapsed.toFixed(3))];
+        }
+    """
+    scenario = """
+        var states = [];
+        startPlayback();
+        now = 400;
+        syncPhysicalPlayback(now);
+        states.push(snapshot());    // frame 1 at 0.4 s
+        pausePlayback();
+        now = 5000;
+        syncPhysicalPlayback(now);
+        states.push(snapshot());    // paused at 0.4 s
+        startPlayback();            // resume from 0.4
+        now = 5400;
+        syncPhysicalPlayback(now);
+        states.push(snapshot());    // frame 3 at 0.8 s
+        goToFrame(2);               // seek backwards to 0.7 s
+        states.push(snapshot());
+        now = 6300;
+        syncPhysicalPlayback(now);  // reaches the final frame and stops
+        states.push(snapshot());
+        startPlayback();            // completed playback restarts
+        states.push(snapshot());
+        console.log(JSON.stringify(states));
+    """
+    completed = subprocess.run(
+        ["node", "-e", prelude + state_machine + scenario],
+        capture_output=True, text=True, timeout=10, check=True,
+    )
+    assert json.loads(completed.stdout) == [
+        [1, True, 0.4],
+        [1, False, 0.4],
+        [3, True, 0.8],
+        [2, True, 0.7],
+        [4, False, 1.5],
+        [0, True, 0.0],
+    ]
