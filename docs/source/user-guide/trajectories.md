@@ -374,6 +374,10 @@ sampled acceleration comes from the phase on the right; at the final
 time it comes from the last phase. This method does **not** constrain jerk,
 and it does not validate actuator forces, joint positions or collisions.
 
+See the [R/RR trapezoidal teaching example](../examples/trapezoidal-trajectories.md)
+for reproducible position/velocity/acceleration plots, synchronized movement,
+and a same-duration comparison with quintic interpolation.
+
 The `profile` field is `None` for existing polynomial trajectories. It
 describes the **original generation** and does not update if users edit
 `traj.q` or other sampled arrays; it is not a continuous-time evaluator.
@@ -428,4 +432,4 @@ Animation timing still uses the backend's interval-style controls. Passing `traj
 
 ## Scope
 
-Multi-waypoint linear, cubic and quintic interpolation is supported, including PCHIP-style interior slope estimation for cubic interpolation with resting endpoints. Joint-space point-to-point trapezoidal profiles are also supported. Automatic quintic derivative estimation, global splines, trapezoidal profiles, S-curves, automatic time allocation, pose interpolation, collision-aware planning, and dynamic-feasibility planning remain outside this increment.
+Multi-waypoint linear, cubic and quintic interpolation is supported, including PCHIP-style interior slope estimation for cubic interpolation with resting endpoints. Joint-space point-to-point trapezoidal profiles are also supported. Automatic quintic derivative estimation, global splines, multi-waypoint trapezoidal blending, jerk-limited S-curves, general time allocation or path retiming, pose interpolation, collision-aware planning, and dynamic-feasibility planning remain outside this increment.
