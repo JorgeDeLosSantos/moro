@@ -172,9 +172,9 @@ class RobotVisualizer:
             _normalize_playback_times(times, len(configurations))
             if backend == "matplotlib":
                 raise ValueError(
-                    "Physical-time playback with times= is currently "
-                    "supported only by the Three.js backend; use "
-                    "backend='threejs' or omit times and specify interval."
+                    "Physical-time playback with times= is not supported "
+                    "by Matplotlib. Three.js support is planned for T-06/C2; "
+                    "omit times and specify interval for legacy playback."
                 )
             if backend == "threejs":
                 raise NotImplementedError(
