@@ -1,10 +1,11 @@
 # API-001 — Visualizer configuration/parameter normalization
 
-> **Status:** A1 private helpers and regression tests; public integration deferred
-> to A2. This design concerns visualization of serial kinematic DH models in
-> Moro 0.7.0, not numerical dynamics or robot-parameter binding.
+> **Status:** A1 private helpers integrated in PR #52; A2 public visualizer
+> integration implemented in the current increment. A3 user-facing
+> documentation and notebook stabilization remain separate. This design
+> concerns serial kinematic DH visualization, not numerical dynamics.
 
-## Goal and public API planned for A2
+## Public API integrated in A2
 
 Distinguish **joint configurations** from **constant DH model parameters**:
 
@@ -22,7 +23,7 @@ The first positional argument and the positional `backend` argument will remain
 compatible. Named calls using the old names are an intentional 0.7.0
 compatibility break and must be listed in the release migration notes.
 
-A1 deliberately does **not** change these public methods.
+A2 updates these public methods directly, with keyword-only parameters and without alias compatibility. The implementation retains positional backend arguments and the existing Three.js/Matplotlib return types.
 
 ## Input model
 
@@ -97,8 +98,10 @@ unknown, complex, nonfinite and boolean values; composite DH expressions;
 dynamic coordinates versus explicit time; independent animation mappings;
 legacy mapping flexibility and nonmutation.
 
-A2: integrate into plot/animate signatures and regression-check both
-backends, including T-06 physical-time playback and named-argument migration.
+A2: updated plot/animate signatures and removed the legacy normalizers from
+the public orchestrator. Added regression coverage of named/positional calls,
+both rendering backends, physical-time playback, constant DH geometry, legacy
+full mappings, input nonmutation and the deliberate keyword rename.
 
 A3: refresh user documentation and 0.7.0 release notes; examples and
 complete notebook/backend smoke tests.
