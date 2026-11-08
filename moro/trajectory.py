@@ -1,25 +1,51 @@
 """Numerical point-to-point and multi-waypoint trajectory generation.
 
-This module provides compact, robot-independent polynomial trajectory
-generation in joint space and Cartesian position space.
+This module provides compact, robot-independent trajectory generation in
+joint space and Cartesian position space, including polynomial interpolation
+and synchronized trapezoidal motion profiles.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import math
+from numbers import Real
 
 import numpy as np
+
+from ._trapezoidal import (
+    _evaluate_trapezoidal_phases,
+    _positive_finite_scalar,
+    _resolve_trapezoidal_phases,
+)
 
 
 __all__ = [
     "JointTrajectory",
     "PositionTrajectory",
+    "TrapezoidalProfileInfo",
     "joint_trajectory",
     "position_trajectory",
     "joint_waypoint_trajectory",
     "position_waypoint_trajectory",
+    "joint_trapezoidal_trajectory",
 ]
 
 
 _METHODS = {"linear", "cubic", "quintic"}
+_TRAJECTORY_METHODS = _METHODS | {"trapezoidal"}
+
+
+def _normalize_joint_trajectory_method(method):
+    """Accept result labels while keeping polynomial dispatch restricted."""
+    if not isinstance(method, str):
+        raise TypeError("method must be a string.")
+    normalized = method.lower()
+    if normalized not in _TRAJECTORY_METHODS:
+        raise ValueError(
+            "method must be one of 'linear', 'cubic', 'quintic', "
+            "or 'trapezoidal'."
+        )
+    return normalized
+
 
 
 def _normalize_method(method):
@@ -624,6 +650,79 @@ def _prepare_waypoint_request(
 
 
 
+
+@dataclass(frozen=True)
+class TrapezoidalProfileInfo:
+    """Generation metadata for a synchronized, sampled trapezoidal motion.
+
+    Velocities and accelerations describe the dimensionless progress
+    coordinate s(t), not an individual joint. This object cannot resample
+    the trajectory and does not track subsequent edits to trajectory arrays.
+    """
+
+    kind: str
+    t_accel: float
+    t_cruise: float
+    t_decel: float
+    duration: float
+    minimum_duration: float | None
+    peak_path_speed: float
+    path_acceleration: float
+
+    def __post_init__(self):
+        if self.kind not in ("triangular", "trapezoidal", "stationary"):
+            raise ValueError("profile.kind must describe a recognized phase regime.")
+        for name in (
+            "t_accel", "t_cruise", "t_decel", "duration",
+            "peak_path_speed", "path_acceleration",
+        ):
+            value = getattr(self, name)
+            if (
+                isinstance(value, (bool, np.bool_))
+                or not isinstance(value, Real)
+                or not math.isfinite(float(value))
+                or value < 0.0
+            ):
+                raise ValueError(f"profile.{name} must be finite and nonnegative.")
+        if self.duration <= 0:
+            raise ValueError("profile.duration must be strictly positive.")
+        if not math.isclose(
+            self.t_accel + self.t_cruise + self.t_decel,
+            self.duration, rel_tol=1e-12, abs_tol=0.0,
+        ):
+            raise ValueError("Profile phase times must sum to duration.")
+        if self.kind == "stationary":
+            if self.minimum_duration is not None:
+                raise ValueError("Stationary profiles have no minimum_duration.")
+            if any(
+                x != 0.0 for x in (
+                    self.t_accel, self.t_decel,
+                    self.peak_path_speed, self.path_acceleration,
+                )
+            ):
+                raise ValueError("Stationary profiles must remain at rest.")
+        else:
+            if (
+                self.minimum_duration is None
+                or isinstance(self.minimum_duration, (bool, np.bool_))
+                or not isinstance(self.minimum_duration, Real)
+                or not math.isfinite(float(self.minimum_duration))
+                or self.minimum_duration <= 0.0
+            ):
+                raise ValueError("Moving profiles require a positive minimum_duration.")
+            if (
+                self.t_accel <= 0.0
+                or self.t_decel <= 0.0
+                or self.peak_path_speed <= 0.0
+                or self.path_acceleration <= 0.0
+            ):
+                raise ValueError("Moving profiles require positive phase parameters.")
+            if self.kind == "triangular" and self.t_cruise != 0:
+                raise ValueError("Triangular profiles must have no cruise phase.")
+            if self.kind == "trapezoidal" and self.t_cruise <= 0:
+                raise ValueError("Trapezoidal profiles require a cruise phase.")
+
+
 @dataclass
 class JointTrajectory:
     """Numerical joint-space trajectory sampled at explicit times."""
@@ -633,13 +732,16 @@ class JointTrajectory:
     qd: np.ndarray
     qdd: np.ndarray
     method: str
+    profile: TrapezoidalProfileInfo | None = field(
+        default=None, kw_only=True, repr=False, compare=False,
+    )
 
     def __post_init__(self):
         self.t = _prepare_time(self.t)
         self.q = _as_real_float_array(self.q, name="q", ndim=2)
         self.qd = _as_real_float_array(self.qd, name="qd", ndim=2)
         self.qdd = _as_real_float_array(self.qdd, name="qdd", ndim=2)
-        self.method = _normalize_method(self.method)
+        self.method = _normalize_joint_trajectory_method(self.method)
 
         if self.q.shape != self.qd.shape or self.q.shape != self.qdd.shape:
             raise ValueError("q, qd, and qdd must have identical shapes.")
@@ -649,6 +751,18 @@ class JointTrajectory:
             )
         if self.q.shape[1] < 1:
             raise ValueError("Joint trajectories must contain at least one DOF.")
+        if self.profile is not None:
+            if not isinstance(self.profile, TrapezoidalProfileInfo):
+                raise ValueError("profile must be a TrapezoidalProfileInfo or None.")
+            if self.method != "trapezoidal":
+                raise ValueError(
+                    "Trapezoidal profile metadata requires method='trapezoidal'."
+                )
+            if not math.isclose(
+                self.duration, self.profile.duration,
+                rel_tol=1e-12, abs_tol=0.0,
+            ):
+                raise ValueError("profile.duration must match trajectory duration.")
 
     @property
     def samples(self):
@@ -849,3 +963,156 @@ def position_waypoint_trajectory(
         method=normalized_method, velocities=v, accelerations=a,
     )
     return PositionTrajectory(t, p, v_samples, a_samples, normalized_method)
+
+
+def _prepare_trapezoidal_joint_limit(value, dof, *, name):
+    """Expand positive scalar joint limits or validate a dof-length vector."""
+    try:
+        raw = np.asarray(value)
+    except Exception as exc:
+        raise ValueError(f"{name} must be a scalar or a (dof,) vector.") from exc
+
+    if raw.ndim == 0:
+        limit = _positive_finite_scalar(raw.item(), name=name)
+        return np.full(dof, limit, dtype=float)
+
+    if raw.ndim != 1 or raw.size != dof:
+        raise ValueError(f"{name} must be a scalar or have shape ({dof},).")
+    # Check booleans explicitly, including object arrays containing mixed
+    # numerical and boolean entries. Limit arrays must contain real values.
+    if np.iscomplexobj(raw) or any(
+        isinstance(item, (bool, np.bool_))
+        for item in np.asarray(value, dtype=object).flat
+    ):
+        raise ValueError(f"{name} must contain real positive numbers, not bools.")
+    limits = _as_real_float_array(value, name=name, ndim=1)
+    if np.any(limits <= 0):
+        raise ValueError(f"{name} must contain strictly positive limits.")
+    return limits
+
+
+def _prepare_trapezoidal_time_grid(t0, duration, samples):
+    """Create a finite, strictly increasing physical-time sample grid."""
+    if isinstance(t0, (bool, np.bool_)) or not isinstance(t0, Real):
+        raise ValueError("t0 must be a finite real scalar.")
+    try:
+        initial = float(t0)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("t0 must be a finite real scalar.") from exc
+    if not math.isfinite(initial):
+        raise ValueError("t0 must be a finite real scalar.")
+
+    if (
+        isinstance(samples, (bool, np.bool_))
+        or not isinstance(samples, (int, np.integer))
+        or samples < 2
+    ):
+        raise ValueError("samples must be an integer >= 2.")
+
+    with np.errstate(over="ignore", invalid="ignore"):
+        end = initial + duration
+    if not math.isfinite(end) or end <= initial:
+        raise ValueError("t0 and duration produce nonrepresentable endpoint times.")
+    times = np.linspace(initial, end, samples)
+    if not np.all(np.isfinite(times)) or np.any(np.diff(times) <= 0):
+        raise ValueError(
+            "Sampling requires strictly increasing distinguishable "
+            "floating-point times; reduce samples or rescale time."
+        )
+    return times
+
+
+def joint_trapezoidal_trajectory(
+    q0,
+    qf,
+    *,
+    v_max,
+    a_max,
+    duration=None,
+    t0=0.0,
+    samples=101,
+):
+    """Generate a synchronized rest-to-rest, point-to-point joint trajectory.
+
+    The normalized progress s follows a triangular or trapezoidal speed
+    profile. Every joint traces a straight-line path in joint space with
+    shared phase times. Limits are applied independently to each coordinate
+    and the shortest feasible duration within this profile family is used
+    unless a larger duration is requested.
+
+    Initial/final velocities are zero. Acceleration is piecewise constant
+    and its value at phase changes uses the right-hand phase, except for the
+    final time (left-hand phase). No jerk or dynamic feasibility guarantee
+    is implied. Only stationary moves may use a prescribed zero displacement.
+    """
+    q_initial = _prepare_joint_endpoint(q0, name="q0")
+    q_final = _prepare_joint_endpoint(qf, name="qf")
+    if q_initial.size != q_final.size:
+        raise ValueError("q0 and qf must contain the same number of joints.")
+
+    dof = q_initial.size
+    velocity_limits = _prepare_trapezoidal_joint_limit(
+        v_max, dof, name="v_max"
+    )
+    acceleration_limits = _prepare_trapezoidal_joint_limit(
+        a_max, dof, name="a_max"
+    )
+    with np.errstate(over="ignore", invalid="ignore"):
+        displacement = q_final - q_initial
+    if not np.all(np.isfinite(displacement)):
+        raise ValueError("qf - q0 must contain finite displacements.")
+
+    active = displacement != 0.0
+    if not np.any(active):
+        plan = _resolve_trapezoidal_phases(
+            1.0, 1.0, duration=duration, stationary=True
+        )
+    else:
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            effective_v = velocity_limits[active] / np.abs(displacement[active])
+            effective_a = acceleration_limits[active] / np.abs(
+                displacement[active]
+            )
+        v_progress = np.min(effective_v)
+        a_progress = np.min(effective_a)
+        if not (
+            np.isfinite(v_progress) and v_progress > 0
+            and np.isfinite(a_progress) and a_progress > 0
+        ):
+            raise ValueError(
+                "Joint limits and displacements produce nonrepresentable "
+                "normalized progress limits."
+            )
+        plan = _resolve_trapezoidal_phases(
+            float(v_progress), float(a_progress), duration=duration
+        )
+
+    times = _prepare_trapezoidal_time_grid(t0, plan.duration, samples)
+    elapsed = np.linspace(0.0, plan.duration, samples)
+    s, sd, sdd = _evaluate_trapezoidal_phases(plan, elapsed)
+    with np.errstate(over="ignore", invalid="ignore"):
+        q = q_initial[None, :] + s[:, None] * displacement[None, :]
+        qd = sd[:, None] * displacement[None, :]
+        qdd = sdd[:, None] * displacement[None, :]
+
+    if not all(np.all(np.isfinite(x)) for x in (q, qd, qdd)):
+        raise ValueError("Trapezoidal joint trajectory produced nonfinite values.")
+
+    # Avoid roundoff residue in boundary configurations and speeds.
+    q[0] = q_initial
+    q[-1] = q_final
+    qd[0] = qd[-1] = 0.0
+
+    profile = TrapezoidalProfileInfo(
+        kind=plan.kind,
+        t_accel=plan.t_accel,
+        t_cruise=plan.t_cruise,
+        t_decel=plan.t_decel,
+        duration=plan.duration,
+        minimum_duration=plan.minimum_duration,
+        peak_path_speed=plan.peak_speed,
+        path_acceleration=plan.acceleration,
+    )
+    return JointTrajectory(
+        times, q, qd, qdd, "trapezoidal", profile=profile
+    )
