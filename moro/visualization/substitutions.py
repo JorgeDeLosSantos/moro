@@ -152,7 +152,7 @@ def _normalize_joint_configuration(robot: Robot, configuration) -> dict:
         raise ValueError("A numerical configuration must contain real numbers.")
     if any(
         isinstance(value, (bool, np.bool_, str, bytes))
-        for value in np.asarray(raw, dtype=object).flat
+        for value in np.asarray(configuration, dtype=object).flat
     ):
         raise ValueError("A numerical configuration must contain real numbers.")
     try:
