@@ -15,13 +15,15 @@ PRs #40–#43. T-04 was designed in PR #44 and completed through
 B1/B2/B3 (PRs #45–#47), including
 [R/RR teaching examples](../../source/examples/trapezoidal-trajectories.md)
 and analytic limit regressions. T-05 remains a separate P1 candidate.
-T-06 has an [approved Three.js-first design](../../design/0.7.0/physical-time-playback.md).
-C1 input validation was integrated in PR #49, and the Three.js
-clock-driven C2 playback engine in PR #50. C3 adds
+T-06 is **completed**: its Three.js-first design was implemented in
+C1 (PR #49), C2 (PR #50) and C3 (PR #51), with
 [notebook-ready examples](../../source/examples/physical-time-playback.md),
-backend capability documentation and enhanced regression tests.
-Interactive Jupyter/Colab visual verification remains an explicit
-manual acceptance step.
+backend capability documentation, regression tests and interactive
+Jupyter/Colab visual validation. API-001 implementation is integrated
+through A1 (PR #52) and A2 (PR #53); A3 adds
+[symbolic-parameter notebook examples](../../source/examples/symbolic-visualization-parameters.md),
+user documentation and the
+[0.7.0 migration preview](../../source/release-notes/0.7.0.md).
 
 The primary goal inherited from the rolling roadmap is to extend `moro.trajectory` from point-to-point interpolation to **multi-waypoint trajectories and motion profiles**. Complementary improvements emerged from practical use: more consistent visualization parameters, reusable inverse dynamics over sampled motion, and improved sampled-workspace exploration.
 
@@ -54,7 +56,7 @@ The following item IDs are local to this roadmap.
 | **T-02** | Piecewise polynomial interpolation | Extend existing `linear`, `cubic`, `quintic` capabilities to multiple segments where mathematically appropriate. |
 | **T-03** | Continuity across segments | Specify and validate position/velocity/acceleration continuity (`C0`, `C1`, `C2`) as appropriate to interpolation method and boundary conditions. |
 | **T-04** | Trapezoidal velocity profile | [Designed](../../design/0.7.0/trapezoidal.md) and implemented (B1/B2): synchronized rest-to-rest joint motion, triangular/trapezoidal phases, optional prescribed duration and typed profile metadata; B3 adds examples and validation. |
-| **T-06** | Physical-time playback | [Designed](../../design/0.7.0/physical-time-playback.md); C1 and C2 integrated. Three.js supports timestamps, pause/resume/seek and stop-at-end. C3 adds [examples](../../source/examples/physical-time-playback.md), tests and backend limitations; visual notebook checks remain before final closure. |
+| **T-06** | Physical-time playback | **Completed** in PRs #49–#51: timestamped Three.js playback, controls, validated examples, backend limitations and visual Colab checks. |
 | **M-01** | API cleanup and compatibility | Complete intended deprecation cleanup and document migrations. |
 
 **T-05 — Basic kinematic limits** is P1 for now: velocity/acceleration constraints can rapidly expand into time allocation and feasibility policy. The limited subset needs design before it is treated as release core.
@@ -77,13 +79,13 @@ Release notes for 0.6.1 identify these as intended 0.7.0 cleanup, subject to fin
 - remove deprecated `Robot.dynamic_model_matrix_form()` alias;
 - remove deprecated `is_SO3()`, `is_SE3()`, `isrot()`, and `ishtm()` predicates;
 - review removal of the legacy `moro.plotting` module, which was explicitly retained through 0.6.1;
-- evaluate named-argument compatibility for `RobotVisualizer.plot()` and `RobotVisualizer.animate()` as part of API-001.
+- **API-001 decision implemented:** directly rename the first named arguments to `configuration` and `configurations`; do not retain `num_vals`/`num_vals_list` aliases. Positional calls remain valid. See the [migration preview](../../source/release-notes/0.7.0.md).
 
 No silent changes to mathematics, frames, array shapes, or default backends. Document removals and alternatives clearly.
 
 ## P1 — Complementary API improvements
 
-### API-001 — Explicit visualizer parameters (approved for 0.7.0 planning)
+### API-001 — Explicit visualizer parameters (A1/A2 integrated; A3 documentation)
 
 Improve consistency between numerical robotics operations and visualizer entry points:
 
@@ -93,11 +95,11 @@ viz.animate(configurations, parameters=params)
 ```
 
 - Add optional keyword-only `parameters` for constant symbolic model substitutions.
-- Rename `num_vals` → `configuration` and `num_vals_list` → `configurations` at the public level, with a documented compatibility decision for existing named calls.
+- Renamed `num_vals` → `configuration` and `num_vals_list` → `configurations` directly; no legacy named aliases. Existing positional calls are preserved.
 - Continue to support existing full substitution dictionaries for convenience and migration.
 - Reject ambiguous duplicate substitutions rather than silently selecting precedence.
 - Validate missing/nonfinite inputs; preserve the symbolic robot and source dictionaries.
-- Review whether the public `evaluate_robot()` helper should also accept `parameters`.
+- Keep `evaluate_robot(robot, substitutions)` unchanged as a lower-level evaluation interface.
 - **Not included:** compiled FK optimization or persistent parameter binding to `Robot` / `RobotVisualizer`.
 
 ### API-002 — Inverse dynamics for sampled joint motion (candidate)
