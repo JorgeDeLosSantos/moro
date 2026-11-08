@@ -367,8 +367,8 @@ def test_browser_variable_speed_seek_when_paused_and_delayed_frame_skip():
         syncPhysicalPlayback(now);
         result.push(snapshot());
         startPlayback();              // resume from 0.1
-        now = 5350;                   // 0.7 seconds later at double speed
-        syncPhysicalPlayback(now);    // progress 0.8 seconds
+        now = 5400;                   // 0.8 additional seconds at double speed
+        syncPhysicalPlayback(now);    // progress 0.9 seconds
         result.push(snapshot());
         now = 10000;                  // delayed tab: finish at final frame
         syncPhysicalPlayback(now);
@@ -384,7 +384,7 @@ def test_browser_variable_speed_seek_when_paused_and_delayed_frame_skip():
         [3, True, 0.8],
         [1, False, 0.1],
         [1, False, 0.1],
-        [3, True, 0.8],
+        [3, True, 0.9],
         [4, False, 1.5],
     ]
 
