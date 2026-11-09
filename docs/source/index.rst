@@ -48,6 +48,7 @@ benefit from symbolic kinematics and dynamics.
    examples/singularity-manipulability
    examples/planar-2r-dynamics
    examples/numerical-dynamics
+   examples/inverse-dynamics-trajectories
    examples/workspace-sampling
 
 
