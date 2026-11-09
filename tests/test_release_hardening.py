@@ -128,6 +128,7 @@ def test_new_modules_export_the_accepted_public_api():
     assert set(dynamics_all) == {
         "DynamicsSolution",
         "inverse_dynamics",
+        "inverse_dynamics_trajectory",
         "forward_dynamics",
         "state_derivative",
         "simulate",
