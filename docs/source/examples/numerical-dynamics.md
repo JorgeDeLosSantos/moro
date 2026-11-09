@@ -104,10 +104,13 @@ This is user-defined generalized-force logic, not a dedicated controller framewo
 
 ## 5. Prescribed trajectory to required generalized force
 
-Trajectory generation and dynamics remain separate:
+Trajectory generation and dynamics remain separate. The API-002
+`inverse_dynamics_trajectory()` operation accepts the `JointTrajectory`
+object directly and prepares the numerical M/C/G model once:
 
 ```python
 from moro.trajectory import joint_trajectory
+from moro.dynamics import inverse_dynamics_trajectory
 
 traj = joint_trajectory(
     [0.0, 0.0],
@@ -116,17 +119,14 @@ traj = joint_trajectory(
     method="quintic",
 )
 
-tau_history = np.array([
-    inverse_dynamics(robot, q, qd, qdd)
-    for q, qd, qdd in zip(
-        traj.q,
-        traj.qd,
-        traj.qdd,
-    )
-])
+tau_history = inverse_dynamics_trajectory(robot, traj)
 ```
 
-The result has shape `(traj.samples, robot.dof)`.
+The ideal generalized-force history has shape `(traj.samples, robot.dof)`.
+If the physical model contains symbolic masses, inertias or other fixed
+constants, provide them using `parameters={...}`. For an RR comparison
+of quintic and trapezoidal motion, see
+[Inverse Dynamics of Joint Trajectories](inverse-dynamics-trajectories.md).
 
 ## 6. Visualization
 
@@ -136,7 +136,8 @@ The result has shape `(traj.samples, robot.dof)`.
 from moro.visualization import RobotVisualizer
 
 viz = RobotVisualizer(robot)
-viz.animate(solution.q)
+viz.animate(solution.q, times=solution.t)
 ```
 
-The animation backend controls playback interval independently from the physical time vector `solution.t`.
+The default Three.js backend uses the supplied physical timestamps.
+For Matplotlib animation, omit `times` and use fixed-`interval` playback.
