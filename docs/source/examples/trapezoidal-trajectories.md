@@ -184,9 +184,9 @@ normalized progress, not to any specific joint.
 
 ### Optional visualization in Jupyter/Colab
 
-Moro's visualizer can animate the joint configurations. If the robot
-contains symbolic geometric parameters, supply their numerical values in
-each configuration, as the current visualizer API requires:
+Moro's visualizer accepts the joint trajectory directly. If the robot
+has symbolic link lengths, provide them once through the keyword-only
+`parameters` argument rather than repeating them in every frame:
 
 ```python
 from IPython.display import display
@@ -199,14 +199,9 @@ robot = Robot(
     (l2, 0, 0, q2, "r"),
 )
 
-configurations = [
-    {l1: 1.0, l2: 0.8, q1: float(q[0]), q2: float(q[1])}
-    for q in rr.q
-]
-
 viewer = RobotVisualizer(robot).animate(
-    configurations,
-    backend="threejs",
+    rr.q,
+    parameters={l1: 1.0, l2: 0.8},
     times=rr.t,
     playback_speed=1.0,
 )
@@ -218,7 +213,8 @@ generator, so there is no need to manually calculate a millisecond
 `interval`. The player follows a monotonic browser clock but does
 not provide hard real-time guarantees or interpolate configurations.
 For a nonuniform multi-waypoint example and interactive checks,
-see [Physical-Time Animation Playback](physical-time-playback.md).
+see [Physical-Time Animation Playback](physical-time-playback.md). For symbolic geometry, see
+[Symbolic DH Parameters in Robot Visualization](symbolic-visualization-parameters.md).
 
 ## 4. Compare against a quintic trajectory
 

@@ -42,6 +42,7 @@ benefit from symbolic kinematics and dynamics.
    examples/trajectory-generation
    examples/trapezoidal-trajectories
    examples/physical-time-playback
+   examples/symbolic-visualization-parameters
    examples/cartesian-trajectory-ik
    examples/velocity-inverse-kinematics
    examples/singularity-manipulability
@@ -77,6 +78,7 @@ benefit from symbolic kinematics and dynamics.
    :maxdepth: 2
    :caption: Release Notes
 
+   release-notes/0.7.0
    release-notes/0.6.1
    release-notes/0.6.0
    release-notes/0.5.0

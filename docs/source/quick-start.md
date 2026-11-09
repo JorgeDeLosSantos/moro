@@ -187,11 +187,25 @@ First create a visualizer associated with the robot:
 viz = RobotVisualizer(robot)
 ```
 
-A particular configuration can then be plotted using the same dictionary of numerical values:
+The complete substitution dictionary introduced above still works:
 
 ```python
 viz.plot(values)
 ```
+
+In Moro 0.7.0 development, you can instead separate the joint state
+from the fixed geometric parameters:
+
+```python
+viz.plot(
+    configuration=[0.5, 0.8],
+    parameters={l1: 1.0, l2: 1.0},
+)
+```
+
+For an animation, `viz.animate(configurations, parameters=parameters)`
+accepts a numerical matrix of joint configurations, so you do not need
+to repeat the geometric constants for each frame.
 
 By default, `RobotVisualizer` uses **Three.js** to return an interactive
 `IPython.display.HTML` viewer, particularly convenient in Jupyter and Colab.
@@ -208,7 +222,11 @@ Likewise, `viz.animate(configurations)` returns an interactive Three.js
 animation by default, while `backend="matplotlib"` returns a
 `matplotlib.animation.FuncAnimation`.
 
-The visualization module can also animate sequences of robot configurations. These capabilities are covered in more detail in the **Visualization** section of the User Guide.
+The visualization module can also animate sequences of robot configurations.
+These capabilities are covered in more detail in the **Visualization** section
+of the User Guide and the
+[Symbolic Parameters for Visualization](examples/symbolic-visualization-parameters.md)
+notebook-ready example.
 
 ## Where to go next
 

@@ -5,9 +5,12 @@ robot joint configurations at their real, possibly nonuniform, sample
 times. Unlike the older fixed-`interval` player, timestamped playback
 uses the time vector produced by the trajectory generator.
 
-The exercises require the current Moro 0.7.0 development version with
-T-06/C2 available. They use a fully numerical manipulator model, so no
-additional geometric parameter substitutions are needed.
+The exercises require the current Moro 0.7.0 development version.
+They use a fully numerical manipulator model, so no additional geometric
+parameter substitutions are needed. For a model with symbolic lengths,
+the API-001 `parameters=` argument lets you supply those fixed values
+once, alongside `times=` and the numerical joint matrix. See
+[Symbolic DH Parameters in Robot Visualization](symbolic-visualization-parameters.md).
 
 ## 1. Prepare a planar RR manipulator
 
