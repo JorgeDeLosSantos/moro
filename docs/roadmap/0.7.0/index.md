@@ -44,7 +44,7 @@ Preserve the project principles:
 | **P1 — complementary candidates** | Valuable work for 0.7.0 if scoped and independently testable; may move to a later version. |
 | **P2 — future radar** | Preserve the idea, but do not assume implementation in 0.7.0. |
 
-**Important:** P0 means *strong planning preference*, not approval of all API signatures, algorithms, or implementation details. The only explicitly approved API candidate from the current discussions is API-001; API-002 and workspace items remain candidates.
+**Important:** P0 means *strong planning preference*, not blanket approval of all APIs or algorithms. API-001 and API-002 were approved and implemented incrementally; workspace items remain design candidates.
 
 ## P0 — Primary track: advanced trajectories
 
@@ -102,7 +102,7 @@ viz.animate(configurations, parameters=params)
 - Keep `evaluate_robot(robot, substitutions)` unchanged as a lower-level evaluation interface.
 - **Not included:** compiled FK optimization or persistent parameter binding to `Robot` / `RobotVisualizer`.
 
-### API-002 — Inverse dynamics for sampled joint motion (candidate)
+### API-002 — Inverse dynamics for sampled joint motion (B1/B2 merged; B3 documentation)
 
 Proposed public operation:
 
@@ -121,6 +121,16 @@ tau_history = inverse_dynamics_trajectory(
 - Keep `inverse_dynamics()` single-state for now instead of silently overloading it with batch semantics.
 - Clarify any time-vector validation without treating `t` as mathematically necessary for evaluating `M(q)qdd + C(q,qd)qd + G(q)`.
 - **Not included:** RNEA-specific logic, public compiled model objects, mandatory vectorization, actuator-limit feasibility, or a result dataclass.
+
+**Implementation:** B1 (PR #55) added the function and its input
+contract. B2 (PR #56) validated R/RR/RP, symbolic parameters,
+single-state and forward-dynamics equivalence, and one-time model
+preparation. B3 adds the
+[RR quintic/trapezoidal notebook example](../../source/examples/inverse-dynamics-trajectories.md),
+the [Dynamics User Guide](../../source/user-guide/dynamics.md),
+and the [unreleased 0.7.0 feature notes](../../source/release-notes/0.7.0.md).
+Friction and externally applied forces are deferred to a separately
+designed extension shared with forward dynamics and simulation.
 
 ## P1 — Workspace exploration track (MORO-API-003)
 
