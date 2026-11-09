@@ -1,7 +1,8 @@
 # API-002 — Inverse dynamics of sampled joint motion
 
-> **Status:** B1 core API and initial validation in review. Further
-> regression coverage (B2) and teaching examples (B3) remain separate.
+> **Status:** B1 core API and initial validation integrated through
+> PR #55. B2 broadens physical-model and edge-case regression coverage.
+> Teaching examples and user documentation remain in B3.
 
 ## Purpose
 
@@ -85,9 +86,16 @@ separate design step, not part of B1–B3.
 
 - **B1:** Public function, input validation, one preparation per call,
   basic R/P and RR comparisons, and a failure diagnostic.
-- **B2:** Broader R/RR/RP, symbolic-parameter and edge-case coverage;
-  explicit performance-regression assertions that do not assume
-  a particular wall-clock speed.
+- **B2:** Independent one-axis analytical rotor check; R/RR/RP
+  samplewise inverse-dynamics and forward-dynamics round trips;
+  symbolic geometry/mass/inertia/gravity parameter substitution without
+  mutation; missing-parameter errors; one-sample and partial
+  DynamicsSolution compatibility; trapezoidal JointTrajectory support;
+  invariance to valid timestamp changes; malformed state/time rejection
+  before compilation; finite-input overflow diagnostics naming the
+  sample index; and spies asserting one model preparation, three
+  symbolic lambdify compilations and one evaluation per sample.
+  These checks deliberately do not benchmark elapsed wall time.
 - **B3:** Document end-to-end quintic and trapezoidal trajectory
   examples and a comparison of required generalized efforts; refresh
   API guide and unreleased 0.7.0 migration notes.
