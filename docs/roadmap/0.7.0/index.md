@@ -148,7 +148,7 @@ Specific concerns:
 - **W-02:** distinguish *orthogonal projection* from *section*. A section selected by `|z-z0| <= thickness/2` (analogously for other planes) is a **thick sample filter**, not a mathematically exact plane–workspace intersection. Report selected point count and avoid silently expanding thickness when sparse.
 - **W-03:** low-discrepancy samples improve **joint-space** coverage; they do not ensure uniform Cartesian coverage or accurate frontier recovery. Explicitly define how Sobol handles non-power-of-two sample counts; avoid `grid` combinatorial explosions for high DOF.
 - Keep reusable section data in Python so both Matplotlib and Three.js can render it; do not make the numerical APIs depend on browser interactions.
-- Decide the `plot_workspace` default backend after reviewing backward compatibility; adding Three.js need not automatically switch the default in the same step.
+- **Decision for 0.7.0:** `plot_workspace` defaults to Three.js (an intentional breaking change); explicit Matplotlib remains available and old `(fig, ax)` consumers must request `backend='matplotlib'`.
 
 ## P2 — Preserve but do not commit to 0.7.0
 
