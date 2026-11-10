@@ -251,12 +251,25 @@ Three.js-default workspace viewer remains a separate later change.
 
 ## Visualization
 
-Use:
+Use the default **Three.js** interactive point-cloud viewer:
 
 ```python
 from moro.visualization import plot_workspace
 
-fig, ax = plot_workspace(workspace)
+viewer = plot_workspace(workspace)
+```
+
+The result is `IPython.display.HTML`, as for `RobotVisualizer`. The
+viewer provides matching Front / Right / Top / Isometric camera presets,
+orthographic / perspective cameras, orbit/pan/zoom controls and Fit View.
+Point clouds are rendered using one Three.js position buffer, not a
+separate object per sample.
+
+For static Matplotlib plotting and access to ordinary figure axes, select
+the backend explicitly:
+
+```python
+fig, ax = plot_workspace(workspace, backend="matplotlib")
 ```
 
 Supported projections are:
@@ -274,7 +287,7 @@ yz
 For example:
 
 ```python
-fig, ax = plot_workspace(
+viewer = plot_workspace(
     workspace,
     projection="xy",
     marker_size=6,
@@ -282,7 +295,24 @@ fig, ax = plot_workspace(
 )
 ```
 
-Workspace visualization currently uses Matplotlib.
+The Three.js viewer honors the requested projection by flattening only
+the displayed normal coordinate: XY begins with Top view, XZ with Front
+view and YZ with Right view. Original `workspace.points` remain
+unchanged. `projection="3d"` preserves the full cloud and begins in
+Isometric view.
+
+**Moro 0.7.0 migration:** `plot_workspace(workspace)` changes from
+Matplotlib's `(fig, ax)` result to HTML. Old notebooks that unpack
+figures must use `backend="matplotlib"`. With Three.js,
+`width`/`height` specify viewer dimensions in pixels; Matplotlib-only
+`ax` and `figsize` are rejected rather than silently ignored. The
+inverse applies to Matplotlib: Three.js-only dimension arguments are
+rejected. `marker_size` denotes Matplotlib scatter area in point-squared
+units, but fixed pixel size in Three.js; visual appearance therefore
+differs between backends.
+
+`plot_workspace_section(section)` remains a standalone **Matplotlib**
+helper in D5. It is not affected by this default-backend change.
 
 ## What workspace sampling does not compute
 
