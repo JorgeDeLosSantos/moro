@@ -50,6 +50,7 @@ benefit from symbolic kinematics and dynamics.
    examples/numerical-dynamics
    examples/inverse-dynamics-trajectories
    examples/workspace-sampling
+   examples/workspace-sections
 
 
 .. toctree::

@@ -231,8 +231,23 @@ point shape `(0, 3)` and configuration shape `(0, dof)`.
 A section never reconstructs an exact reachable-set intersection,
 interpolates missing data, increases its thickness automatically, or
 reevaluates forward kinematics. It is simply an observed point-cloud slab.
-Direct visualization of these section objects is planned for the next
-increment; ordinary `plot_workspace` remains unchanged in D3.
+Visualize the filtered point cloud in Matplotlib using:
+
+```python
+from moro.visualization import plot_workspace_section
+
+fig, ax = plot_workspace_section(section, marker_size=6, alpha=0.5)
+```
+
+The section is displayed in its own 2D Cartesian plane: XY uses X/Y,
+XZ uses X/Z, and YZ uses Y/Z. The plot preserves sample order,
+uses equal aspect ratio, and supports an existing Matplotlib 2D `ax`.
+Even an empty section produces an empty plot with meaningful axis labels.
+
+The function returns `(fig, ax)`. It does **not** resample, interpolate,
+recover a workspace frontier, or change any `WorkspaceSection` arrays.
+`plot_workspace(workspace)` is unchanged in this increment; the planned
+Three.js-default workspace viewer remains a separate later change.
 
 ## Visualization
 

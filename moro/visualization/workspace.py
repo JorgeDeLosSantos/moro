@@ -3,10 +3,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from moro.workspace import Workspace
+from moro.workspace import Workspace, WorkspaceSection
 
 
-__all__ = ["plot_workspace"]
+__all__ = ["plot_workspace", "plot_workspace_section"]
 
 
 _PROJECTIONS = {"auto", "xy", "xz", "yz", "3d"}
@@ -131,6 +131,48 @@ def plot_workspace(
         "yz": (1, 2, "Y", "Z"),
     }
     i, j, xlabel, ylabel = axis_map[projection]
+    ax.scatter(points[:, i], points[:, j], s=marker_size, alpha=alpha)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_aspect("equal", adjustable="box")
+    return fig, ax
+
+
+def plot_workspace_section(
+    section,
+    *,
+    ax=None,
+    figsize=(8, 6),
+    marker_size=8,
+    alpha=0.5,
+):
+    """Draw a sampled Cartesian slab section in its defining 2D plane.
+
+    Uses only the Cartesian rows already stored in WorkspaceSection:
+    filtering and configuration indexing remain in moro.workspace.
+    An empty section produces a valid empty plot, with axes and labels.
+    """
+    if not isinstance(section, WorkspaceSection):
+        raise TypeError("section must be an instance of WorkspaceSection.")
+
+    try:
+        marker_size = float(marker_size)
+        alpha = float(alpha)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("marker_size and alpha must be real numeric values.") from exc
+    if not np.isfinite(marker_size) or marker_size <= 0:
+        raise ValueError("marker_size must be a finite value greater than 0.")
+    if not np.isfinite(alpha) or not (0.0 <= alpha <= 1.0):
+        raise ValueError("alpha must satisfy 0 <= alpha <= 1.")
+
+    fig, ax = _prepare_axis(section.plane, ax, figsize)
+    axis_map = {
+        "xy": (0, 1, "X", "Y"),
+        "xz": (0, 2, "X", "Z"),
+        "yz": (1, 2, "Y", "Z"),
+    }
+    i, j, xlabel, ylabel = axis_map[section.plane]
+    points = section.points
     ax.scatter(points[:, i], points[:, j], s=marker_size, alpha=alpha)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
