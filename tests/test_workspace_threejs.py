@@ -2,6 +2,8 @@
 
 import json
 import re
+import shutil
+import subprocess
 
 import matplotlib
 matplotlib.use("Agg")
@@ -116,3 +118,18 @@ def test_width_height_and_marker_style_serialization():
     p = json.loads(match.group(1))
     assert p["marker_size"] == 5
     assert p["alpha"] == 0.25
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not available")
+def test_generated_workspace_javascript_has_valid_syntax():
+    html = plot_workspace(cloud()).data
+    scripts = re.findall(r"<script>\s*(.*?)\s*</script>", html, flags=re.S)
+    assert len(scripts) == 2
+    result = subprocess.run(
+        ["node", "--check"],
+        input="\n".join(scripts),
+        text=True,
+        capture_output=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
