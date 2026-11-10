@@ -237,7 +237,7 @@ class TestWorkspaceVisualization:
             ([[0, 0, 0], [1, 1, 1]], ("X", "Y"), True),
         ]
         for points, labels, expect_3d in cases:
-            fig, ax = plot_workspace(self.ws(points), projection="auto")
+            fig, ax = plot_workspace(self.ws(points), backend="matplotlib", projection="auto")
             assert (ax.get_xlabel(), ax.get_ylabel()) == labels
             assert (ax.name == "3d") is expect_3d
             plt.close(fig)
@@ -248,7 +248,7 @@ class TestWorkspaceVisualization:
     )
     def test_explicit_2d_projections_and_point_count(self, projection, labels):
         ws = self.ws([[0, 0, 0], [1, 2, 3], [2, 1, 0]])
-        fig, ax = plot_workspace(ws, projection=projection)
+        fig, ax = plot_workspace(ws, backend="matplotlib", projection=projection)
         assert (ax.get_xlabel(), ax.get_ylabel()) == labels
         assert len(ax.collections[0].get_offsets()) == ws.samples
         assert ax.get_aspect() == 1.0
@@ -256,20 +256,20 @@ class TestWorkspaceVisualization:
 
     def test_explicit_3d_and_existing_axis_validation(self):
         ws = self.ws([[0, 0, 0], [1, 2, 3]])
-        fig, ax = plot_workspace(ws, projection="3d")
+        fig, ax = plot_workspace(ws, backend="matplotlib", projection="3d")
         assert ax.name == "3d"
         assert ax.get_zlabel() == "Z"
         plt.close(fig)
 
         fig, ax = plt.subplots()
-        returned_fig, returned_ax = plot_workspace(ws, projection="xy", ax=ax)
+        returned_fig, returned_ax = plot_workspace(ws, backend="matplotlib", projection="xy", ax=ax)
         assert returned_fig is fig
         assert returned_ax is ax
         with pytest.raises(ValueError, match="3D axis"):
-            plot_workspace(ws, projection="3d", ax=ax)
+            plot_workspace(ws, backend="matplotlib", projection="3d", ax=ax)
         plt.close(fig)
 
     @pytest.mark.parametrize("projection", ["xyz", "plane", 3])
     def test_invalid_projection(self, projection):
         with pytest.raises(ValueError, match="projection"):
-            plot_workspace(self.ws([[0, 0, 0], [1, 1, 0]]), projection=projection)
+            plot_workspace(self.ws([[0, 0, 0], [1, 1, 0]]), backend="matplotlib", projection=projection)
