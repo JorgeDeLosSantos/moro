@@ -1,8 +1,9 @@
 # API-002 — Inverse dynamics of sampled joint motion
 
-> **Status:** B1 core API and initial validation integrated through
-> PR #55. B2 broadens physical-model and edge-case regression coverage.
-> Teaching examples and user documentation remain in B3.
+> **Status:** B1 implementation integrated in PR #55; B2 numerical
+> regression coverage integrated in PR #56. B3 adds user documentation,
+> an executable RR quintic/trapezoidal teaching example and a notebook
+> smoke test. Moro 0.7.0 as a whole remains unreleased.
 
 ## Purpose
 
@@ -96,6 +97,10 @@ separate design step, not part of B1–B3.
   sample index; and spies asserting one model preparation, three
   symbolic lambdify compilations and one evaluation per sample.
   These checks deliberately do not benchmark elapsed wall time.
-- **B3:** Document end-to-end quintic and trapezoidal trajectory
-  examples and a comparison of required generalized efforts; refresh
-  API guide and unreleased 0.7.0 migration notes.
+- **B3:** Update the Dynamics User Guide and the numerical-dynamics
+  example to use the new history API, document input/output and future
+  loading scope, and add [a standalone RR comparison](../../source/examples/inverse-dynamics-trajectories.md)
+  of quintic and trapezoidal joint trajectories with matching endpoints
+  and duration. Execute all example code cells in a browser-free test;
+  interactive Jupyter/Colab rendering remains a manual acceptance check.
+  Add the feature to [unreleased development notes](../../source/release-notes/0.7.0.md).

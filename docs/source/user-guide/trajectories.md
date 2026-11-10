@@ -376,7 +376,11 @@ and it does not validate actuator forces, joint positions or collisions.
 
 See the [R/RR trapezoidal teaching example](../examples/trapezoidal-trajectories.md)
 for reproducible position/velocity/acceleration plots, synchronized movement,
-and a same-duration comparison with quintic interpolation.
+and a same-duration comparison with quintic interpolation. For the
+**corresponding inverse-dynamics effort histories**, see
+[Inverse Dynamics of Joint Trajectories](../examples/inverse-dynamics-trajectories.md).
+The effort analysis evaluates the ideal dynamic model, not whether
+actuators can physically perform the motion.
 
 The `profile` field is `None` for existing polynomial trajectories. It
 describes the **original generation** and does not update if users edit
