@@ -80,7 +80,7 @@ Default robot limits are modeling conveniences and may not represent the physica
 
 ## Sampling distribution
 
-Each joint is sampled independently and uniformly over its effective interval:
+With the default `method='random'`, each joint is sampled independently and uniformly over its effective interval:
 
 $$
 q_i\sim\mathcal U(q_{i,\min},q_{i,\max}).
@@ -89,6 +89,44 @@ $$
 This means sampling is uniform in joint space, not in Cartesian space.
 
 A dense Cartesian region does not imply a larger geometric portion of the true workspace; the forward-kinematics mapping can distort the point density strongly.
+
+## Alternative joint-space sampling methods (0.7.0 development)
+
+The default remains independent uniform pseudo-random sampling with an effective
+count of 1,000 when `samples` is omitted. A specific method can be selected:
+
+```python
+sobol_workspace = sample_workspace(
+    robot, samples=1024, method="sobol", seed=42,
+)
+lhs_workspace = sample_workspace(
+    robot, samples=1000, method="latin_hypercube", seed=42,
+)
+grid_workspace = sample_workspace(
+    robot, method="grid", grid_shape=(40, 50),
+)
+```
+
+`random` is the original NumPy sampler and retains its seeded sequence.
+`sobol` uses scrambled SciPy Sobol points. Powers of two (e.g., 1024)
+preserve the usual Sobol balance property; other positive counts take a
+prefix of the next power-of-two block, and should not be interpreted as
+having the same balance guarantees. `latin_hypercube` uses scrambled
+SciPy Latin-hypercube sampling. All three use `samples` as the **total**
+number of configurations; their coverage is defined in joint space, not
+Cartesian space.
+
+For `grid`, `grid_shape` gives **one count per joint** (with product
+equal to the total number of configurations). With 2 or more divisions,
+both endpoints of the joint range are included; a single division uses
+the interval midpoint. The grid is deterministic and requires
+`seed=None`; omit `samples` instead of supplying a conflicting count.
+The last joint varies fastest in row order. A safety limit of 1,000,000
+samples protects against accidental combinatorial explosion.
+
+The resulting dataset includes optional descriptive metadata
+`workspace.method` and `workspace.grid_shape`; directly constructed
+`Workspace` instances may leave these unspecified.
 
 ## Reproducibility
 
@@ -206,6 +244,6 @@ Workspace sampling does not attempt to compute:
 - manipulability maps;
 - singularity maps;
 - collision-aware workspace;
-- adaptive or quasi-random sampling.
+- adaptive sampling or guaranteed uniform Cartesian coverage.
 
 The stored configurations make later post-processing possible without expanding the scope of the sampler itself.
