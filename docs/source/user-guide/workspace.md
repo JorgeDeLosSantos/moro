@@ -198,6 +198,42 @@ returns the observed sample bounds:
 
 These are point-cloud bounds only. They are not an exact analytical workspace boundary.
 
+## Cartesian plane sections (0.7.0 development)
+
+A projection keeps every sample and discards one plotted coordinate. A **section**
+instead selects only points sufficiently close to a specified Cartesian plane.
+The numerical operation is independent of the robot model and all plotting backends:
+
+```python
+from moro.workspace import section_workspace
+
+section = section_workspace(
+    workspace,
+    plane="xy",
+    level=0.3,
+    thickness=0.02,
+)
+```
+
+Here the selected points satisfy `abs(z - 0.3) <= 0.01`. Other options
+are `plane="xz"` (filter Y) and `plane="yz"` (filter X).
+The full `thickness` is nonnegative and expressed in the same linear units
+as the workspace; a value of zero matches only exactly equal coordinates.
+
+The returned `WorkspaceSection` contains `plane`, `level`,
+`thickness`, `indices`, `points`, `configurations`,
+`source_samples`, `samples`, and `dof`. Its points retain their
+**original 3D coordinates**, with exact row correspondence to configurations.
+`indices` are the original zero-based row positions in the source workspace,
+in ascending order. A section containing no samples is **valid** and has
+point shape `(0, 3)` and configuration shape `(0, dof)`.
+
+A section never reconstructs an exact reachable-set intersection,
+interpolates missing data, increases its thickness automatically, or
+reevaluates forward kinematics. It is simply an observed point-cloud slab.
+Direct visualization of these section objects is planned for the next
+increment; ordinary `plot_workspace` remains unchanged in D3.
+
 ## Visualization
 
 Use:
