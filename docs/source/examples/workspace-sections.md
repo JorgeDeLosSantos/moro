@@ -37,9 +37,11 @@ point cloud, not a continuous filled region.
 ## 2. Plot the full workspace
 
 ```python
-fig, ax = plot_workspace(workspace, projection="3d")
+fig, ax = plot_workspace(workspace, projection="3d", backend="matplotlib")
 plt.show()
 ```
+
+Here Matplotlib is selected explicitly to compare with the 2D section figures. For the interactive Three.js viewer (the default in 0.7.0), use `plot_workspace(workspace, projection="3d")` instead.
 
 The full workspace is a 3D cylinder-like point cloud sampled at
 finite positions of both joints.
