@@ -351,3 +351,71 @@ class ThreeJSBackend:
             },
         )
         return HTML(html)
+
+
+def _workspace_point_payload(points, *, projection):
+    """Prepare finite 3D point-cloud data and camera bounds for Three.js."""
+    values = np.asarray(points, dtype=float)
+    if values.ndim != 2 or values.shape[1] != 3 or values.shape[0] < 1:
+        raise ValueError("workspace points must have shape (N, 3) with N >= 1.")
+    if not np.isfinite(values).all():
+        raise ValueError("workspace points must contain finite real values.")
+    display = values.copy()
+    normal = {"xy": 2, "xz": 1, "yz": 0}.get(projection)
+    if normal is None and projection != "3d":
+        raise ValueError("projection must be 'xy', 'xz', 'yz', or '3d'.")
+    if normal is not None:
+        # Orthogonal projection: retain source Cartesian coordinates in
+        # Python, but display points on a constant-normal plane in 3D.
+        display[:, normal] = (display[:, normal].min() + display[:, normal].max()) / 2.0
+    minimum = display.min(axis=0)
+    maximum = display.max(axis=0)
+    center = minimum / 2.0 + maximum / 2.0
+    span = maximum - minimum
+    radius = max(
+        0.6 * float(np.linalg.norm(span)),
+        1e-6 * max(float(np.max(np.abs(center))), 1e-6),
+    )
+    if not np.isfinite(radius) or radius <= 0:
+        raise ValueError("Could not compute a finite workspace viewing scale.")
+    return {
+        "positions": display.tolist(),
+        "projection": projection,
+        "framing": {
+            "minimum": minimum.tolist(),
+            "maximum": maximum.tolist(),
+            "center": center.tolist(),
+            "fit_radius": radius,
+        },
+    }
+
+
+def render_workspace_points(
+    points, *, projection, marker_size, alpha, width, height
+):
+    """Return an interactive Three.js workspace point cloud as IPython HTML."""
+    from IPython.display import HTML
+
+    for name, value in (("width", width), ("height", height)):
+        if isinstance(value, (bool, np.bool_)) or not isinstance(
+            value, (int, np.integer)
+        ) or value <= 0:
+            raise ValueError(f"{name} must be a positive integer.")
+    if not math.isfinite(float(marker_size)) or float(marker_size) <= 0:
+        raise ValueError("marker_size must be positive and finite.")
+    if not math.isfinite(float(alpha)) or not 0 <= float(alpha) <= 1:
+        raise ValueError("alpha must be finite and satisfy 0 <= alpha <= 1.")
+
+    payload = _workspace_point_payload(points, projection=projection)
+    payload["marker_size"] = float(marker_size)
+    payload["alpha"] = float(alpha)
+    html = _render_html_template(
+        "threejs_workspace.html",
+        {
+            "unique_id": uuid.uuid4().hex[:8],
+            "width": int(width),
+            "height": int(height),
+            "workspace_data": json.dumps(payload),
+        },
+    )
+    return HTML(html)
