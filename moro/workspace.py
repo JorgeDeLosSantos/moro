@@ -7,7 +7,7 @@ import numpy as np
 import sympy as sp
 
 
-__all__ = ["Workspace", "sample_workspace"]
+__all__ = ["Workspace", "WorkspaceSection", "sample_workspace", "section_workspace"]
 
 
 @dataclass
@@ -90,6 +90,115 @@ class Workspace:
             f"Workspace(samples={self.samples}, dof={self.dof}, "
             f"seed={self.seed})"
         )
+
+
+
+_SECTION_COORDINATES = {"xy": 2, "xz": 1, "yz": 0}
+
+
+def _normalize_section_scalar(value, *, name, nonnegative=False):
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        raise ValueError(f"{name} must be a finite real scalar.")
+    result = float(value)
+    if not np.isfinite(result):
+        raise ValueError(f"{name} must be finite.")
+    if nonnegative and result < 0:
+        raise ValueError(f"{name} must be nonnegative.")
+    return result
+
+
+def _normalize_section_plane(plane):
+    if not isinstance(plane, str) or plane not in _SECTION_COORDINATES:
+        raise ValueError("plane must be one of 'xy', 'xz', or 'yz'.")
+    return plane
+
+
+@dataclass
+class WorkspaceSection:
+    """Rows of a sampled workspace lying within a Cartesian plane slab.
+
+    Points retain their original 3D coordinates. Indices refer
+    to zero-based rows in the source Workspace. An empty section is valid.
+    """
+
+    plane: str
+    level: float
+    thickness: float
+    indices: np.ndarray
+    points: np.ndarray
+    configurations: np.ndarray
+    source_samples: int
+
+    def __post_init__(self):
+        self.plane = _normalize_section_plane(self.plane)
+        self.level = _normalize_section_scalar(self.level, name="level")
+        self.thickness = _normalize_section_scalar(
+            self.thickness, name="thickness", nonnegative=True
+        )
+        if isinstance(self.source_samples, (bool, np.bool_)) or not isinstance(
+            self.source_samples, Integral
+        ) or self.source_samples < 1:
+            raise ValueError("source_samples must be a positive integer.")
+        self.source_samples = int(self.source_samples)
+
+        raw_indices = np.asarray(self.indices)
+        if raw_indices.ndim != 1 or raw_indices.dtype.kind not in "iu":
+            raise ValueError("indices must be a one-dimensional integer array.")
+        self.indices = np.array(raw_indices, dtype=np.int64, copy=True)
+        if np.any(self.indices < 0) or np.any(self.indices >= self.source_samples):
+            raise ValueError("indices must refer to rows of the source workspace.")
+        if np.any(np.diff(self.indices) <= 0):
+            raise ValueError("indices must be strictly increasing.")
+
+        self.points = _as_real_array(self.points, name="points", ndim=2)
+        self.configurations = _as_real_array(
+            self.configurations, name="configurations", ndim=2
+        )
+        if self.points.shape != (len(self.indices), 3):
+            raise ValueError("points must have shape (K, 3) matching indices.")
+        if (
+            self.configurations.shape[0] != len(self.indices)
+            or self.configurations.shape[1] < 1
+        ):
+            raise ValueError(
+                "configurations must have shape (K, dof) matching indices."
+            )
+
+    @property
+    def samples(self):
+        return len(self.indices)
+
+    @property
+    def dof(self):
+        return self.configurations.shape[1]
+
+
+def section_workspace(workspace, *, plane="xy", level, thickness):
+    """Select original samples in a slab around a Cartesian coordinate plane.
+
+    XY filters the Z coordinate; XZ filters Y; YZ filters X. The full
+    slab thickness is used: abs(normal - level) <= thickness / 2.
+    No interpolation or new forward kinematics are performed.
+    """
+    if not isinstance(workspace, Workspace):
+        raise TypeError("workspace must be an instance of Workspace.")
+    plane = _normalize_section_plane(plane)
+    level = _normalize_section_scalar(level, name="level")
+    thickness = _normalize_section_scalar(
+        thickness, name="thickness", nonnegative=True
+    )
+    normal_axis = _SECTION_COORDINATES[plane]
+    mask = np.abs(workspace.points[:, normal_axis] - level) <= thickness / 2.0
+    indices = np.flatnonzero(mask)
+    return WorkspaceSection(
+        plane=plane,
+        level=level,
+        thickness=thickness,
+        indices=indices,
+        points=workspace.points[indices],
+        configurations=workspace.configurations[indices],
+        source_samples=workspace.samples,
+    )
 
 
 def _as_real_array(value, *, name, ndim):

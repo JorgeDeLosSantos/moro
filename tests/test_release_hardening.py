@@ -133,7 +133,12 @@ def test_new_modules_export_the_accepted_public_api():
         "state_derivative",
         "simulate",
     }
-    assert set(workspace_all) == {"Workspace", "sample_workspace"}
+    assert set(workspace_all) == {
+        "Workspace",
+        "WorkspaceSection",
+        "sample_workspace",
+        "section_workspace",
+    }
     assert "plot_workspace" in visualization_all
 
     for name in (
