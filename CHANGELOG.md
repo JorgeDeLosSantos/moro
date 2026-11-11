@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
 
 * **Breaking:** `RobotVisualizer.plot(num_vals=...)` becomes `plot(configuration=...)`, and `animate(num_vals_list=...)` becomes `animate(configurations=...)`. Old keyword names are not accepted; positional arguments still work.
 * **Breaking:** `plot_workspace(workspace)` now defaults to Three.js and returns `IPython.display.HTML`. Code needing a Matplotlib `(fig, ax)` must explicitly use `backend="matplotlib"`.
-* `plot_workspace_section(section)`, new during 0.7.0 development, likewise defaults to Three.js; use `backend="matplotlib"` for `(fig, ax)`.
+* `plot_workspace_section(section)`, introduced in 0.7.0, also defaults to Three.js; use `backend="matplotlib"` for `(fig, ax)`.
 * Workspace and section grids are disabled by default and enabled with `show_grid=True`. Their numerical sampled data remain unaffected.
 
 ### Removed
