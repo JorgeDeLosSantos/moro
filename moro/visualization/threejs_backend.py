@@ -353,29 +353,60 @@ class ThreeJSBackend:
         return HTML(html)
 
 
-def _workspace_point_payload(points, *, projection):
-    """Prepare finite 3D point-cloud data and camera bounds for Three.js."""
-    values = np.asarray(points, dtype=float)
-    if values.ndim != 2 or values.shape[1] != 3 or values.shape[0] < 1:
-        raise ValueError("workspace points must have shape (N, 3) with N >= 1.")
+def _workspace_point_payload(
+    points, *, projection, plane_level=None, allow_empty=False
+):
+    """Build viewer positions and framing without modifying source coordinates.
+
+    A section is projected onto its *nominal* plane level, rather than
+    the average of its sampled slab. Empty sections use a deterministic
+    unit-scale reference view in that plane.
+    """
+    values = np.asarray(points)
+    if np.iscomplexobj(values):
+        raise ValueError("workspace points must contain real values.")
+    try:
+        values = np.asarray(points, dtype=float)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("workspace points must contain finite real values.") from exc
+    if values.ndim != 2 or values.shape[1] != 3:
+        raise ValueError("workspace points must have shape (N, 3).")
     if not np.isfinite(values).all():
         raise ValueError("workspace points must contain finite real values.")
-    display = values.copy()
+    if len(values) == 0 and not allow_empty:
+        raise ValueError("workspace points must have at least one row.")
     normal = {"xy": 2, "xz": 1, "yz": 0}.get(projection)
     if normal is None and projection != "3d":
         raise ValueError("projection must be 'xy', 'xz', 'yz', or '3d'.")
-    if normal is not None:
-        # Orthogonal projection: retain source Cartesian coordinates in
-        # Python, but display points on a constant-normal plane in 3D.
-        display[:, normal] = (display[:, normal].min() + display[:, normal].max()) / 2.0
-    minimum = display.min(axis=0)
-    maximum = display.max(axis=0)
-    center = minimum / 2.0 + maximum / 2.0
-    span = maximum - minimum
-    radius = max(
-        0.6 * float(np.linalg.norm(span)),
-        1e-6 * max(float(np.max(np.abs(center))), 1e-6),
-    )
+    if plane_level is not None:
+        if normal is None or not math.isfinite(float(plane_level)):
+            raise ValueError("plane_level requires a planar projection and finite level.")
+        plane_level = float(plane_level)
+
+    display = values.copy()
+    if len(display):
+        if normal is not None:
+            display[:, normal] = (
+                plane_level if plane_level is not None
+                else (display[:, normal].min() + display[:, normal].max()) / 2.0
+            )
+        minimum = display.min(axis=0)
+        maximum = display.max(axis=0)
+        center = minimum / 2.0 + maximum / 2.0
+        span = maximum - minimum
+        radius = max(
+            0.6 * float(np.linalg.norm(span)),
+            1e-6 * max(float(np.max(np.abs(center))), 1e-6),
+        )
+    else:
+        # Empty slab sections are meaningful: show their named plane
+        # and requested level, even when there are no selected samples.
+        center = np.zeros(3, dtype=float)
+        if normal is not None:
+            center[normal] = plane_level if plane_level is not None else 0.0
+        radius = 1.0
+        minimum = center.copy()
+        maximum = center.copy()
     if not np.isfinite(radius) or radius <= 0:
         raise ValueError("Could not compute a finite workspace viewing scale.")
     return {
@@ -391,7 +422,8 @@ def _workspace_point_payload(points, *, projection):
 
 
 def render_workspace_points(
-    points, *, projection, marker_size, alpha, width, height
+    points, *, projection, marker_size, alpha, width, height,
+    show_grid=False, plane_level=None, section_info=None,
 ):
     """Return an interactive Three.js workspace point cloud as IPython HTML."""
     from IPython.display import HTML
@@ -405,10 +437,20 @@ def render_workspace_points(
         raise ValueError("marker_size must be positive and finite.")
     if not math.isfinite(float(alpha)) or not 0 <= float(alpha) <= 1:
         raise ValueError("alpha must be finite and satisfy 0 <= alpha <= 1.")
+    if not isinstance(show_grid, (bool, np.bool_)):
+        raise ValueError("show_grid must be Boolean.")
 
-    payload = _workspace_point_payload(points, projection=projection)
+    payload = _workspace_point_payload(
+        points,
+        projection=projection,
+        plane_level=plane_level,
+        allow_empty=section_info is not None,
+    )
     payload["marker_size"] = float(marker_size)
     payload["alpha"] = float(alpha)
+    payload["show_grid"] = bool(show_grid)
+    if section_info is not None:
+        payload["section"] = dict(section_info)
     html = _render_html_template(
         "threejs_workspace.html",
         {
