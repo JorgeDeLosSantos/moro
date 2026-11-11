@@ -125,4 +125,4 @@ For detailed descriptions of classes, functions, parameters, and return values, 
 
 For the mathematical background behind the implemented methods, see the **Theory** section.
 
-For the 0.7.0 workspace viewer, sampled-trajectory and compatibility changes, consult the [unreleased 0.7.0 release notes](release-notes/0.7.0.md). For the earlier switch of robot animation and plotting defaults, see the [Moro 0.6.0 release notes](release-notes/0.6.0.md).
+For the 0.7.0 workspace viewer, sampled-trajectory and compatibility changes, consult the [Moro 0.7.0 release notes](release-notes/0.7.0.md). For the earlier switch of robot animation and plotting defaults, see the [Moro 0.6.0 release notes](release-notes/0.6.0.md).
