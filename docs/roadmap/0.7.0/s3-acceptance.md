@@ -1,7 +1,10 @@
 # S3 — Moro 0.7.0 integration and visual acceptance
 
-> **Status:** CI acceptance in progress; interactive checks require a human in
-> Jupyter/Colab and are **not** proved by Python/Node unit tests.
+> **Status:** S3 accepted on 2026-11-11. PR #65 was merged into
+> `develop` at `ffa9b578`, with Python 3.11–3.14, package/build and
+> documentation checks passing. The user reported successful interactive
+> visualization checks in **Colab**. GitHub Actions alone cannot confirm
+> browser/WebGL behavior.
 
 The S3 integration tests cover joint multi-waypoint motion, irregular
 physical timestamps, Three.js animation payloads, ideal inverse dynamics
@@ -71,8 +74,12 @@ Confirm each item explicitly:
 - [ ] Multi-waypoint physical-time animation still plays/pause/seeks
       correctly and remains independent of other viewers in the notebook.
 
-**Recording policy:** these boxes must only be checked after actual
-human inspection. A green GitHub CI run does not establish their status.
+**Acceptance record (2026-11-11):** The user confirmed in the
+project discussion that the visualizations had been checked in Colab
+and were working correctly. This records the manual visual acceptance;
+the individual checklist boxes above are retained as reproducible
+instructions, rather than claiming each specific step was observed by
+CI. A green GitHub CI run alone does not establish browser acceptance.
 File issues and fix regressions before marking S3 complete.
 
 ## Exit criteria
