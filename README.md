@@ -9,6 +9,8 @@ It is designed primarily for robotics education and for workflows where inspecti
 
 ## Features
 
+> **Development notice:** The capabilities listed below describe the current `develop` branch, including the unreleased Moro 0.7.0 work. The latest stable PyPI version remains 0.6.1 until publication.
+
 * **Robot modeling:** Define serial manipulators with revolute and prismatic joints using Denavit-Hartenberg parameters.
 * **Transformations:** Work with `SO(3)` rotations, `SE(3)` homogeneous transformations, Euler/Tait-Bryan angles, axis-angle, quaternions, and rotation vectors.
 * **Forward kinematics:** Compute symbolic end-effector and intermediate-frame transformations.
