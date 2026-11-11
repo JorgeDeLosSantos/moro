@@ -1,29 +1,22 @@
-# Moro 0.7.0 — Preliminary feature inventory
+# Moro 0.7.0 — Frozen feature scope and stabilization plan
 
-> **Status:** Candidate inventory, **not frozen release scope**.  
-> **Consolidated:** 2026-11-03.  
-> **Planning base:** the 2026-10-28 rolling Moro roadmap and API discussions held during use of Moro 0.6.1.  
-> **Purpose:** decide which features to design and implement in 0.7.0 without prematurely committing to every candidate.
+> **Status:** Feature scope **frozen on 2026-11-11** (S1); release **not yet stabilized or published**.  
+> **Baseline:** `develop` after PR #62 (merge `0c1b11b`), with no outstanding feature PRs when S1 began.  
+> **Goal:** stabilize, document and release the accepted functionality without adding new features.  
+> **Previous planning:** the 2026-11-03 candidate inventory and the rolling Moro roadmap are preserved in the design discussions and the historical notes below.
 
 ## Release direction
 
 **Working theme:** Advanced Trajectories & Numerical Exploration.
 
-**Trajectory progress (2026-11-07):** T-01–T-03 (multi-waypoint
-interpolation and C0/C1/C2 continuity) are implemented in `develop` through
-PRs #40–#43. T-04 was designed in PR #44 and completed through
-B1/B2/B3 (PRs #45–#47), including
-[R/RR teaching examples](../../source/examples/trapezoidal-trajectories.md)
-and analytic limit regressions. T-05 remains a separate P1 candidate.
-T-06 is **completed**: its Three.js-first design was implemented in
-C1 (PR #49), C2 (PR #50) and C3 (PR #51), with
-[notebook-ready examples](../../source/examples/physical-time-playback.md),
-backend capability documentation, regression tests and interactive
-Jupyter/Colab visual validation. API-001 implementation is integrated
-through A1 (PR #52) and A2 (PR #53); A3 adds
-[symbolic-parameter notebook examples](../../source/examples/symbolic-visualization-parameters.md),
-user documentation and the
-[0.7.0 migration preview](../../source/release-notes/0.7.0.md).
+**Current status:** The functional scope described below is implemented in
+`develop`. The core trajectory changes (T-01–T-04) were integrated via
+PRs #40–#47; physical-time playback (T-06) via PRs #49–#51;
+visualization API (API-001) via PRs #52–#54; inverse dynamics over
+trajectories (API-002) via PRs #55–#57; and workspace work
+(API-003/D1–D5) via PRs #58–#62. **Implementation complete does not
+mean release-ready:** compatibility cleanup, final cross-module
+validation, docs/migration review, and version/release checks remain.
 
 The primary goal inherited from the rolling roadmap is to extend `moro.trajectory` from point-to-point interpolation to **multi-waypoint trajectories and motion profiles**. Complementary improvements emerged from practical use: more consistent visualization parameters, reusable inverse dynamics over sampled motion, and improved sampled-workspace exploration.
 
@@ -36,32 +29,64 @@ Preserve the project principles:
 - explicit conventions, useful diagnostics, regression tests, and reproducible examples;
 - avoid speculative abstractions and measure performance before deeper optimization.
 
-## Planning status and priority definitions
+## S1 — Accepted scope and release boundary (frozen 2026-11-11)
+
+| Track | Accepted functionality | State in `develop` |
+| --- | --- | --- |
+| **Trajectories** | T-01 multi-waypoint joint/Cartesian-position motion; T-02 piecewise polynomials; T-03 join continuity; T-04 rest-to-rest triangular/trapezoidal profiles | Implemented; final integration regression pending |
+| **Playback** | T-06 Three.js physical-time playback with timestamps and speed control | Implemented; final notebook regression pending |
+| **API-001** | Separate joint `configuration(s)` from constant model `parameters` in `RobotVisualizer`; direct keyword rename | Implemented; migration review pending |
+| **API-002** | `inverse_dynamics_trajectory()` for compatible sampled joint motion | Implemented; cross-module verification pending |
+| **API-003** | W-03 random/Sobol/LHS/grid sampling; W-02 numerical Cartesian sections; W-01 Three.js workspace/section views, Matplotlib alternative, optional grids | Implemented; final manual review of section/grid visuals pending |
+| **M-01** | Remove scheduled 0.7.0 deprecated interfaces and update migration/tests | **Required stabilization work; not yet implemented** |
+
+**Scope freeze:** No further feature development is planned for 0.7.0.
+Only bug fixes, compatibility cleanup already scheduled in M-01,
+regressions, integration examples, documentation, packaging and release
+work are in scope. If validation reveals a material defect, fix and
+retest it within the release candidate; do not use it to introduce
+unrelated features.
+
+**Explicitly deferred:** T-05 (basic velocity/acceleration-limit
+constraints) is **not part of Moro 0.7.0**. Reconsider it as a separately
+designed feature in a **future version not yet assigned**; do not assume
+0.8.0 automatically. This avoids silently committing to time-allocation,
+limit enforcement or trajectory-feasibility policies. The P2 ideas below,
+including friction/external forces and new workspace metrics, also
+remain outside 0.7.0.
+
+**Release gate:** The version stays unreleased until S2–S5 below pass.
+Passing the functional PR CI is necessary but not sufficient for a
+release candidate.
+
+## Historical planning priorities and design context
 
 | Level | Meaning |
 | --- | --- |
-| **P0 — release core** | Proposed identity of 0.7.0. Design first; still requires detailed acceptance and sizing. |
-| **P1 — complementary candidates** | Valuable work for 0.7.0 if scoped and independently testable; may move to a later version. |
-| **P2 — future radar** | Preserve the idea, but do not assume implementation in 0.7.0. |
+| **P0 — release core** | Original candidate ranking; T-01–T-04 and T-06 are now accepted and implemented. |
+| **P1 — complementary candidates** | Original ranking; API-001/002/003 were accepted, while T-05 was explicitly deferred. |
+| **P2 — future radar** | Preserved ideas outside the frozen 0.7.0 scope. |
 
-**Important:** P0 means *strong planning preference*, not blanket approval of all APIs or algorithms. API-001 and API-002 were approved and implemented incrementally; workspace items remain design candidates.
+These labels are historical planning classifications, **not** a current to-do list. The S1 accepted-scope table above is authoritative.
 
-## P0 — Primary track: advanced trajectories
+## Accepted primary track: advanced trajectories
 
 The following item IDs are local to this roadmap.
 
-| ID | Candidate | Intent and preliminary scope |
+| ID | Accepted item | Implemented intent |
 | --- | --- | --- |
 | **T-01** | Multi-waypoint joint and Cartesian-position trajectories | Prescribe ordered waypoints, associated with a clearly defined time convention. |
 | **T-02** | Piecewise polynomial interpolation | Extend existing `linear`, `cubic`, `quintic` capabilities to multiple segments where mathematically appropriate. |
 | **T-03** | Continuity across segments | Specify and validate position/velocity/acceleration continuity (`C0`, `C1`, `C2`) as appropriate to interpolation method and boundary conditions. |
-| **T-04** | Trapezoidal velocity profile | [Designed](../../design/0.7.0/trapezoidal.md) and implemented (B1/B2): synchronized rest-to-rest joint motion, triangular/trapezoidal phases, optional prescribed duration and typed profile metadata; B3 adds examples and validation. |
+| **T-04** | Trapezoidal velocity profile | [Designed](../../design/0.7.0/trapezoidal.md) and implemented (B1/B2): synchronized rest-to-rest joint motion, triangular/trapezoidal phases, optional prescribed duration and typed profile metadata; B3 (PR #47) added examples and validation. |
 | **T-06** | Physical-time playback | **Completed** in PRs #49–#51: timestamped Three.js playback, controls, validated examples, backend limitations and visual Colab checks. |
-| **M-01** | API cleanup and compatibility | Complete intended deprecation cleanup and document migrations. |
 
-**T-05 — Basic kinematic limits** is P1 for now: velocity/acceleration constraints can rapidly expand into time allocation and feasibility policy. The limited subset needs design before it is treated as release core.
 
-### Open design questions for T-01–T-06
+**T-05 — Basic kinematic limits is deferred beyond 0.7.0.** Velocity/acceleration constraints need a separate design of time allocation and feasibility policy. No release version has been assigned.
+
+### Historical design questions for T-01–T-06
+
+These questions guided the already integrated PRs; they are **not open gates** for 0.7.0. Consult the implemented API and corresponding design documents when reviewing regression cases.
 
 1. Extend existing `joint_trajectory()` / `position_trajectory()` or add explicit multi-waypoint functions? Preserve simple point-to-point entry points.
 2. Define input shape and meaning for waypoints, times, boundary derivatives, and intermediate derivatives.
@@ -72,22 +97,22 @@ The following item IDs are local to this roadmap.
 7. Preserve public output conventions: `t: (N,)`, `q/qd/qdd: (N,dof)`, `p/v/a: (N,3)`.
 8. Ensure diagnostics and didactic examples expose the effect of methods, timing, and boundary conditions.
 
-### M-01: previously scheduled 0.7.0 compatibility work
+### M-01: required pre-release compatibility cleanup (S2)
 
-Release notes for 0.6.1 identify these as intended 0.7.0 cleanup, subject to final import-usage and migration review:
+Release notes for 0.6.1 scheduled this cleanup for 0.7.0. S2 must verify internal imports, tests and replacements before removing the deprecated implementations:
 
 - remove deprecated `Robot.dynamic_model_matrix_form()` alias;
 - remove deprecated `is_SO3()`, `is_SE3()`, `isrot()`, and `ishtm()` predicates;
 - review removal of the legacy `moro.plotting` module, which was explicitly retained through 0.6.1;
 - **API-001 decision implemented:** directly rename the first named arguments to `configuration` and `configurations`; do not retain `num_vals`/`num_vals_list` aliases. Positional calls remain valid. See the [migration preview](../../source/release-notes/0.7.0.md).
 
-No silent changes to mathematics, frames, array shapes, or default backends. Document removals and alternatives clearly.
+No silent changes to mathematics, frames, array shapes, or established 0.7.0 backend defaults. Document each removal, its alternative and the deliberate compatibility impact. In particular, audit dependencies on legacy `moro.plotting` and predicates before deleting them.
 
-## P1 — Complementary API improvements
+## Accepted cross-module API improvements
 
-### API-001 — Explicit visualizer parameters (A1/A2 integrated; A3 documentation)
+### API-001 — Explicit visualizer parameters (PRs #52–#54 integrated)
 
-Improve consistency between numerical robotics operations and visualizer entry points:
+The integrated change aligns numerical robotics operations and visualizer entry points:
 
 ```python
 viz.plot(configuration, parameters=params)
@@ -102,9 +127,9 @@ viz.animate(configurations, parameters=params)
 - Keep `evaluate_robot(robot, substitutions)` unchanged as a lower-level evaluation interface.
 - **Not included:** compiled FK optimization or persistent parameter binding to `Robot` / `RobotVisualizer`.
 
-### API-002 — Inverse dynamics for sampled joint motion (B1/B2 merged; B3 documentation)
+### API-002 — Inverse dynamics for sampled joint motion (PRs #55–#57 integrated)
 
-Proposed public operation:
+Implemented public operation:
 
 ```python
 tau_history = inverse_dynamics_trajectory(
@@ -125,54 +150,56 @@ tau_history = inverse_dynamics_trajectory(
 **Implementation:** B1 (PR #55) added the function and its input
 contract. B2 (PR #56) validated R/RR/RP, symbolic parameters,
 single-state and forward-dynamics equivalence, and one-time model
-preparation. B3 adds the
+preparation. B3 (PR #57) adds the
 [RR quintic/trapezoidal notebook example](../../source/examples/inverse-dynamics-trajectories.md),
 the [Dynamics User Guide](../../source/user-guide/dynamics.md),
 and the [unreleased 0.7.0 feature notes](../../source/release-notes/0.7.0.md).
 Friction and externally applied forces are deferred to a separately
 designed extension shared with forward dynamics and simulation.
 
-## P1 — Workspace exploration track (MORO-API-003)
+## Accepted workspace exploration (MORO-API-003; PRs #58–#62 integrated)
 
 Keep `moro.workspace` (sampling/data) independent of `moro.visualization.workspace` (rendering). A sampled point cloud is **not** an exact reachable-space boundary. Retain point/configuration one-to-one correspondence.
 
-| ID | Candidate | Initial direction |
+| ID | Feature | Integrated behavior |
 | --- | --- | --- |
-| **W-01** | Three.js workspace backend | **Implemented in D5 (pending CI and browser acceptance):** `plot_workspace()` and `plot_workspace_section()` default to interactive Three.js points; explicit `backend='matplotlib'` preserves `(fig, ax)`. Both support an optional grid, disabled by default. Camera presets, fitting and projection reuse the shared helpers from `RobotVisualizer`. |
-| **W-02** | Cartesian plane sections | Introduce Python-side approximate slices near `xy/xz/yz` planes at an explicit level and thickness, suitable for 2D plots or Three.js exploration. |
-| **W-03** | Alternative joint-space samplers | Add method selection, initially considering `random` (current default), `sobol`, `latin_hypercube`, and `grid`, with seed and sample-count contracts documented. |
+| **W-01** | Three.js workspace backend | D5 (PR #62): `plot_workspace()` and `plot_workspace_section()` default to Three.js; explicit `backend="matplotlib"` preserves `(fig, ax)`. Optional `show_grid=False`; shared camera presets/Fit View. |
+| **W-02** | Cartesian plane sections | D3–D4 (PRs #60–#61): `section_workspace()` selects observed points near XY/XZ/YZ planes, preserves 3D data/configuration rows; visualizations support Matplotlib and Three.js. |
+| **W-03** | Alternative joint-space samplers | D2 (PR #59): `random` (default), `sobol`, `latin_hypercube`, and `grid` with explicit seed/count/shape rules and tests. |
 
 Specific concerns:
 
-- **W-01:** uses one Three.js point-cloud position buffer, with visual projection on axis-aligned planes, shared camera helpers and explicit Matplotlib fallback. Jupyter/Colab manual browser validation is still required; numerical analysis remains browser-independent.
+- **W-01:** uses one Three.js point-cloud position buffer, axis-aligned display projections, shared camera helpers and explicit Matplotlib support. The user validated the core camera/preset/navigation behavior in Jupyter/Colab before the final section/grid refinements; **manual section/grid inspection remains an S3 acceptance item**. Numerical analysis remains browser-independent.
 - **W-02:** distinguish *orthogonal projection* from *section*. A section selected by `|z-z0| <= thickness/2` (analogously for other planes) is a **thick sample filter**, not a mathematically exact plane–workspace intersection. Report selected point count and avoid silently expanding thickness when sparse.
 - **W-03:** low-discrepancy samples improve **joint-space** coverage; they do not ensure uniform Cartesian coverage or accurate frontier recovery. Explicitly define how Sobol handles non-power-of-two sample counts; avoid `grid` combinatorial explosions for high DOF.
 - Keep reusable section data in Python so both Matplotlib and Three.js can render it; do not make the numerical APIs depend on browser interactions.
 - **Decision for 0.7.0:** `plot_workspace` defaults to Three.js (an intentional breaking change); explicit Matplotlib remains available and old `(fig, ax)` consumers must request `backend='matplotlib'`.
 
-## P2 — Preserve but do not commit to 0.7.0
+## Deferred features — outside Moro 0.7.0
 
 | ID | Future idea | Why deferred |
 | --- | --- | --- |
+| **T-05** | Basic joint velocity/acceleration limits | Explicitly deferred by the S1 decision; requires a separately scoped feasibility and time-allocation design. No destination release assigned. |
 | **W-04** | Interactive point selection and configuration recovery | Requires browser-to-model interaction and a policy for accessing the robot instance. |
 | **W-05** | Manipulability, condition-number, singularity, or joint-coordinate coloring | Needs optional metric evaluation and coherent color/scale semantics. |
 | **W-06** | Nonconvex boundaries, area/volume estimates | Requires careful geometric/uncertainty contracts; convex hull can contain unreachable regions. |
 | **W-07** | Adaptive workspace sampling and larger-scale optimization | Needs refinement objectives and benchmarks, not just a new sampling option. |
+| **Friction / external forces** | Dynamic friction and externally applied wrenches in inverse/forward dynamics | Deferred to a separately designed extension with consistent interfaces across dynamics and simulation. |
 | **D-NE** | Recursive Newton–Euler (RNEA) | Currently planned for **0.10.0** in the rolling roadmap; no decision to advance it to 0.7.0. |
 | **Later horizon** | Pose trajectories/SLERP, acceleration-level differential kinematics, control, URDF/ROS 2, predefined manipulators | Retain the separate roadmap horizon; do not expand 0.7.0 by implication. |
 
 The rolling roadmap currently places **pose trajectories/SLERP in 0.8.0**, **second-order differential kinematics in 0.9.0**, and **RNEA/reusable numerical dynamics architecture in 0.10.0**. These placements are revisable, not guarantees.
 
-## Suggested work packages
+## Work packages and present status
 
 | Package | Contents | Proposed outcome |
 | --- | --- | --- |
-| **A — Trajectory design and implementation** | T-01, T-02, T-03, T-04; design limits T-05 separately | Transparent multi-point trajectories and one additional velocity profile. |
-| **B — Cross-module interoperability** | API-001, API-002, T-06 | Direct notebook workflows from generated motion to visualization and inverse dynamics. |
-| **C — Workspace numerical/visual exploration** | W-01, W-02, W-03 | Interactive sampled workspace, optional sections, and selectable sampling methods. |
-| **D — Stabilization and release** | M-01, examples, tests, docs, migration notes, benchmarks when justified | Consistent and supportable 0.7.0 release. |
+| **A — Trajectory design and implementation** | T-01–T-04 | Implemented; T-05 is deferred. |
+| **B — Cross-module interoperability** | API-001, API-002, T-06 | Implemented; cross-module release regressions in S3. |
+| **C — Workspace numerical/visual exploration** | W-01–W-03 | Implemented; final section/grid visual inspection in S3. |
+| **D — Stabilization and release** | S1–S5, including M-01 | **Current work package**; 0.7.0 remains unreleased. |
 
-Packages are **planning groupings, not a committed implementation schedule**. Package C is independently movable to a later release if scope or reliability requires it.
+Packages A–C are now implemented. Package D defines the required exit criteria; optional features cannot be added under the name of stabilization.
 
 ## Cross-module contracts and architectural guardrails
 
@@ -180,23 +207,29 @@ Packages are **planning groupings, not a committed implementation schedule**. Pa
 - Dynamic analysis consumes compatible sampled state arrays; avoid forcing inheritance between `JointTrajectory` and `DynamicsSolution`.
 - Numerical workspace sampling does not depend on Three.js.
 - Prefer module-level public functions and modest result objects over early general frameworks.
-- Do not promise nonuniform physical playback until actual time semantics have been defined and tested.
+- Physical-time playback remains Three.js-only and follows validated timestamp semantics; do not silently approximate irregular timing in Matplotlib.
 - Support both fixed model parameters and changing joint states explicitly, without mutating `Robot`.
 - Preserve 1-DOF, mixed R/P, degenerate/planar/3D, and symbolic-parameter regression cases.
 
-## Proposed acceptance and scope-freeze gates
+## S1–S5 — Stabilization and release gates
 
-Before moving from inventory to committed scope:
+| Stage | Work | Exit criteria |
+| --- | --- | --- |
+| **S1 — Scope freeze** | Publish this accepted inventory, explicit deferrals, release sequence and compatibility boundary. | Reviewed PR merged into `develop`; no ambiguity about T-05 or feature additions. |
+| **S2 — M-01 cleanup** | Audit internal/public uses of deprecated dynamic-model alias, transformation predicates and `moro.plotting`; remove scheduled obsolete APIs and update tests/docs. | Replacements documented; public imports and package tests pass; no unintended numerical changes. |
+| **S3 — Integration and acceptance** | Run full Python 3.11–3.14 tests/builds, installed wheel/sdist smoke tests, complete notebook workflows for trajectories → Three.js playback → inverse dynamics, and confirm workspace/section/grid visual behavior in Jupyter/Colab. | Known regressions resolved; required visual checks explicitly confirmed or recorded as a release blocker. |
+| **S4 — Documentation and migration** | Consolidate `CHANGELOG.md`, release notes, API guide and complete migration table (renamed visualization keywords, removed deprecated interfaces, Three.js workspace/section defaults). | Examples execute; docs build; no misleading "planned" wording for implemented features. |
+| **S5 — Release preparation** | Synchronize `pyproject.toml` and `moro/version.py` to `0.7.0`, validate packages, prepare reviewed release candidate, then follow maintainer runbook. | CI and docs green on release candidate; release notes finalized and explicit maintainer authorization before `master` merge, tag, GitHub Release or PyPI publication. |
 
-1. Specify public APIs, input/output shapes, exceptions, and backward compatibility for T-01–T-06.
-2. Estimate and test the numerical cost of each P1 candidate against the intended release size.
-3. Prioritize the smallest coherent workspace subset rather than assuming all W-* items land together.
-4. Make a deliberate decision on API removals and migration guidance.
-5. Write measurable acceptance cases: single-/multi-DOF trajectories; continuity and limits; nonuniform time playback; numerical inverse dynamics equivalence; 2D/3D workspace sampling, slices and backends.
-6. Identify at least one notebook-style teaching example per accepted functional area.
-7. Split accepted candidates into detailed design documents and testable PR-sized increments; document anything postponed explicitly.
+**Definition of done:** accepted features behave as documented; numerical
+and cross-module regressions pass; backend and installation contracts
+are tested; migration notes are sufficient for 0.6.x users; and the
+release checklist is complete. Manual browser checks should not be
+misrepresented as automatically proven by CI.
 
-**Definition of done for accepted features:** validated numerical behavior and edge cases, regression tests, useful error messages, docs/API reference, examples, compatibility notes, and successful full tests/builds. A proof of concept alone is insufficient.
+**No automatic publication:** freezing scope and merging documentation
+do not create a tag, GitHub Release or PyPI distribution. Release
+publication remains a separate explicit maintainer action.
 
 ## Planning references
 
