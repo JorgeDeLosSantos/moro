@@ -97,7 +97,7 @@ $$
 Since Moro 0.5.0, `dynamic_model()` returns the matrix-form manipulator equation. In Moro 0.4.x, it returned the per-joint Euler-Lagrange equations. Use `euler_lagrange_equations()` for that representation in current versions.
 :::
 
-`dynamic_model_matrix_form()` remains temporarily available as a deprecated alias of `dynamic_model()`.
+In Moro 0.7.0, the deprecated `dynamic_model_matrix_form()` alias has been removed. Use `dynamic_model()` for the matrix equation.
 
 ## Numerical inverse dynamics
 
