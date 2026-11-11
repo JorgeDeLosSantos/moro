@@ -237,3 +237,14 @@ def test_plot_workspace_invalid_grid_input():
 def test_legacy_matplotlib_section_style_without_backend_is_breaking():
     section = section_workspace(cloud(), plane="xy", level=0, thickness=0)
     assert isinstance(plot_workspace_section(section), HTML)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_matplotlib_workspace_grid_opt_in(enabled):
+    fig, ax = plot_workspace(
+        cloud(), backend="matplotlib", projection="xy", show_grid=enabled
+    )
+    try:
+        assert any(line.get_visible() for line in ax.get_xgridlines()) is enabled
+    finally:
+        plt.close(fig)
