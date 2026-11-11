@@ -896,7 +896,7 @@ A complete symbolic mapping is still valid, but joint vectors plus
 `parameters=` avoid repeating fixed model geometry during animation.
 The public low-level `evaluate_robot(robot, substitutions)` API is not
 renamed or extended by API-001. See the
-[unreleased 0.7.0 development notes](../release-notes/0.7.0.md)
+[0.7.0 migration and release notes (unreleased)](../release-notes/0.7.0.md)
 for the migration summary.
 
 The default backend changed in Moro 0.6.0. A bare `viz.plot(values)`

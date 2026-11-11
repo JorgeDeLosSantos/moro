@@ -1,6 +1,6 @@
 # Moro 0.7.0 — Frozen feature scope and stabilization plan
 
-> **Status:** Feature scope **frozen on 2026-11-11** (S1); release **not yet stabilized or published**.  
+> **Status:** Scope frozen (S1), M-01 cleanup merged (S2), integration and Colab checks accepted (S3); S4 documentation consolidation underway. Moro 0.7.0 remains **unreleased**.  
 > **Baseline:** `develop` after PR #62 (merge `0c1b11b`), with no outstanding feature PRs when S1 began.  
 > **Goal:** stabilize, document and release the accepted functionality without adding new features.  
 > **Previous planning:** the 2026-11-03 candidate inventory and the rolling Moro roadmap are preserved in the design discussions and the historical notes below.
@@ -33,12 +33,12 @@ Preserve the project principles:
 
 | Track | Accepted functionality | State in `develop` |
 | --- | --- | --- |
-| **Trajectories** | T-01 multi-waypoint joint/Cartesian-position motion; T-02 piecewise polynomials; T-03 join continuity; T-04 rest-to-rest triangular/trapezoidal profiles | Implemented; final integration regression pending |
-| **Playback** | T-06 Three.js physical-time playback with timestamps and speed control | Implemented; final notebook regression pending |
-| **API-001** | Separate joint `configuration(s)` from constant model `parameters` in `RobotVisualizer`; direct keyword rename | Implemented; migration review pending |
-| **API-002** | `inverse_dynamics_trajectory()` for compatible sampled joint motion | Implemented; cross-module verification pending |
-| **API-003** | W-03 random/Sobol/LHS/grid sampling; W-02 numerical Cartesian sections; W-01 Three.js workspace/section views, Matplotlib alternative, optional grids | Implemented; final manual review of section/grid visuals pending |
-| **M-01** | Remove scheduled 0.7.0 deprecated interfaces and update migration/tests | **Integrated in PR #64; cross-module regressions covered in S3** |
+| **Trajectories** | T-01 multi-waypoint joint/Cartesian-position motion; T-02 piecewise polynomials; T-03 join continuity; T-04 rest-to-rest triangular/trapezoidal profiles | Implemented; S3 integration regressions passed |
+| **Playback** | T-06 Three.js physical-time playback with timestamps and speed control | Implemented; S3 integration regressions passed |
+| **API-001** | Separate joint `configuration(s)` from constant model `parameters` in `RobotVisualizer`; direct keyword rename | Implemented; migration documented in S4 |
+| **API-002** | `inverse_dynamics_trajectory()` for compatible sampled joint motion | Implemented; S3 forward/inverse dynamics checks passed |
+| **API-003** | W-03 random/Sobol/LHS/grid sampling; W-02 numerical Cartesian sections; W-01 Three.js workspace/section views, Matplotlib alternative, optional grids | Implemented; Colab visual validation reported as correct in S3 |
+| **M-01** | Remove scheduled 0.7.0 deprecated interfaces and update migration/tests | Integrated (PR #64); S3 regressions passed |
 
 **Scope freeze:** No further feature development is planned for 0.7.0.
 Only bug fixes, compatibility cleanup already scheduled in M-01,
@@ -97,16 +97,16 @@ These questions guided the already integrated PRs; they are **not open gates** f
 7. Preserve public output conventions: `t: (N,)`, `q/qd/qdd: (N,dof)`, `p/v/a: (N,3)`.
 8. Ensure diagnostics and didactic examples expose the effect of methods, timing, and boundary conditions.
 
-### M-01: required pre-release compatibility cleanup (S2)
+### M-01: completed compatibility cleanup (S2, PR #64)
 
-Release notes for 0.6.1 scheduled this cleanup for 0.7.0. S2 must verify internal imports, tests and replacements before removing the deprecated implementations:
+Release notes for 0.6.1 scheduled this cleanup for 0.7.0. S2 audited imports, tests and replacements and completed the following removals:
 
-- remove deprecated `Robot.dynamic_model_matrix_form()` alias;
-- remove deprecated `is_SO3()`, `is_SE3()`, `isrot()`, and `ishtm()` predicates;
-- review removal of the legacy `moro.plotting` module, which was explicitly retained through 0.6.1;
+- removed deprecated `Robot.dynamic_model_matrix_form()` alias;
+- removed deprecated `is_SO3()`, `is_SE3()`, `isrot()`, and `ishtm()` predicates;
+- removed the legacy `moro.plotting` module, retained through 0.6.1;
 - **API-001 decision implemented:** directly rename the first named arguments to `configuration` and `configurations`; do not retain `num_vals`/`num_vals_list` aliases. Positional calls remain valid. See the [migration preview](../../source/release-notes/0.7.0.md).
 
-No silent changes to mathematics, frames, array shapes, or established 0.7.0 backend defaults. Document each removal, its alternative and the deliberate compatibility impact. In particular, audit dependencies on legacy `moro.plotting` and predicates before deleting them.
+The removals and replacement paths are recorded in the [0.7.0 migration notes](../../source/release-notes/0.7.0.md); no mathematical conventions, frame semantics, or established 0.7.0 backend defaults changed in S2.
 
 ## Accepted cross-module API improvements
 
@@ -169,7 +169,7 @@ Keep `moro.workspace` (sampling/data) independent of `moro.visualization.workspa
 
 Specific concerns:
 
-- **W-01:** uses one Three.js point-cloud position buffer, axis-aligned display projections, shared camera helpers and explicit Matplotlib support. The user validated the core camera/preset/navigation behavior in Jupyter/Colab before the final section/grid refinements; **manual section/grid inspection remains an S3 acceptance item**. Numerical analysis remains browser-independent.
+- **W-01:** uses one Three.js point-cloud position buffer, axis-aligned display projections, shared camera helpers and explicit Matplotlib support. The user validated the core camera/preset/navigation behavior in Jupyter/Colab before the final section/grid refinements; the user confirmed successful Colab visual checks for S3. Numerical analysis remains browser-independent.
 - **W-02:** distinguish *orthogonal projection* from *section*. A section selected by `|z-z0| <= thickness/2` (analogously for other planes) is a **thick sample filter**, not a mathematically exact plane–workspace intersection. Report selected point count and avoid silently expanding thickness when sparse.
 - **W-03:** low-discrepancy samples improve **joint-space** coverage; they do not ensure uniform Cartesian coverage or accurate frontier recovery. Explicitly define how Sobol handles non-power-of-two sample counts; avoid `grid` combinatorial explosions for high DOF.
 - Keep reusable section data in Python so both Matplotlib and Three.js can render it; do not make the numerical APIs depend on browser interactions.
@@ -195,8 +195,8 @@ The rolling roadmap currently places **pose trajectories/SLERP in 0.8.0**, **sec
 | Package | Contents | Proposed outcome |
 | --- | --- | --- |
 | **A — Trajectory design and implementation** | T-01–T-04 | Implemented; T-05 is deferred. |
-| **B — Cross-module interoperability** | API-001, API-002, T-06 | Implemented; cross-module release regressions in S3. |
-| **C — Workspace numerical/visual exploration** | W-01–W-03 | Implemented; final section/grid visual inspection in S3. |
+| **B — Cross-module interoperability** | API-001, API-002, T-06 | Implemented and accepted in S3. |
+| **C — Workspace numerical/visual exploration** | W-01–W-03 | Implemented; Colab visual acceptance reported in S3. |
 | **D — Stabilization and release** | S1–S5, including M-01 | **Current work package**; 0.7.0 remains unreleased. |
 
 Packages A–C are now implemented. Package D defines the required exit criteria; optional features cannot be added under the name of stabilization.
@@ -211,7 +211,7 @@ Packages A–C are now implemented. Package D defines the required exit criteria
 - Support both fixed model parameters and changing joint states explicitly, without mutating `Robot`.
 - Preserve 1-DOF, mixed R/P, degenerate/planar/3D, and symbolic-parameter regression cases.
 
-For S3's executable scenarios and human-only browser checks, see [S3 integration and visual acceptance](s3-acceptance.md).
+S3 is complete: CI passed and the user confirmed successful Colab visualization. The [S3 integration and visual acceptance record](s3-acceptance.md) distinguishes automated verification from the reported manual checks.
 
 ## S1–S5 — Stabilization and release gates
 
