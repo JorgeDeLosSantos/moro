@@ -90,7 +90,7 @@ This means sampling is uniform in joint space, not in Cartesian space.
 
 A dense Cartesian region does not imply a larger geometric portion of the true workspace; the forward-kinematics mapping can distort the point density strongly.
 
-## Alternative joint-space sampling methods (0.7.0 development)
+## Alternative joint-space sampling methods
 
 The default remains independent uniform pseudo-random sampling with an effective
 count of 1,000 when `samples` is omitted. A specific method can be selected:
@@ -198,7 +198,7 @@ returns the observed sample bounds:
 
 These are point-cloud bounds only. They are not an exact analytical workspace boundary.
 
-## Cartesian plane sections (0.7.0 development)
+## Cartesian plane sections
 
 A projection keeps every sample and discards one plotted coordinate. A **section**
 instead selects only points sufficiently close to a specified Cartesian plane.
