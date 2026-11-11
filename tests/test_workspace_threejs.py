@@ -136,7 +136,7 @@ def test_generated_workspace_javascript_has_valid_syntax():
 
 
 def _payload(html):
-    match = re.search(r"var data = (\\{.*?\\});\\s*var framing", html, re.S)
+    match = re.search(r"var data = (\{.*?\});\s*var framing", html, re.S)
     assert match
     return json.loads(match.group(1))
 
