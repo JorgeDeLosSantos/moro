@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.7.0] - Unreleased (release candidate)
+## [0.7.0]
 
 ### Added
 
