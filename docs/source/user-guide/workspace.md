@@ -231,23 +231,37 @@ point shape `(0, 3)` and configuration shape `(0, dof)`.
 A section never reconstructs an exact reachable-set intersection,
 interpolates missing data, increases its thickness automatically, or
 reevaluates forward kinematics. It is simply an observed point-cloud slab.
-Visualize the filtered point cloud in Matplotlib using:
+Visualize the filtered point cloud with the default Three.js viewer:
 
 ```python
 from moro.visualization import plot_workspace_section
 
-fig, ax = plot_workspace_section(section, marker_size=6, alpha=0.5)
+viewer = plot_workspace_section(section)
+viewer_with_grid = plot_workspace_section(section, show_grid=True)
 ```
 
-The section is displayed in its own 2D Cartesian plane: XY uses X/Y,
-XZ uses X/Z, and YZ uses Y/Z. The plot preserves sample order,
-uses equal aspect ratio, and supports an existing Matplotlib 2D `ax`.
-Even an empty section produces an empty plot with meaningful axis labels.
+The section is shown in the selected XY/XZ/YZ plane at its **nominal
+level** (e.g. Z = 0.3 for XY), while the original 3D points remain
+unchanged. The viewer starts with an orthographic camera perpendicular
+to the plane. Empty sections render a valid reference frame and a
+"No points in section" status.
 
-The function returns `(fig, ax)`. It does **not** resample, interpolate,
-recover a workspace frontier, or change any `WorkspaceSection` arrays.
-`plot_workspace(workspace)` is unchanged in this increment; the planned
-Three.js-default workspace viewer remains a separate later change.
+For Matplotlib figures and axes, select its backend explicitly:
+
+```python
+fig, ax = plot_workspace_section(
+    section, backend="matplotlib", marker_size=6, alpha=0.5,
+)
+```
+
+Both backends accept `show_grid=False` by default. When enabled,
+the Three.js grid lies in the selected projection plane (XY for a
+full 3D workspace), and Matplotlib enables its axis grid. The grid
+is visual guidance only; it does not modify sampling, interpolation or
+the physical interpretation of the section.
+
+No viewer resamples, interpolates, recovers a workspace frontier or
+changes any `WorkspaceSection` arrays.
 
 ## Visualization
 
@@ -311,8 +325,10 @@ rejected. `marker_size` denotes Matplotlib scatter area in point-squared
 units, but fixed pixel size in Three.js; visual appearance therefore
 differs between backends.
 
-`plot_workspace_section(section)` remains a standalone **Matplotlib**
-helper in D5. It is not affected by this default-backend change.
+`plot_workspace_section(section)` also defaults to Three.js. For
+Matplotlib axes, use `plot_workspace_section(section, backend="matplotlib")`.
+Both plotting functions accept `show_grid=False` (the default), with
+`show_grid=True` enabling an optional visual grid.
 
 ## What workspace sampling does not compute
 
