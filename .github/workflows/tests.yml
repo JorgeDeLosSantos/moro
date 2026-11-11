@@ -98,14 +98,30 @@ jobs:
           assert moro.__version__ == version("moro")
           assert "site-packages" in Path(moro.__file__).parts, moro.__file__
           resources = files("moro.visualization.templates")
-          for name in ("threejs_viewer.html", "threejs_animation.html", "threejs_common.js"):
+          for name in (
+              "threejs_viewer.html", "threejs_animation.html",
+              "threejs_workspace.html", "threejs_common.js",
+          ):
               assert resources.joinpath(name).is_file()
 
           q = Symbol("q")
           viz = RobotVisualizer(moro.Robot((0.5, 0, 0, q, "r")))
           assert isinstance(viz.plot({q: 0.2}), HTML)
           assert isinstance(viz.animate([{q: 0.0}, {q: 0.3}]), HTML)
-          print("Moro installed-sdist visualization smoke test passed.")
+          from moro.workspace import sample_workspace, section_workspace
+          from moro.visualization import plot_workspace, plot_workspace_section
+          from moro.trajectory import joint_waypoint_trajectory
+          assert moro.__version__ == "0.7.0"
+          robot = moro.Robot((0.5, 0, 0, q, "r"))
+          robot.joint_limits = [(0.0, 1.0)]
+          workspace = sample_workspace(robot, method="grid", grid_shape=(5,))
+          section = section_workspace(workspace, plane="xy", level=0, thickness=0)
+          assert isinstance(plot_workspace(workspace), HTML)
+          assert isinstance(plot_workspace_section(section), HTML)
+          motion = joint_waypoint_trajectory([0.0, 0.5, 1.0], [0, 1, 2], samples_per_segment=3)
+          assert motion.q.shape == (5, 1)
+          assert isinstance(viz.animate(motion.q, times=motion.t), HTML)
+          print("Moro 0.7.0 installed-sdist smoke test passed.")
           PY
 
       - name: Smoke test installed package
@@ -133,7 +149,8 @@ jobs:
 
           resources = files("moro.visualization.templates")
           for template_name in (
-              "threejs_viewer.html", "threejs_animation.html", "threejs_common.js"
+              "threejs_viewer.html", "threejs_animation.html",
+              "threejs_workspace.html", "threejs_common.js",
           ):
               assert resources.joinpath(template_name).is_file()
 
@@ -150,5 +167,17 @@ jobs:
           assert '"joint_solids"' in plot.data
           assert '"interval": 50.0' in animation.data
           assert '"joint_solids"' in animation.data
-          print("Moro installed-wheel visualization smoke test passed.")
+          assert moro.__version__ == "0.7.0"
+          from moro.trajectory import joint_waypoint_trajectory
+          from moro.workspace import section_workspace
+          from moro.visualization import plot_workspace_section
+          robot.joint_limits = [(0.0, 1.0)]
+          workspace = sample_workspace(robot, method="grid", grid_shape=(5,))
+          section = section_workspace(workspace, plane="xy", level=0, thickness=0)
+          assert isinstance(plot_workspace(workspace, show_grid=True), HTML)
+          assert isinstance(plot_workspace_section(section, show_grid=True), HTML)
+          motion = joint_waypoint_trajectory([0.0, 0.5, 1.0], [0, 1, 2], samples_per_segment=3)
+          assert motion.q.shape == (5, 1)
+          assert isinstance(viz.animate(motion.q, times=motion.t), HTML)
+          print("Moro 0.7.0 installed-wheel smoke test passed.")
           PY
