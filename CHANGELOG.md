@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] - Unreleased (release candidate)
+
 ### Added
 
 * **Multi-waypoint joint and Cartesian-position trajectories:** piecewise linear, cubic, and quintic interpolation with documented time-domain continuity, explicit waypoint derivatives, configurable sampling, and shape-preserving cubic interior velocities.
