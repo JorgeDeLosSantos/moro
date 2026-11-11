@@ -81,7 +81,7 @@ cart.a.shape == (N, 3)
 
 Two-component planar inputs are intentionally not promoted to three dimensions.
 
-## Multi-waypoint trajectories (0.7.0, PR-A2–A4)
+## Multi-waypoint trajectories
 
 `joint_waypoint_trajectory()` and `position_waypoint_trajectory()`
 generate piecewise **linear**, **cubic Hermite**, and **quintic Hermite**
