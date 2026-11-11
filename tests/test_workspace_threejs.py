@@ -13,9 +13,9 @@ import numpy as np
 import pytest
 from IPython.display import HTML
 
-from moro.visualization import plot_workspace
+from moro.visualization import plot_workspace, plot_workspace_section
 from moro.visualization.threejs_backend import _workspace_point_payload
-from moro.workspace import Workspace
+from moro.workspace import Workspace, section_workspace
 
 
 def cloud():
@@ -133,3 +133,107 @@ def test_generated_workspace_javascript_has_valid_syntax():
         timeout=15,
     )
     assert result.returncode == 0, result.stderr
+
+
+def _payload(html):
+    match = re.search(r"var data = (\\{.*?\\});\\s*var framing", html, re.S)
+    assert match
+    return json.loads(match.group(1))
+
+
+@pytest.mark.parametrize("plane,level", [
+    ("xy", 0.3), ("xz", 2.0), ("yz", 1.0),
+])
+def test_section_threejs_default_projects_to_nominal_plane(plane, level):
+    source = Workspace(
+        [[0.0, 1.0, 0.2], [1.0, 2.0, 0.3], [2.0, 3.0, 0.4]],
+        [[0.0], [0.4], [0.8]], ((-1.0, 1.0),),
+    )
+    section = section_workspace(
+        source, plane=plane, level=level, thickness=0.4,
+    )
+    original = section.points.copy()
+    result = plot_workspace_section(section)
+    assert isinstance(result, HTML)
+    payload = _payload(result.data)
+    assert payload["projection"] == plane
+    assert payload["section"] == {
+        "level": level, "thickness": 0.4,
+        "source_samples": source.samples,
+    }
+    assert payload["show_grid"] is False
+    assert len(payload["positions"]) == section.samples
+    normal = {"xy": 2, "xz": 1, "yz": 0}[plane]
+    shown = np.asarray(payload["positions"])
+    assert np.all(shown[:, normal] == level)
+    for i in range(3):
+        if i != normal:
+            np.testing.assert_allclose(shown[:, i], original[:, i])
+    np.testing.assert_array_equal(section.points, original)
+
+
+def test_empty_section_returns_html_and_explicit_empty_message():
+    source = cloud()
+    section = section_workspace(
+        source, plane="xy", level=10.0, thickness=0.0,
+    )
+    html = plot_workspace_section(section).data
+    p = _payload(html)
+    assert p["positions"] == []
+    assert p["framing"]["center"] == [0.0, 0.0, 10.0]
+    assert p["framing"]["fit_radius"] > 0
+    assert "No points in section" in html
+    assert p["section"]["source_samples"] == source.samples
+
+
+def test_optional_grid_switch_and_plane_aware_js():
+    a = _payload(plot_workspace(cloud()).data)
+    b = _payload(plot_workspace(cloud(), show_grid=True).data)
+    section = section_workspace(cloud(), plane="yz", level=1.0, thickness=2.0)
+    c = _payload(plot_workspace_section(section, show_grid=True).data)
+    assert a["show_grid"] is False
+    assert b["show_grid"] is True
+    assert c["show_grid"] is True
+    page = plot_workspace_section(section, show_grid=True).data
+    assert "gridPlane === 'xy'" in page
+    assert "gridPlane === 'yz'" in page
+    assert "MoroThreeJS.createGrid" in page
+
+
+def test_section_matplotlib_explicit_and_grid():
+    section = section_workspace(cloud(), plane="xy", level=0.0, thickness=0.0)
+    fig, ax = plot_workspace_section(
+        section, backend="matplotlib", show_grid=True
+    )
+    try:
+        assert ax.figure is fig
+        assert any(line.get_visible() for line in ax.get_xgridlines())
+    finally:
+        plt.close(fig)
+
+
+@pytest.mark.parametrize("kwargs,pattern", [
+    ({"backend": "unknown"}, "backend"),
+    ({"ax": "bad"}, "Matplotlib-only"),
+    ({"figsize": (4, 4)}, "Matplotlib-only"),
+    ({"backend": "matplotlib", "width": 600}, "Three.js-only"),
+    ({"backend": "matplotlib", "height": 400}, "Three.js-only"),
+    ({"show_grid": 1}, "show_grid"),
+    ({"show_grid": "yes"}, "show_grid"),
+    ({"width": 0}, "width"),
+    ({"height": True}, "height"),
+])
+def test_section_invalid_backend_or_option(kwargs, pattern):
+    section = section_workspace(cloud(), plane="xy", level=0.0, thickness=0)
+    with pytest.raises(ValueError, match=re.escape(pattern)):
+        plot_workspace_section(section, **kwargs)
+
+
+def test_plot_workspace_invalid_grid_input():
+    with pytest.raises(ValueError, match="show_grid"):
+        plot_workspace(cloud(), show_grid=None)
+
+
+def test_legacy_matplotlib_section_style_without_backend_is_breaking():
+    section = section_workspace(cloud(), plane="xy", level=0, thickness=0)
+    assert isinstance(plot_workspace_section(section), HTML)
