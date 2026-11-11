@@ -9,8 +9,6 @@ It is designed primarily for robotics education and for workflows where inspecti
 
 ## Features
 
-> **Development notice:** The capabilities listed below describe the current `develop` branch, including the unreleased Moro 0.7.0 work. The latest stable PyPI version remains 0.6.1 until publication.
-
 * **Robot modeling:** Define serial manipulators with revolute and prismatic joints using Denavit-Hartenberg parameters.
 * **Transformations:** Work with `SO(3)` rotations, `SE(3)` homogeneous transformations, Euler/Tait-Bryan angles, axis-angle, quaternions, and rotation vectors.
 * **Forward kinematics:** Compute symbolic end-effector and intermediate-frame transformations.
@@ -29,11 +27,13 @@ Install the latest stable release from PyPI:
 pip install moro
 ```
 
-To install the current development version from GitHub:
+To install the current code directly from GitHub:
 
 ```bash
-pip install git+https://github.com/JorgeDeLosSantos/moro.git@develop
+pip install git+https://github.com/JorgeDeLosSantos/moro.git@master
 ```
+
+The `develop` branch contains ongoing work and may include unreleased API changes.
 
 Moro requires **Python 3.11 or newer**.
 
@@ -102,18 +102,10 @@ solution = solve_position_ik(
 )
 ```
 
-Full-pose IK is available through:
-
-```python
-from moro.inverse_kinematics import solve_pose_ik
-
-solution = solve_pose_ik(
-    robot,
-    target_transform,
-    q0=initial_guess,
-    parameters=parameters,
-)
-```
+For full-pose IK, `solve_pose_ik()` accepts a numerical homogeneous
+transform as its target, with an initial joint estimate. See the
+[full-pose IK example](https://jorgedelossantos.github.io/moro/examples/full-pose-inverse-kinematics.html)
+for a complete worked problem.
 
 ## Trajectories
 
@@ -131,7 +123,7 @@ traj = joint_trajectory(
 )
 ```
 
-The result uses time-major arrays such as `traj.q.shape == (N, dof)` and can be passed directly to `RobotVisualizer.animate()`. In the current **0.7.0 development branch**, `joint_waypoint_trajectory()` generates multi-waypoint motion, `joint_trapezoidal_trajectory()` produces synchronized rest-to-rest profiles, and `viz.animate(traj.q, times=traj.t)` uses physical-time playback in Three.js.
+The result uses time-major arrays such as `traj.q.shape == (N, dof)` and can be animated with physical timestamps using `viz.animate(traj.q, times=traj.t)` in Three.js. For multi-waypoint motion and synchronized trapezoidal profiles, use `joint_waypoint_trajectory()` and `joint_trapezoidal_trajectory()`, respectively.
 
 ## Dynamics and Simulation
 
@@ -153,23 +145,32 @@ The former per-joint Euler-Lagrange behavior is available as:
 equations = robot.euler_lagrange_equations()
 ```
 
-Numerical dynamics and simulation live in `moro.dynamics`:
+Numerical dynamics and simulation live in `moro.dynamics`.
+After defining physical properties (masses, centers of mass, inertia tensors,
+and gravity), evaluate states and trajectories with:
 
 ```python
-from moro.dynamics import inverse_dynamics, forward_dynamics, simulate
+from moro.dynamics import (
+    inverse_dynamics,
+    forward_dynamics,
+    inverse_dynamics_trajectory,
+    simulate,
+)
+
+q = [0.2, -0.1]
+qd = [0.0, 0.0]
+qdd = [0.5, -0.2]
+parameters = {l1: 1.0, l2: 1.0}
 
 forces = inverse_dynamics(robot, q, qd, qdd, parameters=parameters)
 acceleration = forward_dynamics(robot, q, qd, forces, parameters=parameters)
+effort_history = inverse_dynamics_trajectory(robot, traj, parameters=parameters)
 
-solution = simulate(
-    robot,
-    (0.0, 2.0),
-    q0,
-    qd0=qd0,
-    tau=controller,
-    parameters=parameters,
-)
+solution = simulate(robot, (0.0, 2.0), q, qd0=qd, tau=forces, parameters=parameters)
 ```
+
+For a fully specified physical model, see the
+[numerical dynamics example](https://jorgedelossantos.github.io/moro/examples/numerical-dynamics.html).
 
 ## Workspace Sampling
 
@@ -177,19 +178,19 @@ solution = simulate(
 from moro.workspace import sample_workspace, section_workspace
 from moro.visualization import plot_workspace, plot_workspace_section
 
-workspace = sample_workspace(robot, samples=1024, method="sobol", seed=42)
-viewer = plot_workspace(workspace)  # Three.js in the 0.7.0 development branch
+workspace = sample_workspace(
+    robot, samples=1024, method="sobol", seed=42,
+    joint_limits=[(-3.14, 3.14), (-3.14, 3.14)],
+    parameters={l1: 1.0, l2: 1.0},
+)
+viewer = plot_workspace(workspace)  # Three.js
 # Matplotlib instead: fig, ax = plot_workspace(workspace, backend="matplotlib")
 
 section = section_workspace(workspace, plane="xy", level=0.0, thickness=0.05)
 section_viewer = plot_workspace_section(section, show_grid=True)
 ```
 
-Workspace sampling operates in joint coordinates, not uniformly in Cartesian space. The result stores both `workspace.configurations` and their corresponding Cartesian `workspace.points`. Sections select points near a plane; they do not reconstruct exact workspace boundaries. For the last stable release on PyPI, see the published [0.6.1 notes](https://jorgedelossantos.github.io/moro/release-notes/0.6.1.html).
-
-## 0.7.0 development and migration
-
-The **0.7.0 functionality is currently on `develop`**, not yet published to PyPI. Compared with 0.6.x, this branch renames the `RobotVisualizer` keyword arguments to `configuration` / `configurations`, changes `plot_workspace()` to default to Three.js, and removes the previously deprecated dynamic-model alias, transformation wrappers, and `moro.plotting`. See the [unreleased 0.7.0 migration guide](https://jorgedelossantos.github.io/moro/release-notes/0.7.0.html).
+Workspace sampling operates in joint coordinates, not uniformly in Cartesian space. The result stores both `workspace.configurations` and their corresponding Cartesian `workspace.points`. Sections select points near a plane; they do not reconstruct exact workspace boundaries.
 
 ## Documentation
 
