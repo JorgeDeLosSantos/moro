@@ -200,13 +200,10 @@ $$
 In Moro 0.4.x, `dynamic_model()` returned the per-joint Euler-Lagrange equations. Starting with Moro 0.5.0, use `euler_lagrange_equations()` for that representation.
 :::
 
-The old helper
-
-```python
-robot.dynamic_model_matrix_form()
-```
-
-remains temporarily as a deprecated compatibility alias of `dynamic_model()`.
+The deprecated `dynamic_model_matrix_form()` alias has been removed
+in Moro 0.7.0. Use `robot.dynamic_model()` to obtain the symbolic
+matrix equation. For per-joint Euler–Lagrange equations, use
+`robot.euler_lagrange_equations()`.
 
 ## Explicit torque expression
 
