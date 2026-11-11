@@ -22,13 +22,13 @@ Moro provides tools for:
 * analyzing singular values, numerical rank, condition number, singularity, and manipulability;
 * solving numerical inverse kinematics for Cartesian position and full pose;
 * solving sequences of position inverse-kinematics targets;
-* generating linear, cubic, and quintic trajectories in joint or Cartesian position space;
+* generating point-to-point and multi-waypoint linear, cubic, and quintic trajectories in joint or Cartesian position space, plus synchronized trapezoidal joint motion;
 * deriving symbolic robot dynamics using Euler-Lagrange equations and the standard matrix form;
-* evaluating inverse and forward dynamics numerically;
+* evaluating inverse and forward dynamics numerically, including ideal inverse dynamics across sampled joint trajectories;
 * integrating the equations of motion with numerical generalized-force inputs;
-* sampling reachable Cartesian workspace over finite joint domains;
-* plotting robotic manipulators with interactive Three.js by default (or explicitly with Matplotlib), and plotting sampled workspaces with Matplotlib;
-* animating robot motion with Three.js by default and with Matplotlib as an explicit alternative;
+* sampling reachable Cartesian workspace over finite joint domains with random, Sobol, Latin-hypercube, and grid methods; selecting approximate Cartesian plane sections;
+* plotting robotic manipulators, sampled workspaces, and Cartesian sections with interactive Three.js by default, or explicitly with Matplotlib;
+* animating robot motion with Three.js, including playback on physical, possibly nonuniform timestamps; Matplotlib remains an explicit fixed-interval alternative;
 * rendering evaluated DH geometry and solid/schematic R/P joint symbols with consistent scale and automatic framing.
 
 Most kinematic and dynamic quantities can still be represented symbolically, allowing the user to inspect the equations generated for a manipulator before substituting numerical values.
@@ -125,4 +125,4 @@ For detailed descriptions of classes, functions, parameters, and return values, 
 
 For the mathematical background behind the implemented methods, see the **Theory** section.
 
-For the latest visualization changes and backend migration, see the **Moro 0.6.0 Release Notes** section.
+For the 0.7.0 workspace viewer, sampled-trajectory and compatibility changes, consult the [unreleased 0.7.0 release notes](release-notes/0.7.0.md). For the earlier switch of robot animation and plotting defaults, see the [Moro 0.6.0 release notes](release-notes/0.6.0.md).
