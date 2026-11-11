@@ -138,17 +138,17 @@ Keep `moro.workspace` (sampling/data) independent of `moro.visualization.workspa
 
 | ID | Candidate | Initial direction |
 | --- | --- | --- |
-| **W-01** | Three.js workspace backend | Extend `plot_workspace()` to an interactive point-cloud viewer with camera conventions and fit behavior coherent with `RobotVisualizer`, retaining explicit Matplotlib support. |
+| **W-01** | Three.js workspace backend | **Implemented in D5 (pending CI and browser acceptance):** `plot_workspace()` and `plot_workspace_section()` default to interactive Three.js points; explicit `backend='matplotlib'` preserves `(fig, ax)`. Both support an optional grid, disabled by default. Camera presets, fitting and projection reuse the shared helpers from `RobotVisualizer`. |
 | **W-02** | Cartesian plane sections | Introduce Python-side approximate slices near `xy/xz/yz` planes at an explicit level and thickness, suitable for 2D plots or Three.js exploration. |
 | **W-03** | Alternative joint-space samplers | Add method selection, initially considering `random` (current default), `sobol`, `latin_hypercube`, and `grid`, with seed and sample-count contracts documented. |
 
 Specific concerns:
 
-- **W-01:** use efficient point-cloud buffers; scale consistently across units, support planar and spatial workspaces, and avoid mandatory JavaScript for numerical analysis.
+- **W-01:** uses one Three.js point-cloud position buffer, with visual projection on axis-aligned planes, shared camera helpers and explicit Matplotlib fallback. Jupyter/Colab manual browser validation is still required; numerical analysis remains browser-independent.
 - **W-02:** distinguish *orthogonal projection* from *section*. A section selected by `|z-z0| <= thickness/2` (analogously for other planes) is a **thick sample filter**, not a mathematically exact plane–workspace intersection. Report selected point count and avoid silently expanding thickness when sparse.
 - **W-03:** low-discrepancy samples improve **joint-space** coverage; they do not ensure uniform Cartesian coverage or accurate frontier recovery. Explicitly define how Sobol handles non-power-of-two sample counts; avoid `grid` combinatorial explosions for high DOF.
 - Keep reusable section data in Python so both Matplotlib and Three.js can render it; do not make the numerical APIs depend on browser interactions.
-- Decide the `plot_workspace` default backend after reviewing backward compatibility; adding Three.js need not automatically switch the default in the same step.
+- **Decision for 0.7.0:** `plot_workspace` defaults to Three.js (an intentional breaking change); explicit Matplotlib remains available and old `(fig, ax)` consumers must request `backend='matplotlib'`.
 
 ## P2 — Preserve but do not commit to 0.7.0
 

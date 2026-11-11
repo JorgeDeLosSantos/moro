@@ -42,7 +42,10 @@ workspace.configurations.shape
 Because this robot is planar, automatic visualization selects the $xy$ plane:
 
 ```python
-fig, ax = plot_workspace(workspace)
+viewer = plot_workspace(workspace)  # Three.js by default
+
+# To obtain Matplotlib axes instead:
+fig, ax = plot_workspace(workspace, backend="matplotlib")
 ```
 
 The plotted points approximate the reachable position workspace over the selected joint ranges.
@@ -68,9 +71,16 @@ workspace = sample_workspace(
     seed=2,
 )
 
+viewer = plot_workspace(
+    workspace,
+    projection="3d",
+)
+
+# Alternatively, Matplotlib:
 fig, ax = plot_workspace(
     workspace,
     projection="3d",
+    backend="matplotlib",
 )
 ```
 

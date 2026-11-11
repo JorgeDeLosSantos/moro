@@ -40,7 +40,7 @@ def test_section_plot_preserves_coordinates_and_labeling(
     section = section_workspace(
         ws, plane=plane, level=level, thickness=thickness,
     )
-    fig, ax = plot_workspace_section(section, marker_size=11, alpha=0.25)
+    fig, ax = plot_workspace_section(section, backend="matplotlib", marker_size=11, alpha=0.25)
     try:
         np.testing.assert_array_equal(section.indices, expected_indices)
         plotted = np.asarray(ax.collections[0].get_offsets())
@@ -61,7 +61,7 @@ def test_empty_section_draws_empty_2d_axes_without_error():
         source(), plane="yz", level=999.0, thickness=0,
     )
     assert section.samples == 0
-    fig, ax = plot_workspace_section(section)
+    fig, ax = plot_workspace_section(section, backend="matplotlib")
     try:
         assert np.asarray(ax.collections[0].get_offsets()).shape == (0, 2)
         assert (ax.get_xlabel(), ax.get_ylabel()) == ("Y", "Z")
@@ -74,7 +74,7 @@ def test_external_axes_and_3d_axis_rejection():
     section = section_workspace(source(), plane="xy", level=0.1, thickness=0)
     fig, ax = plt.subplots()
     try:
-        returned_fig, returned_ax = plot_workspace_section(section, ax=ax)
+        returned_fig, returned_ax = plot_workspace_section(section, backend="matplotlib", ax=ax)
         assert returned_fig is fig
         assert returned_ax is ax
     finally:
@@ -84,7 +84,7 @@ def test_external_axes_and_3d_axis_rejection():
     ax3d = fig.add_subplot(111, projection="3d")
     try:
         with pytest.raises(ValueError, match="2D"):
-            plot_workspace_section(section, ax=ax3d)
+            plot_workspace_section(section, backend="matplotlib", ax=ax3d)
     finally:
         plt.close(fig)
 
@@ -97,17 +97,17 @@ def test_external_axes_and_3d_axis_rejection():
 def test_invalid_visual_options(marker_size, alpha):
     section = section_workspace(source(), plane="xy", level=0, thickness=0)
     with pytest.raises(ValueError):
-        plot_workspace_section(section, marker_size=marker_size, alpha=alpha)
+        plot_workspace_section(section, backend="matplotlib", marker_size=marker_size, alpha=alpha)
 
 
 def test_wrong_input_type_and_no_data_mutation():
     with pytest.raises(TypeError, match="WorkspaceSection"):
-        plot_workspace_section(source())
+        plot_workspace_section(source(), backend="matplotlib")
     section = section_workspace(source(), plane="xy", level=0.1, thickness=0)
     points = section.points.copy()
     configurations = section.configurations.copy()
     indices = section.indices.copy()
-    fig, ax = plot_workspace_section(section)
+    fig, ax = plot_workspace_section(section, backend="matplotlib")
     plt.close(fig)
     np.testing.assert_array_equal(section.points, points)
     np.testing.assert_array_equal(section.configurations, configurations)

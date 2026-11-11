@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; overflow: hidden; background: #f5f5f5; font-family: Arial, sans-serif; }
+  #controls-__UNIQUE_ID__ { position: absolute; top: 10px; left: 10px; z-index: 100;
+      background: rgba(255,255,255,.95); padding: 8px; border-radius: 6px;
+      font: 12px Arial,sans-serif; box-shadow: 0 2px 5px rgba(0,0,0,.2); }
+  #controls-__UNIQUE_ID__ .control-row { display: flex; gap: 4px; margin-bottom: 4px; }
+  #controls-__UNIQUE_ID__ button, #controls-__UNIQUE_ID__ select {
+      padding: 5px 9px; color: white; background: #4CAF50;
+      border: none; border-radius: 3px; cursor: pointer; }
+  #status-__UNIQUE_ID__ { color: #666; font-size: 10px; margin-top: 5px; }
+</style>
+</head>
+<body>
+<div id="controls-__UNIQUE_ID__">
+  <div class="control-row">
+    <button onclick="window.workspace___UNIQUE_ID__.setView('front')">Front</button>
+    <button onclick="window.workspace___UNIQUE_ID__.setView('right')">Right</button>
+    <button onclick="window.workspace___UNIQUE_ID__.setView('top')">Top</button>
+    <button onclick="window.workspace___UNIQUE_ID__.setView('isometric')">Isometric</button>
+  </div>
+  <div class="control-row">
+    <select id="cam-type-__UNIQUE_ID__" onchange="window.workspace___UNIQUE_ID__.setCameraType(this.value)">
+      <option value="perspective">Perspective</option>
+      <option value="orthographic" selected>Orthographic</option>
+    </select>
+    <button onclick="window.workspace___UNIQUE_ID__.fitView()" title="Fit the point cloud without changing view direction">Fit View</button>
+  </div>
+  <div id="status-__UNIQUE_ID__">Loading...</div>
+</div>
+<div id="container-__UNIQUE_ID__"></div>
+<script>
+__COMMON_SCRIPT__
+</script>
+<script>
+(function() {
+  var status = document.getElementById('status-__UNIQUE_ID__');
+  function fail(error) {
+    status.textContent = 'Error loading workspace: ' + error.message;
+    status.style.color = 'red';
+  }
+  window.MoroThreeJS.ensureThreeReady(initWorkspace, fail);
+
+  function initWorkspace() {
+    try {
+      var data = __WORKSPACE_DATA__;
+      var framing = data.framing;
+      var width = __WIDTH__, height = __HEIGHT__, aspect = width / height;
+      var projection = data.projection;
+      var center = new THREE.Vector3().fromArray(framing.center);
+      var scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xf5f5f5);
+
+      var cameras = window.MoroThreeJS.createCameras({
+        aspect: aspect, framing: framing
+      });
+      var perspectiveCamera = cameras.perspectiveCamera;
+      var orthographicCamera = cameras.orthographicCamera;
+      var camera = orthographicCamera;
+      var cameraDistance = cameras.distance;
+      var activeCameraType = 'orthographic';
+      var currentView = 'isometric';
+
+      var renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      document.getElementById('container-__UNIQUE_ID__').appendChild(renderer.domElement);
+
+      var controls = window.MoroThreeJS.setupOrbitControls({
+        camera: camera,
+        domElement: renderer.domElement,
+        target: center.clone(),
+        onStart: function() { currentView = 'custom'; updateStatus(); }
+      });
+
+      // One shared GPU position buffer, not a mesh per sample.
+      var flattened = [];
+      for (var i = 0; i < data.positions.length; i++) {
+        flattened.push(data.positions[i][0], data.positions[i][1], data.positions[i][2]);
+      }
+      var geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        'position', new THREE.Float32BufferAttribute(flattened, 3)
+      );
+      var material = new THREE.PointsMaterial({
+        color: 0x1565c0,
+        size: data.marker_size,
+        sizeAttenuation: false,
+        transparent: data.alpha < 1,
+        opacity: data.alpha,
+        depthWrite: data.alpha === 1
+      });
+      scene.add(new THREE.Points(geometry, material));
+
+      // The grid is intentionally OFF by default. Its plane follows
+      // the selected projection, or XY for a full 3D workspace.
+      if (data.show_grid) {
+        var gridPlane = projection === '3d' ? 'xy' : projection;
+        var normal = {xy: 2, xz: 1, yz: 0}[gridPlane];
+        var gridPosition = center.toArray();
+        var gridSize = framing.fit_radius * 2.4;
+        if (projection === '3d') {
+          gridPosition[2] = 0;
+        }
+        // Keep grid lines behind the points to prevent z-fighting.
+        var backSign = {xy: -1, xz: 1, yz: -1}[gridPlane];
+        gridPosition[normal] += backSign * framing.fit_radius * 0.001;
+        var grid = window.MoroThreeJS.createGrid(scene, {
+          gridSize: gridSize,
+          gridDivisions: 20,
+          primaryColor: 0xaaaaaa,
+          secondaryColor: 0xdddddd,
+          rotateToXY: gridPlane === 'xy',
+          position: gridPosition
+        });
+        if (gridPlane === 'yz') {
+          grid.rotation.z = Math.PI / 2;
+        }
+      }
+
+      var axes = new THREE.AxesHelper(framing.fit_radius * 0.3);
+      axes.position.copy(center);
+      scene.add(axes);
+
+      function updateStatus() {
+        var cameraName = activeCameraType === 'orthographic'
+          ? 'Orthographic' : 'Perspective';
+        var viewName = currentView === 'custom'
+          ? 'Custom' : currentView.charAt(0).toUpperCase() + currentView.slice(1);
+        var label = data.positions.length + ' samples';
+        if (data.section) {
+          label += ' / ' + data.section.source_samples +
+            ' | section ' + projection.toUpperCase() +
+            ' at ' + data.section.level +
+            ' (thickness ' + data.section.thickness + ')';
+          if (data.positions.length === 0) {
+            label += ' | No points in section';
+          }
+        }
+        status.textContent = label + ' | ' + cameraName + ' | ' + viewName +
+          ' — Drag to orbit, right-drag to pan, wheel/pinch to zoom';
+        status.style.color = 'green';
+      }
+
+      function setView(viewName, resetTarget) {
+        if (resetTarget !== false) { controls.target.copy(center); }
+        if (!window.MoroThreeJS.setPresetView({
+          camera: camera, target: controls.target.clone(),
+          distance: cameraDistance, viewName: viewName, topUp: [0, 1, 0]
+        })) { return; }
+        controls.update();
+        currentView = viewName;
+        updateStatus();
+      }
+
+      function setCameraType(type) {
+        var result = window.MoroThreeJS.switchCameraType({
+          type: type, activeCameraType: activeCameraType,
+          camera: camera, perspectiveCamera: perspectiveCamera,
+          orthographicCamera: orthographicCamera, controls: controls,
+          aspect: aspect, synchronizeProjection: true
+        });
+        if (!result.changed) { return; }
+        camera = result.camera;
+        activeCameraType = result.activeCameraType;
+        document.getElementById('cam-type-__UNIQUE_ID__').value = type;
+        updateStatus();
+      }
+
+      function fitView() {
+        window.MoroThreeJS.fitCameraView({
+          camera: camera, controls: controls,
+          perspectiveCamera: perspectiveCamera,
+          orthographicCamera: orthographicCamera,
+          framing: framing, aspect: aspect
+        });
+        updateStatus();
+      }
+
+      var initialView = {
+        xy: 'top', xz: 'front', yz: 'right', '3d': 'isometric'
+      }[projection];
+      setView(initialView, true);
+
+      window.workspace___UNIQUE_ID__ = {
+        setView: setView, setCameraType: setCameraType, fitView: fitView
+      };
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    } catch (error) { fail(error); }
+  }
+})();
+</script>
+</body>
+</html>

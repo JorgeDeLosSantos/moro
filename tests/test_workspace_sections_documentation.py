@@ -14,7 +14,7 @@ def test_workspace_section_example_code_cells(monkeypatch):
         / "docs/source/examples/workspace-sections.md"
     ).read_text(encoding="utf-8")
     cells = re.findall(r"```python\n(.*?)\n```", source, re.S)
-    assert len(cells) == 5
+    assert len(cells) == 6
     monkeypatch.setattr(plt, "show", lambda: None)
     namespace = {"__name__": "__main__"}
     try:

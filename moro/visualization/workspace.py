@@ -1,4 +1,4 @@
-"""Matplotlib visualization for sampled workspaces."""
+"""Visualization of sampled Cartesian workspaces and sections."""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +10,22 @@ __all__ = ["plot_workspace", "plot_workspace_section"]
 
 
 _PROJECTIONS = {"auto", "xy", "xz", "yz", "3d"}
+
+
+def _normalize_plot_options(marker_size, alpha, show_grid):
+    """Validate common plot styling independently of the selected backend."""
+    try:
+        marker_size = float(marker_size)
+        alpha = float(alpha)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("marker_size and alpha must be real numeric values.") from exc
+    if not np.isfinite(marker_size) or marker_size <= 0:
+        raise ValueError("marker_size must be a finite value greater than 0.")
+    if not np.isfinite(alpha) or not (0.0 <= alpha <= 1.0):
+        raise ValueError("alpha must satisfy 0 <= alpha <= 1.")
+    if not isinstance(show_grid, (bool, np.bool_)):
+        raise ValueError("show_grid must be a Boolean value.")
+    return marker_size, alpha, bool(show_grid)
 
 
 def _normalize_projection(projection):
@@ -85,30 +101,50 @@ def plot_workspace(
     workspace,
     *,
     projection="auto",
+    backend="threejs",
     ax=None,
-    figsize=(8, 6),
+    figsize=None,
     marker_size=8,
     alpha=0.5,
+    width=None,
+    height=None,
+    show_grid=False,
 ):
-    """Plot a sampled workspace as a Matplotlib point cloud."""
+    """Render sampled positions (Three.js by default, or Matplotlib)."""
     if not isinstance(workspace, Workspace):
         raise TypeError("workspace must be an instance of Workspace.")
 
+    if backend not in ("threejs", "matplotlib"):
+        raise ValueError("backend must be 'threejs' or 'matplotlib'.")
     projection = _normalize_projection(projection)
     if projection == "auto":
         projection = _auto_projection(workspace)
 
-    try:
-        marker_size = float(marker_size)
-        alpha = float(alpha)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("marker_size and alpha must be real numeric values.") from exc
-    if not np.isfinite(marker_size) or marker_size <= 0:
-        raise ValueError("marker_size must be a finite value greater than 0.")
-    if not np.isfinite(alpha) or not (0.0 <= alpha <= 1.0):
-        raise ValueError("alpha must satisfy 0 <= alpha <= 1.")
+    marker_size, alpha, show_grid = _normalize_plot_options(
+        marker_size, alpha, show_grid
+    )
 
-    fig, ax = _prepare_axis(projection, ax, figsize)
+    if backend == "threejs":
+        if ax is not None or figsize is not None:
+            raise ValueError(
+                "ax and figsize are Matplotlib-only; use backend='matplotlib'."
+            )
+        from .threejs_backend import render_workspace_points
+        return render_workspace_points(
+            workspace.points,
+            projection=projection,
+            marker_size=marker_size,
+            alpha=alpha,
+            width=800 if width is None else width,
+            height=600 if height is None else height,
+            show_grid=show_grid,
+        )
+
+    if width is not None or height is not None:
+        raise ValueError(
+            "width and height are Three.js-only; use backend='threejs'."
+        )
+    fig, ax = _prepare_axis(projection, ax, (8, 6) if figsize is None else figsize)
     points = workspace.points
 
     if projection == "3d":
@@ -123,6 +159,7 @@ def plot_workspace(
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
         _set_equal_3d_limits(ax, workspace.bounds)
+        ax.grid(show_grid)
         return fig, ax
 
     axis_map = {
@@ -135,37 +172,65 @@ def plot_workspace(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_aspect("equal", adjustable="box")
+    ax.grid(show_grid)
     return fig, ax
 
 
 def plot_workspace_section(
     section,
     *,
+    backend="threejs",
     ax=None,
-    figsize=(8, 6),
+    figsize=None,
     marker_size=8,
     alpha=0.5,
+    width=None,
+    height=None,
+    show_grid=False,
 ):
-    """Draw a sampled Cartesian slab section in its defining 2D plane.
+    """Display a Cartesian slab section, using Three.js by default.
 
-    Uses only the Cartesian rows already stored in WorkspaceSection:
-    filtering and configuration indexing remain in moro.workspace.
-    An empty section produces a valid empty plot, with axes and labels.
+    Matplotlib remains available explicitly and returns a figure and axes.
+    The point selection and original 3D coordinates are not modified.
     """
     if not isinstance(section, WorkspaceSection):
         raise TypeError("section must be an instance of WorkspaceSection.")
+    if backend not in ("threejs", "matplotlib"):
+        raise ValueError("backend must be 'threejs' or 'matplotlib'.")
+    marker_size, alpha, show_grid = _normalize_plot_options(
+        marker_size, alpha, show_grid
+    )
 
-    try:
-        marker_size = float(marker_size)
-        alpha = float(alpha)
-    except (TypeError, ValueError, OverflowError) as exc:
-        raise ValueError("marker_size and alpha must be real numeric values.") from exc
-    if not np.isfinite(marker_size) or marker_size <= 0:
-        raise ValueError("marker_size must be a finite value greater than 0.")
-    if not np.isfinite(alpha) or not (0.0 <= alpha <= 1.0):
-        raise ValueError("alpha must satisfy 0 <= alpha <= 1.")
+    if backend == "threejs":
+        if ax is not None or figsize is not None:
+            raise ValueError(
+                "ax and figsize are Matplotlib-only; use backend='matplotlib'."
+            )
+        from .threejs_backend import render_workspace_points
 
-    fig, ax = _prepare_axis(section.plane, ax, figsize)
+        return render_workspace_points(
+            section.points,
+            projection=section.plane,
+            marker_size=marker_size,
+            alpha=alpha,
+            width=800 if width is None else width,
+            height=600 if height is None else height,
+            show_grid=show_grid,
+            plane_level=section.level,
+            section_info={
+                "level": section.level,
+                "thickness": section.thickness,
+                "source_samples": section.source_samples,
+            },
+        )
+
+    if width is not None or height is not None:
+        raise ValueError(
+            "width and height are Three.js-only; use backend='threejs'."
+        )
+    fig, ax = _prepare_axis(
+        section.plane, ax, (8, 6) if figsize is None else figsize
+    )
     axis_map = {
         "xy": (0, 1, "X", "Y"),
         "xz": (0, 2, "X", "Z"),
@@ -177,4 +242,5 @@ def plot_workspace_section(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_aspect("equal", adjustable="box")
+    ax.grid(show_grid)
     return fig, ax
