@@ -95,6 +95,32 @@ __COMMON_SCRIPT__
       });
       scene.add(new THREE.Points(geometry, material));
 
+      // The grid is intentionally OFF by default. Its plane follows
+      // the selected projection, or XY for a full 3D workspace.
+      if (data.show_grid) {
+        var gridPlane = projection === '3d' ? 'xy' : projection;
+        var normal = {xy: 2, xz: 1, yz: 0}[gridPlane];
+        var gridPosition = center.toArray();
+        var gridSize = framing.fit_radius * 2.4;
+        if (projection === '3d') {
+          gridPosition[2] = 0;
+        }
+        // Keep grid lines behind the points to prevent z-fighting.
+        var backSign = {xy: -1, xz: 1, yz: -1}[gridPlane];
+        gridPosition[normal] += backSign * framing.fit_radius * 0.001;
+        var grid = window.MoroThreeJS.createGrid(scene, {
+          gridSize: gridSize,
+          gridDivisions: 20,
+          primaryColor: 0xaaaaaa,
+          secondaryColor: 0xdddddd,
+          rotateToXY: gridPlane === 'xy',
+          position: gridPosition
+        });
+        if (gridPlane === 'yz') {
+          grid.rotation.z = Math.PI / 2;
+        }
+      }
+
       var axes = new THREE.AxesHelper(framing.fit_radius * 0.3);
       axes.position.copy(center);
       scene.add(axes);
@@ -104,8 +130,17 @@ __COMMON_SCRIPT__
           ? 'Orthographic' : 'Perspective';
         var viewName = currentView === 'custom'
           ? 'Custom' : currentView.charAt(0).toUpperCase() + currentView.slice(1);
-        status.textContent = data.positions.length + ' samples | ' +
-          projection.toUpperCase() + ' | ' + cameraName + ' | ' + viewName +
+        var label = data.positions.length + ' samples';
+        if (data.section) {
+          label += ' / ' + data.section.source_samples +
+            ' | section ' + projection.toUpperCase() +
+            ' at ' + data.section.level +
+            ' (thickness ' + data.section.thickness + ')';
+          if (data.positions.length === 0) {
+            label += ' | No points in section';
+          }
+        }
+        status.textContent = label + ' | ' + cameraName + ' | ' + viewName +
           ' — Drag to orbit, right-drag to pan, wheel/pinch to zoom';
         status.style.color = 'green';
       }
