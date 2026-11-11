@@ -38,7 +38,7 @@ Preserve the project principles:
 | **API-001** | Separate joint `configuration(s)` from constant model `parameters` in `RobotVisualizer`; direct keyword rename | Implemented; migration review pending |
 | **API-002** | `inverse_dynamics_trajectory()` for compatible sampled joint motion | Implemented; cross-module verification pending |
 | **API-003** | W-03 random/Sobol/LHS/grid sampling; W-02 numerical Cartesian sections; W-01 Three.js workspace/section views, Matplotlib alternative, optional grids | Implemented; final manual review of section/grid visuals pending |
-| **M-01** | Remove scheduled 0.7.0 deprecated interfaces and update migration/tests | **Required stabilization work; not yet implemented** |
+| **M-01** | Remove scheduled 0.7.0 deprecated interfaces and update migration/tests | **Integrated in PR #64; cross-module regressions covered in S3** |
 
 **Scope freeze:** No further feature development is planned for 0.7.0.
 Only bug fixes, compatibility cleanup already scheduled in M-01,
@@ -210,6 +210,8 @@ Packages A–C are now implemented. Package D defines the required exit criteria
 - Physical-time playback remains Three.js-only and follows validated timestamp semantics; do not silently approximate irregular timing in Matplotlib.
 - Support both fixed model parameters and changing joint states explicitly, without mutating `Robot`.
 - Preserve 1-DOF, mixed R/P, degenerate/planar/3D, and symbolic-parameter regression cases.
+
+For S3's executable scenarios and human-only browser checks, see [S3 integration and visual acceptance](s3-acceptance.md).
 
 ## S1–S5 — Stabilization and release gates
 
