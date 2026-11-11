@@ -1,6 +1,6 @@
 # Moro 0.7.0 — Frozen feature scope and stabilization plan
 
-> **Status:** Scope frozen (S1), M-01 cleanup merged (S2), integration and Colab checks accepted (S3); S4 documentation consolidation underway. Moro 0.7.0 remains **unreleased**.  
+> **Status:** Scope frozen (S1), M-01 cleanup merged (S2), integration and Colab checks accepted (S3); S4 documentation consolidated in PR #66; S5 release-candidate preparation underway. Moro 0.7.0 remains **unreleased**.  
 > **Baseline:** `develop` after PR #62 (merge `0c1b11b`), with no outstanding feature PRs when S1 began.  
 > **Goal:** stabilize, document and release the accepted functionality without adding new features.  
 > **Previous planning:** the 2026-11-03 candidate inventory and the rolling Moro roadmap are preserved in the design discussions and the historical notes below.
@@ -211,7 +211,9 @@ Packages A–C are now implemented. Package D defines the required exit criteria
 - Support both fixed model parameters and changing joint states explicitly, without mutating `Robot`.
 - Preserve 1-DOF, mixed R/P, degenerate/planar/3D, and symbolic-parameter regression cases.
 
-S3 is complete: CI passed and the user confirmed successful Colab visualization. The [S3 integration and visual acceptance record](s3-acceptance.md) distinguishes automated verification from the reported manual checks.
+S3 is complete: CI passed and the user confirmed successful Colab visualization.
+
+For candidate packaging checks and the separate publication authorization gate, see [S5 release-candidate checklist](s5-release-checklist.md). The [S3 integration and visual acceptance record](s3-acceptance.md) distinguishes automated verification from the reported manual checks.
 
 ## S1–S5 — Stabilization and release gates
 
