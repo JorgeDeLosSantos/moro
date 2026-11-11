@@ -116,6 +116,11 @@
                    oninput="window.robot___UNIQUE_ID__.goToFrame(parseInt(this.value, 10))">
         </div>
 
+        <div id="time-control-__UNIQUE_ID__" class="time-control" hidden>
+            Time: <span id="time-label-__UNIQUE_ID__">0.00 / 0.00 s</span>
+            | Speed: <span id="speed-label-__UNIQUE_ID__">1.0×</span>
+        </div>
+
         <div id="status-__UNIQUE_ID__">Loading...</div>
     </div>
 
@@ -148,12 +153,21 @@ __COMMON_SCRIPT__
             var layout = animationData.layout;
             var framing = animationData.framing;
             var trajectoryData = animationData.trajectory || [];
+            var relativeTimes = Array.isArray(animationData.relative_times)
+                ? animationData.relative_times : null;
+            var hasPhysicalTime = relativeTimes !== null;
+            var playbackSpeed = hasPhysicalTime ? animationData.playback_speed : 1.0;
+            var physicalDuration = hasPhysicalTime
+                ? relativeTimes[relativeTimes.length - 1] : 0;
             var container = document.getElementById('container-__UNIQUE_ID__');
             var slider = document.getElementById('slider-__UNIQUE_ID__');
             var frameLabel = document.getElementById('frameLabel-__UNIQUE_ID__');
             var playButton = document.getElementById('play-button-__UNIQUE_ID__');
             var cameraSelect = document.getElementById('cam-type-__UNIQUE_ID__');
             var status = document.getElementById('status-__UNIQUE_ID__');
+            var timeControl = document.getElementById('time-control-__UNIQUE_ID__');
+            var timeLabel = document.getElementById('time-label-__UNIQUE_ID__');
+            var speedLabel = document.getElementById('speed-label-__UNIQUE_ID__');
 
             var scene;
             var camera;
@@ -171,6 +185,11 @@ __COMMON_SCRIPT__
             var currentFrame = 0;
             var isPlaying = false;
             var playInterval = null;
+            // The physical-time clock is relative to this widget only.
+            // The legacy timer above is never started in physical-time mode.
+            var physicalElapsed = 0;
+            var anchorPhysicalElapsed = 0;
+            var anchorWallMs = 0;
             var activeCameraType = 'orthographic';
             var currentView = 'isometric';
 
@@ -256,6 +275,11 @@ __COMMON_SCRIPT__
                 createRobotObjects(framesData[0], resolvedStyle);
                 updateRobotObjects(framesData[0]);
                 updateTrajectoryForFrame(0);
+                if (hasPhysicalTime) {
+                    timeControl.hidden = false;
+                    speedLabel.textContent = playbackSpeed + '×';
+                    updateTimeLabel();
+                }
                 animate();
 
                 status.innerHTML =
@@ -329,17 +353,99 @@ __COMMON_SCRIPT__
                 trajectoryLine.geometry.setDrawRange(0, pointCount);
             }
 
-            function goToFrame(index) {
+            function displayFrame(index) {
                 if (!Number.isFinite(index)) {
                     return;
                 }
-
-                index = Math.max(0, Math.min(index, framesData.length - 1));
+                index = Math.floor(Math.max(0, Math.min(
+                    index, framesData.length - 1
+                )));
                 currentFrame = index;
                 updateRobotObjects(framesData[index]);
                 updateTrajectoryForFrame(index);
                 slider.value = index;
                 frameLabel.textContent = index;
+            }
+
+            function updateTimeLabel() {
+                if (hasPhysicalTime) {
+                    timeLabel.textContent =
+                        physicalElapsed.toFixed(2) + ' / ' +
+                        physicalDuration.toFixed(2) + ' s';
+                }
+            }
+
+            // Upper bound on nonuniform physical timestamps: show the most
+            // recent supplied configuration at or before elapsedSeconds.
+            // No motion interpolation takes place in the browser.
+            function frameIndexAtTime(elapsedSeconds) {
+                var low = 0;
+                var high = relativeTimes.length;
+                while (low < high) {
+                    var middle = Math.floor((low + high) / 2);
+                    if (relativeTimes[middle] <= elapsedSeconds) {
+                        low = middle + 1;
+                    } else {
+                        high = middle;
+                    }
+                }
+                return Math.max(0, low - 1);
+            }
+
+            function stopPhysicalPlayback() {
+                isPlaying = false;
+                updatePlayButton();
+            }
+
+            function finishPhysicalPlayback() {
+                physicalElapsed = physicalDuration;
+                if (currentFrame !== framesData.length - 1) {
+                    displayFrame(framesData.length - 1);
+                }
+                stopPhysicalPlayback();
+                updateTimeLabel();
+            }
+
+            // Anchor the simulation clock to performance.now(), not timer
+            // tick counts. A delayed render can skip frames to catch up.
+            function syncPhysicalPlayback(nowMs) {
+                if (!isPlaying || !hasPhysicalTime) {
+                    return;
+                }
+                var elapsedMs = Math.max(0, nowMs - anchorWallMs);
+                physicalElapsed = Math.min(
+                    physicalDuration,
+                    anchorPhysicalElapsed + elapsedMs * playbackSpeed / 1000
+                );
+                var nextIndex = frameIndexAtTime(physicalElapsed);
+                if (nextIndex !== currentFrame) {
+                    displayFrame(nextIndex);
+                }
+                if (physicalElapsed >= physicalDuration) {
+                    finishPhysicalPlayback();
+                } else {
+                    updateTimeLabel();
+                }
+            }
+
+            // Called by the existing frame slider in either playback mode.
+            function goToFrame(index) {
+                if (!Number.isFinite(index)) {
+                    return;
+                }
+                displayFrame(index);
+                if (hasPhysicalTime) {
+                    physicalElapsed = relativeTimes[currentFrame];
+                    if (isPlaying) {
+                        if (physicalElapsed >= physicalDuration) {
+                            stopPhysicalPlayback();
+                        } else {
+                            anchorPhysicalElapsed = physicalElapsed;
+                            anchorWallMs = performance.now();
+                        }
+                    }
+                    updateTimeLabel();
+                }
             }
 
             function updatePlayButton() {
@@ -350,13 +456,28 @@ __COMMON_SCRIPT__
             }
 
             function startPlayback() {
-                if (playInterval !== null) {
+                if (hasPhysicalTime) {
+                    if (isPlaying) {
+                        return;
+                    }
+                    if (physicalElapsed >= physicalDuration) {
+                        physicalElapsed = 0;
+                        displayFrame(0);
+                    }
+                    anchorPhysicalElapsed = physicalElapsed;
+                    anchorWallMs = performance.now();
+                    isPlaying = true;
+                    updatePlayButton();
+                    updateTimeLabel();
                     return;
                 }
 
+                // Preserve the legacy uniform-interval looping semantics.
+                if (playInterval !== null) {
+                    return;
+                }
                 isPlaying = true;
                 updatePlayButton();
-
                 playInterval = window.setInterval(function() {
                     var nextFrame = (currentFrame + 1) % framesData.length;
                     goToFrame(nextFrame);
@@ -364,9 +485,14 @@ __COMMON_SCRIPT__
             }
 
             function pausePlayback() {
+                if (hasPhysicalTime) {
+                    syncPhysicalPlayback(performance.now());
+                    stopPhysicalPlayback();
+                    return;
+                }
+
                 isPlaying = false;
                 updatePlayButton();
-
                 if (playInterval !== null) {
                     window.clearInterval(playInterval);
                     playInterval = null;
@@ -435,6 +561,9 @@ __COMMON_SCRIPT__
 
             function animate() {
                 requestAnimationFrame(animate);
+                if (hasPhysicalTime && isPlaying) {
+                    syncPhysicalPlayback(performance.now());
+                }
                 controls.update();
                 renderer.render(scene, camera);
             }

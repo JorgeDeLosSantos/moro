@@ -97,7 +97,7 @@ $$
 Since Moro 0.5.0, `dynamic_model()` returns the matrix-form manipulator equation. In Moro 0.4.x, it returned the per-joint Euler-Lagrange equations. Use `euler_lagrange_equations()` for that representation in current versions.
 :::
 
-`dynamic_model_matrix_form()` remains temporarily available as a deprecated alias of `dynamic_model()`.
+In Moro 0.7.0, the deprecated `dynamic_model_matrix_form()` alias has been removed. Use `dynamic_model()` for the matrix equation.
 
 ## Numerical inverse dynamics
 
@@ -353,32 +353,59 @@ solution = simulate(
 
 If gravity generates a nonzero generalized force, the robot will accelerate from rest.
 
-## From a prescribed trajectory to required generalized force
+## Inverse dynamics of sampled joint trajectories (0.7.0 API-002)
 
-The trajectory and dynamics modules intentionally remain separate.
+The `moro.trajectory` and `moro.dynamics` modules remain independent.
+Use `inverse_dynamics_trajectory()` to calculate the ideal generalized
+efforts required by a prescribed motion, without compiling `M`, `C`
+and `G` again for every sample:
 
 ```python
+import numpy as np
 from moro.trajectory import joint_trajectory
-from moro.dynamics import inverse_dynamics
+from moro.dynamics import inverse_dynamics_trajectory
 
 traj = joint_trajectory(
-    q0,
-    qf,
-    t,
+    q0=[0.0, 0.0],
+    qf=[0.6, -0.4],
+    t=np.linspace(0.0, 2.0, 101),
     method="quintic",
 )
 
-tau_history = np.array([
-    inverse_dynamics(robot, q, qd, qdd)
-    for q, qd, qdd in zip(
-        traj.q,
-        traj.qd,
-        traj.qdd,
-    )
-])
+tau_history = inverse_dynamics_trajectory(robot, traj)
+assert tau_history.shape == (traj.samples, robot.dof)
 ```
 
-This computes the generalized-force history required by the prescribed joint trajectory without introducing a trajectory-wide inverse-dynamics API.
+The function accepts `JointTrajectory`, `DynamicsSolution` (including
+a failed simulation's valid partial history), or any other object that
+exposes `q`, `qd` and `qdd` arrays of the same shape
+`(N, robot.dof)`. A single sample still requires a two-dimensional
+`(1, dof)` history; input values must be finite and real. An optional
+`t` vector must have `N` finite samples in strictly increasing order,
+but timestamps are **not** used to derive accelerations or evaluate
+the ideal dynamic model.
+
+For symbolic model constants (geometric lengths, masses, inertias,
+gravity), pass the same `parameters={...}` mapping used with
+`inverse_dynamics()`. Neither the original `Robot` nor the input
+histories are modified.
+
+Each output row evaluates
+
+$
+\boldsymbol{\tau}_i =
+M(\boldsymbol{q}_i)\ddot{\boldsymbol{q}}_i
++C(\boldsymbol{q}_i,\dot{\boldsymbol{q}}_i)\dot{\boldsymbol{q}}_i
++G(\boldsymbol{q}_i).
+$
+
+Revolute-joint entries correspond to torques; prismatic-joint entries
+correspond to forces. The result does not include friction, external
+loads, actuator limits or dynamic feasibility checks. The existing
+`inverse_dynamics()` function remains a **single-state** operation.
+
+For a worked RR comparison of quintic and trapezoidal motion, see
+[Inverse Dynamics of Joint Trajectories](../examples/inverse-dynamics-trajectories.md).
 
 ## Visualization
 
@@ -388,12 +415,13 @@ Simulation output follows the same `(N, dof)` convention as joint trajectories, 
 from moro.visualization import RobotVisualizer
 
 viz = RobotVisualizer(robot)
-viz.animate(solution.q)
+viz.animate(solution.q, times=solution.t)
 ```
 
-The dynamics module does not depend on visualization.
-
-The animation interval is still controlled by the visualization backend; nonuniform physical timing in `solution.t` is not reproduced automatically.
+The Three.js backend reproduces the supplied (possibly nonuniform)
+physical timestamps; Matplotlib animation still uses a fixed frame
+`interval` and does not accept `times=`. The dynamics module does
+not depend on visualization.
 
 ## Joint limits and physical scope
 

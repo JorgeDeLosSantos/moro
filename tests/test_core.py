@@ -483,7 +483,7 @@ def test_christoffel_and_kinetic_energy_use_exact_rational_half():
 
 
 
-def test_dynamic_model_symbolic_api_split_and_deprecated_alias():
+def test_dynamic_model_symbolic_api_split_after_alias_removal():
     robot = Robot((0, 0, 0, q1),)
     robot.masses = [1]
     robot.cm_positions = [(1, 0, 0)]
@@ -497,7 +497,4 @@ def test_dynamic_model_symbolic_api_split_and_deprecated_alias():
     assert len(equations) == 1
     assert isinstance(matrix_model, sp.Equality)
 
-    with pytest.warns(DeprecationWarning, match="deprecated"):
-        alias_model = robot.dynamic_model_matrix_form()
-
-    assert alias_model == matrix_model
+    assert not hasattr(robot, "dynamic_model_matrix_form")

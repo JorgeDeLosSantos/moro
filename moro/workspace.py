@@ -7,7 +7,7 @@ import numpy as np
 import sympy as sp
 
 
-__all__ = ["Workspace", "sample_workspace"]
+__all__ = ["Workspace", "WorkspaceSection", "sample_workspace", "section_workspace"]
 
 
 @dataclass
@@ -18,6 +18,8 @@ class Workspace:
     configurations: np.ndarray
     joint_limits: tuple
     seed: int | None = None
+    method: str | None = None
+    grid_shape: tuple[int, ...] | None = None
 
     def __post_init__(self):
         self.points = _as_real_array(self.points, name="points", ndim=2)
@@ -43,6 +45,21 @@ class Workspace:
             self.configurations.shape[1],
         )
         self.seed = _normalize_seed(self.seed)
+        if self.method is not None:
+            self.method = _normalize_method(self.method)
+        if self.grid_shape is not None:
+            self.grid_shape = _normalize_grid_shape(
+                self.grid_shape, self.configurations.shape[1]
+            )
+            if self.method != "grid":
+                raise ValueError("grid_shape requires method='grid'.")
+            if self.samples != _grid_total(self.grid_shape):
+                raise ValueError("grid_shape product must match the sample count.")
+        if self.method == "grid":
+            if self.grid_shape is None:
+                raise ValueError("grid workspaces require grid_shape.")
+            if self.seed is not None:
+                raise ValueError("grid workspaces do not accept seed.")
 
         lower = np.array([pair[0] for pair in self.joint_limits], dtype=float)
         upper = np.array([pair[1] for pair in self.joint_limits], dtype=float)
@@ -73,6 +90,115 @@ class Workspace:
             f"Workspace(samples={self.samples}, dof={self.dof}, "
             f"seed={self.seed})"
         )
+
+
+
+_SECTION_COORDINATES = {"xy": 2, "xz": 1, "yz": 0}
+
+
+def _normalize_section_scalar(value, *, name, nonnegative=False):
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        raise ValueError(f"{name} must be a finite real scalar.")
+    result = float(value)
+    if not np.isfinite(result):
+        raise ValueError(f"{name} must be finite.")
+    if nonnegative and result < 0:
+        raise ValueError(f"{name} must be nonnegative.")
+    return result
+
+
+def _normalize_section_plane(plane):
+    if not isinstance(plane, str) or plane not in _SECTION_COORDINATES:
+        raise ValueError("plane must be one of 'xy', 'xz', or 'yz'.")
+    return plane
+
+
+@dataclass
+class WorkspaceSection:
+    """Rows of a sampled workspace lying within a Cartesian plane slab.
+
+    Points retain their original 3D coordinates. Indices refer
+    to zero-based rows in the source Workspace. An empty section is valid.
+    """
+
+    plane: str
+    level: float
+    thickness: float
+    indices: np.ndarray
+    points: np.ndarray
+    configurations: np.ndarray
+    source_samples: int
+
+    def __post_init__(self):
+        self.plane = _normalize_section_plane(self.plane)
+        self.level = _normalize_section_scalar(self.level, name="level")
+        self.thickness = _normalize_section_scalar(
+            self.thickness, name="thickness", nonnegative=True
+        )
+        if isinstance(self.source_samples, (bool, np.bool_)) or not isinstance(
+            self.source_samples, Integral
+        ) or self.source_samples < 1:
+            raise ValueError("source_samples must be a positive integer.")
+        self.source_samples = int(self.source_samples)
+
+        raw_indices = np.asarray(self.indices)
+        if raw_indices.ndim != 1 or raw_indices.dtype.kind not in "iu":
+            raise ValueError("indices must be a one-dimensional integer array.")
+        self.indices = np.array(raw_indices, dtype=np.int64, copy=True)
+        if np.any(self.indices < 0) or np.any(self.indices >= self.source_samples):
+            raise ValueError("indices must refer to rows of the source workspace.")
+        if np.any(np.diff(self.indices) <= 0):
+            raise ValueError("indices must be strictly increasing.")
+
+        self.points = _as_real_array(self.points, name="points", ndim=2)
+        self.configurations = _as_real_array(
+            self.configurations, name="configurations", ndim=2
+        )
+        if self.points.shape != (len(self.indices), 3):
+            raise ValueError("points must have shape (K, 3) matching indices.")
+        if (
+            self.configurations.shape[0] != len(self.indices)
+            or self.configurations.shape[1] < 1
+        ):
+            raise ValueError(
+                "configurations must have shape (K, dof) matching indices."
+            )
+
+    @property
+    def samples(self):
+        return len(self.indices)
+
+    @property
+    def dof(self):
+        return self.configurations.shape[1]
+
+
+def section_workspace(workspace, *, plane="xy", level, thickness):
+    """Select original samples in a slab around a Cartesian coordinate plane.
+
+    XY filters the Z coordinate; XZ filters Y; YZ filters X. The full
+    slab thickness is used: abs(normal - level) <= thickness / 2.
+    No interpolation or new forward kinematics are performed.
+    """
+    if not isinstance(workspace, Workspace):
+        raise TypeError("workspace must be an instance of Workspace.")
+    plane = _normalize_section_plane(plane)
+    level = _normalize_section_scalar(level, name="level")
+    thickness = _normalize_section_scalar(
+        thickness, name="thickness", nonnegative=True
+    )
+    normal_axis = _SECTION_COORDINATES[plane]
+    mask = np.abs(workspace.points[:, normal_axis] - level) <= thickness / 2.0
+    indices = np.flatnonzero(mask)
+    return WorkspaceSection(
+        plane=plane,
+        level=level,
+        thickness=thickness,
+        indices=indices,
+        points=workspace.points[indices],
+        configurations=workspace.configurations[indices],
+        source_samples=workspace.samples,
+    )
 
 
 def _as_real_array(value, *, name, ndim):
@@ -111,6 +237,71 @@ def _normalize_samples(samples):
     if samples <= 0:
         raise ValueError("samples must be greater than 0.")
     return samples
+
+
+_SAMPLING_METHODS = ("random", "sobol", "latin_hypercube", "grid")
+_MAX_WORKSPACE_SAMPLES = 1_000_000
+
+
+def _normalize_method(method):
+    if not isinstance(method, str) or method not in _SAMPLING_METHODS:
+        raise ValueError(
+            "method must be 'random', 'sobol', 'latin_hypercube', or 'grid'."
+        )
+    return method
+
+
+def _normalize_grid_shape(grid_shape, dof):
+    try:
+        shape = tuple(grid_shape)
+    except TypeError as exc:
+        raise ValueError("grid_shape must have one positive integer per DOF.") from exc
+    if len(shape) != dof or any(
+        isinstance(n, (bool, np.bool_))
+        or not isinstance(n, Integral)
+        or n < 1 for n in shape
+    ):
+        raise ValueError("grid_shape must have one positive integer per DOF.")
+    return tuple(int(n) for n in shape)
+
+
+def _grid_total(shape):
+    total = 1
+    for size in shape:
+        total *= size
+        if total > _MAX_WORKSPACE_SAMPLES:
+            raise ValueError(
+                f"grid_shape exceeds the {_MAX_WORKSPACE_SAMPLES:,}-sample safety limit."
+            )
+    return total
+
+
+def _sample_configurations(method, count, lower, upper, seed, grid_shape):
+    if method == "random":
+        # Preserve the original RNG call and seeded sequences exactly.
+        rng = np.random.default_rng(seed)
+        return rng.uniform(low=lower, high=upper, size=(count, len(lower)))
+    if method == "grid":
+        axes = [
+            np.linspace(low, high, n) if n > 1
+            else np.array([(low + high) / 2.0])
+            for low, high, n in zip(lower, upper, grid_shape)
+        ]
+        return np.stack(
+            [axis.ravel() for axis in np.meshgrid(*axes, indexing="ij")],
+            axis=1,
+        )
+
+    from scipy.stats import qmc
+
+    if method == "sobol":
+        sampler = qmc.Sobol(d=len(lower), scramble=True, seed=seed)
+        power = (count - 1).bit_length()
+        unit = sampler.random_base2(m=power)[:count]
+    else:
+        sampler = qmc.LatinHypercube(d=len(lower), scramble=True, seed=seed)
+        unit = sampler.random(n=count)
+    return qmc.scale(unit, lower, upper)
 
 
 def _normalize_limit_scalar(value, *, name):
@@ -239,14 +430,36 @@ def _evaluate_position(func, q, *, sample_index):
 def sample_workspace(
     robot,
     *,
-    samples=1000,
+    samples=None,
     joint_limits=None,
     parameters=None,
     seed=None,
+    method="random",
+    grid_shape=None,
 ):
-    """Sample end-effector positions uniformly from a finite joint-space domain."""
-    samples = _normalize_samples(samples)
+    """Evaluate position FK over selected finite-domain joint-space samples.
+
+    Random sampling remains the default, with 1,000 samples when omitted.
+    A tensor-product grid instead requires grid_shape, with one axis count
+    per DOF. Grid sample count is the product of those counts.
+    """
+    method = _normalize_method(method)
     seed = _normalize_seed(seed)
+    if method == "grid":
+        if samples is not None:
+            raise ValueError("samples must be omitted for method='grid'.")
+        if seed is not None:
+            raise ValueError("seed must be None for method='grid'.")
+        grid_shape = _normalize_grid_shape(grid_shape, robot.dof)
+        count = _grid_total(grid_shape)
+    else:
+        if grid_shape is not None:
+            raise ValueError("grid_shape is only supported for method='grid'.")
+        count = _normalize_samples(1000 if samples is None else samples)
+        if count > _MAX_WORKSPACE_SAMPLES:
+            raise ValueError(
+                f"samples exceeds the {_MAX_WORKSPACE_SAMPLES:,}-sample safety limit."
+            )
 
     effective_limits = _normalize_joint_limits(
         robot.joint_limits if joint_limits is None else joint_limits,
@@ -258,14 +471,11 @@ def sample_workspace(
 
     position_func = _prepare_position_model(robot, parameters=parameters)
 
-    rng = np.random.default_rng(seed)
-    configurations = rng.uniform(
-        low=lower,
-        high=upper,
-        size=(samples, robot.dof),
+    configurations = _sample_configurations(
+        method, count, lower, upper, seed, grid_shape
     )
 
-    points = np.empty((samples, 3), dtype=float)
+    points = np.empty((count, 3), dtype=float)
     for index, q in enumerate(configurations):
         points[index] = _evaluate_position(
             position_func,
@@ -278,4 +488,6 @@ def sample_workspace(
         configurations=configurations,
         joint_limits=effective_limits,
         seed=seed,
+        method=method,
+        grid_shape=grid_shape,
     )

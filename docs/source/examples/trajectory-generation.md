@@ -111,15 +111,44 @@ The time vector remains available as `cart.t`, while the IK result stores the so
 
 ## 4. Joint trajectory plus visualization
 
-A `JointTrajectory` can be animated directly because `traj.q` is a numerical matrix with shape `(N, robot.dof)`:
+A `JointTrajectory` can be animated by passing its numerical joint
+matrix `traj.q` (shape `(N, robot.dof)`) and its time vector `traj.t`
+to the Three.js visualizer:
 
 ```python
 from moro.visualization import RobotVisualizer
 
 viz = RobotVisualizer(robot)
-viz.animate(traj.q)
+viz.animate(traj.q, times=traj.t)
 ```
 
-The visualization layer accepts the matrix structurally and does not import or depend on `JointTrajectory`.
+The visualization layer accepts these arrays structurally and does not
+import or depend on `JointTrajectory`. T-06 reproduces nonuniform
+`traj.t` explicitly; without `times`, the older fixed-`interval`
+mode continues to work and loops. Matplotlib currently supports only
+the fixed-`interval` path.
 
-For nonuniform `traj.t`, the animation still uses the backend interval controls; exact variable-time playback is not currently supported.
+See [Physical-Time Animation Playback](physical-time-playback.md) for
+a runnable RR example with nonuniform sample times.
+
+## 5. Synchronized trapezoidal joint motion
+
+Moro also provides a **limit-driven** point-to-point generator:
+
+```python
+from moro.trajectory import joint_trapezoidal_trajectory
+
+trapezoidal = joint_trapezoidal_trajectory(
+    [0.0, 0.0], [1.2, -0.8],
+    v_max=[0.6, 0.4], a_max=[1.0, 0.8],
+)
+```
+
+Its velocity is piecewise linear with a constant-speed phase when the
+distance is sufficient; otherwise the speed profile is triangular. Unlike
+quintic interpolation, it directly enforces the supplied speed and
+acceleration limits along a straight path in joint space.
+
+For complete R/RR code, physical-limit checks, plots and a same-duration
+quintic comparison, see
+[Trapezoidal Joint-Space Trajectories](trapezoidal-trajectories.md).

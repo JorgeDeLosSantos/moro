@@ -1,23 +1,51 @@
-"""Numerical point-to-point trajectory generation.
+"""Numerical point-to-point and multi-waypoint trajectory generation.
 
-This module provides compact, robot-independent polynomial trajectory
-generation in joint space and Cartesian position space.
+This module provides compact, robot-independent trajectory generation in
+joint space and Cartesian position space, including polynomial interpolation
+and synchronized trapezoidal motion profiles.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import math
+from numbers import Real
 
 import numpy as np
+
+from ._trapezoidal import (
+    _evaluate_trapezoidal_phases,
+    _positive_finite_scalar,
+    _resolve_trapezoidal_phases,
+)
 
 
 __all__ = [
     "JointTrajectory",
     "PositionTrajectory",
+    "TrapezoidalProfileInfo",
     "joint_trajectory",
     "position_trajectory",
+    "joint_waypoint_trajectory",
+    "position_waypoint_trajectory",
+    "joint_trapezoidal_trajectory",
 ]
 
 
 _METHODS = {"linear", "cubic", "quintic"}
+_TRAJECTORY_METHODS = _METHODS | {"trapezoidal"}
+
+
+def _normalize_joint_trajectory_method(method):
+    """Accept result labels while keeping polynomial dispatch restricted."""
+    if not isinstance(method, str):
+        raise TypeError("method must be a string.")
+    normalized = method.lower()
+    if normalized not in _TRAJECTORY_METHODS:
+        raise ValueError(
+            "method must be one of 'linear', 'cubic', 'quintic', "
+            "or 'trapezoidal'."
+        )
+    return normalized
+
 
 
 def _normalize_method(method):
@@ -176,10 +204,19 @@ def _prepare_boundary_conditions(
     )
 
 
-def _polynomial_trajectory(
+def _validated_segment_result(time, x, xd, xdd):
+    """Reject nonfinite polynomial evaluations before results are assembled."""
+    if not all(np.all(np.isfinite(array)) for array in (x, xd, xdd)):
+        raise ValueError("Polynomial segment evaluation produced nonfinite values.")
+    return time, x, xd, xdd
+
+
+def _evaluate_polynomial_segment(
     x0,
     xf,
-    t,
+    t0,
+    tf,
+    sample_times,
     *,
     method,
     v0=None,
@@ -187,9 +224,29 @@ def _polynomial_trajectory(
     a0=None,
     af=None,
 ):
-    """Evaluate linear, cubic, or quintic vector polynomials."""
+    """Evaluate a segment at arbitrary samples, using its true time bounds.
+
+    Empty or single-sample grids are valid for internal piecewise assembly.
+    Unlike point-to-point generation, the sample endpoints need not equal
+    the segment endpoints.
+    """
     method = _normalize_method(method)
-    time = _prepare_time(t)
+    boundaries = _as_real_float_array(
+        [t0, tf], name="segment boundaries", ndim=1
+    )
+    t0, tf = boundaries
+    if tf <= t0:
+        raise ValueError("Segment end time must be greater than start time.")
+    duration = float(tf - t0)
+    if not np.isfinite(duration):
+        raise ValueError("Segment duration must be finite.")
+
+    time = _as_real_float_array(sample_times, name="sample_times", ndim=1)
+    if np.any(np.diff(time) <= 0):
+        raise ValueError("sample_times must be strictly increasing.")
+    if time.size and (time[0] < t0 or time[-1] > tf):
+        raise ValueError("sample_times must lie within segment boundaries.")
+
     x0 = np.asarray(x0, dtype=float).reshape(-1)
     xf = np.asarray(xf, dtype=float).reshape(-1)
 
@@ -205,15 +262,14 @@ def _polynomial_trajectory(
         af=af,
     )
 
-    duration = float(time[-1] - time[0])
-    tau = ((time - time[0]) / duration)[:, None]
+    tau = ((time - t0) / duration)[:, None]
     delta = xf - x0
 
     if method == "linear":
         x = x0 + tau * delta
         xd = np.broadcast_to(delta / duration, x.shape).copy()
         xdd = np.zeros_like(x)
-        return time, x, xd, xdd
+        return _validated_segment_result(time, x, xd, xdd)
 
     if method == "cubic":
         c0 = x0
@@ -224,7 +280,7 @@ def _polynomial_trajectory(
         x = c0 + c1 * tau + c2 * tau**2 + c3 * tau**3
         xd = (c1 + 2.0 * c2 * tau + 3.0 * c3 * tau**2) / duration
         xdd = (2.0 * c2 + 6.0 * c3 * tau) / duration**2
-        return time, x, xd, xdd
+        return _validated_segment_result(time, x, xd, xdd)
 
     c0 = x0
     c1 = duration * v0
@@ -272,7 +328,399 @@ def _polynomial_trajectory(
         + 12.0 * c4 * tau**2
         + 20.0 * c5 * tau**3
     ) / duration**2
-    return time, x, xd, xdd
+    return _validated_segment_result(time, x, xd, xdd)
+
+
+def _polynomial_trajectory(
+    x0,
+    xf,
+    t,
+    *,
+    method,
+    v0=None,
+    vf=None,
+    a0=None,
+    af=None,
+):
+    """Evaluate a point-to-point polynomial on the full supplied time grid."""
+    method = _normalize_method(method)
+    time = _prepare_time(t)
+    return _evaluate_polynomial_segment(
+        x0,
+        xf,
+        time[0],
+        time[-1],
+        time,
+        method=method,
+        v0=v0,
+        vf=vf,
+        a0=a0,
+        af=af,
+    )
+
+
+def _prepare_waypoints(waypoints, *, cartesian):
+    """Normalize time-major waypoint rows without consulting a Robot."""
+    values = _as_real_float_array(waypoints, name="waypoints")
+    if cartesian:
+        if values.ndim != 2 or values.shape[1] != 3:
+            raise ValueError("Cartesian waypoints must have shape (K, 3).")
+    else:
+        if values.ndim == 1:
+            values = values[:, None]
+        if values.ndim != 2 or values.shape[1] < 1:
+            raise ValueError(
+                "Joint waypoints must have shape (K, dof), "
+                "or (K,) for one degree of freedom."
+            )
+
+    if values.shape[0] < 2:
+        raise ValueError("waypoints must contain at least two rows.")
+    return values
+
+
+def _prepare_waypoint_times(waypoint_times, count):
+    """Validate one finite, strictly increasing arrival time per waypoint."""
+    times = _as_real_float_array(
+        waypoint_times, name="waypoint_times", ndim=1
+    )
+    if times.size != count:
+        raise ValueError(
+            f"waypoint_times must contain {count} times; got {times.size}."
+        )
+    # Subtracting two finite but extreme values can overflow; treat such
+    # durations as invalid input without emitting an avoidable RuntimeWarning.
+    with np.errstate(over="ignore", invalid="ignore"):
+        durations = np.diff(times)
+    if np.any(durations <= 0) or not np.all(np.isfinite(durations)):
+        raise ValueError(
+            "waypoint_times must be strictly increasing with finite durations."
+        )
+    return times
+
+
+def _prepare_waypoint_samples(
+    waypoint_times, *, sample_times, samples_per_segment
+):
+    """Resolve exact sample times or an inclusive grid for each segment."""
+    if sample_times is not None and samples_per_segment is not None:
+        raise ValueError(
+            "sample_times and samples_per_segment cannot both be specified."
+        )
+
+    if sample_times is not None:
+        times = _as_real_float_array(
+            sample_times, name="sample_times", ndim=1
+        )
+        if times.size < 2:
+            raise ValueError("sample_times must contain at least two values.")
+        if np.any(np.diff(times) <= 0):
+            raise ValueError("sample_times must be strictly increasing.")
+        if times[0] != waypoint_times[0] or times[-1] != waypoint_times[-1]:
+            raise ValueError(
+                "sample_times must begin and end at the first and last "
+                "waypoint_times, respectively."
+            )
+        return times
+
+    count = 51 if samples_per_segment is None else samples_per_segment
+    if (
+        isinstance(count, (bool, np.bool_))
+        or not isinstance(count, (int, np.integer))
+        or count < 2
+    ):
+        raise ValueError("samples_per_segment must be an integer >= 2.")
+
+    segments = [
+        np.linspace(t0, tf, count)[:-1]
+        for t0, tf in zip(waypoint_times[:-1], waypoint_times[1:])
+    ]
+    times = np.concatenate((*segments, waypoint_times[-1:]))
+    if not np.all(np.isfinite(times)) or np.any(np.diff(times) <= 0):
+        raise ValueError(
+            "Automatic sampling requires distinguishable, increasing "
+            "floating-point times; reduce samples_per_segment or rescale time."
+        )
+    return times
+
+
+def _estimate_shape_preserving_velocities(waypoints, waypoint_times):
+    """Estimate PCHIP-style interior slopes with resting endpoint velocities.
+
+    The harmonic mean is evaluated using normalized time weights and the
+    smaller slope magnitude to avoid unnecessary intermediate overflow.
+    Each coordinate is treated independently; reversals and plateaus stop.
+    """
+    result = np.zeros_like(waypoints, dtype=float)
+    if waypoints.shape[0] <= 2:
+        return result
+
+    durations = np.diff(waypoint_times)
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        secants = np.diff(waypoints, axis=0) / durations[:, None]
+    if not np.all(np.isfinite(secants)):
+        raise ValueError(
+            "shape_preserving requires finite waypoint secant slopes."
+        )
+
+    previous = secants[:-1]
+    following = secants[1:]
+    same_direction = (
+        ((previous > 0) & (following > 0))
+        | ((previous < 0) & (following < 0))
+    )
+    if not np.any(same_direction):
+        return result
+
+    # Durations may be very large: rescale before forming the PCHIP
+    # weights w1 = 2*h_next + h_prev, w2 = h_next + 2*h_prev.
+    h_previous = durations[:-1]
+    h_next = durations[1:]
+    scale = np.maximum(h_previous, h_next)
+    previous_scaled = h_previous / scale
+    next_scaled = h_next / scale
+    w1 = 2.0 * next_scaled + previous_scaled
+    w2 = next_scaled + 2.0 * previous_scaled
+    weight = w1 / (w1 + w2)
+
+    magnitudes_previous = np.abs(previous[same_direction])
+    magnitudes_next = np.abs(following[same_direction])
+    smaller = np.minimum(magnitudes_previous, magnitudes_next)
+
+    # m = 1 / (weight/|d_prev| + (1-weight)/|d_next|).
+    # The scaled form avoids reciprocal overflow for tiny secants.
+    local_weight = np.broadcast_to(weight[:, None], previous.shape)[
+        same_direction
+    ]
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        denominator = (
+            local_weight * (smaller / magnitudes_previous)
+            + (1.0 - local_weight) * (smaller / magnitudes_next)
+        )
+        estimated = smaller / denominator
+
+    if not np.all(np.isfinite(estimated)):
+        raise ValueError(
+            "shape_preserving generated nonfinite waypoint velocities."
+        )
+    result[1:-1][same_direction] = (
+        np.copysign(estimated, previous[same_direction])
+    )
+    return result
+
+
+def _prepare_waypoint_derivatives(
+    values, waypoint_times, *, method, derivative_policy,
+    velocities, accelerations,
+):
+    """Return shared waypoint derivatives for piecewise Hermite segments."""
+    if not isinstance(derivative_policy, str):
+        raise ValueError(
+            "derivative_policy must be 'zero' or 'shape_preserving'."
+        )
+    policy = derivative_policy.lower()
+    if policy not in ("zero", "shape_preserving"):
+        raise ValueError(
+            "derivative_policy must be 'zero' or 'shape_preserving'."
+        )
+
+    if policy == "shape_preserving":
+        if method != "cubic":
+            raise ValueError(
+                "derivative_policy='shape_preserving' requires method='cubic'."
+            )
+        if velocities is not None or accelerations is not None:
+            raise ValueError(
+                "shape_preserving does not accept explicit velocities "
+                "or accelerations."
+            )
+        return _estimate_shape_preserving_velocities(
+            values, waypoint_times
+        ), None
+
+    if method == "linear":
+        if velocities is not None or accelerations is not None:
+            raise ValueError(
+                "Linear waypoint interpolation does not accept velocities "
+                "or accelerations."
+            )
+        return None, None
+
+    if method == "cubic" and accelerations is not None:
+        raise ValueError(
+            "Cubic waypoint interpolation does not accept accelerations."
+        )
+
+    expected = values.shape
+
+    def normalize(data, name):
+        if data is None:
+            return np.zeros(expected, dtype=float)
+        array = _as_real_float_array(data, name=name)
+        if len(expected) == 2 and expected[1] == 1 and array.ndim == 1:
+            array = array[:, None]
+        if array.shape != expected:
+            raise ValueError(f"{name} must have shape {expected}.")
+        return array
+
+    v = normalize(velocities, "velocities")
+    a = normalize(accelerations, "accelerations") if method == "quintic" else None
+    return v, a
+
+
+def _piecewise_polynomial_trajectory(
+    waypoints, waypoint_times, sample_times, *,
+    method, velocities=None, accelerations=None,
+):
+    """Evaluate piecewise polynomials with shared waypoint derivatives.
+
+    The right-hand segment owns every interior knot. The final knot belongs
+    to the final segment; derivatives there use its left-hand limit.
+    """
+    if method == "linear":
+        durations = np.diff(waypoint_times)
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            slopes = np.diff(waypoints, axis=0) / durations[:, None]
+        if not np.all(np.isfinite(slopes)):
+            raise ValueError("Waypoint segment velocities must be finite.")
+
+    positions = np.empty((sample_times.size, waypoints.shape[1]), dtype=float)
+    velocity_samples = np.empty_like(positions)
+    acceleration_samples = np.empty_like(positions)
+
+    for i in range(waypoints.shape[0] - 1):
+        start = np.searchsorted(sample_times, waypoint_times[i], side="left")
+        stop = (
+            sample_times.size
+            if i == waypoints.shape[0] - 2
+            else np.searchsorted(sample_times, waypoint_times[i + 1], side="left")
+        )
+        kwargs = {}
+        if method != "linear":
+            kwargs.update(v0=velocities[i], vf=velocities[i + 1])
+        if method == "quintic":
+            kwargs.update(a0=accelerations[i], af=accelerations[i + 1])
+
+        _, x, xd, xdd = _evaluate_polynomial_segment(
+            waypoints[i],
+            waypoints[i + 1],
+            waypoint_times[i],
+            waypoint_times[i + 1],
+            sample_times[start:stop],
+            method=method,
+            **kwargs,
+        )
+        positions[start:stop] = x
+        velocity_samples[start:stop] = xd
+        acceleration_samples[start:stop] = xdd
+
+    return sample_times, positions, velocity_samples, acceleration_samples
+
+
+def _prepare_waypoint_request(
+    waypoints,
+    waypoint_times,
+    *,
+    cartesian,
+    method,
+    derivative_policy,
+    velocities,
+    accelerations,
+    sample_times,
+    samples_per_segment,
+):
+    """Prepare a validated robot-independent piecewise polynomial request."""
+    method = _normalize_method(method)
+    values = _prepare_waypoints(waypoints, cartesian=cartesian)
+    times = _prepare_waypoint_times(waypoint_times, values.shape[0])
+    derivatives = _prepare_waypoint_derivatives(
+        values,
+        times,
+        method=method,
+        derivative_policy=derivative_policy,
+        velocities=velocities,
+        accelerations=accelerations,
+    )
+    samples = _prepare_waypoint_samples(
+        times,
+        sample_times=sample_times,
+        samples_per_segment=samples_per_segment,
+    )
+    return values, times, samples, derivatives
+
+
+
+
+@dataclass(frozen=True)
+class TrapezoidalProfileInfo:
+    """Generation metadata for a synchronized, sampled trapezoidal motion.
+
+    Velocities and accelerations describe the dimensionless progress
+    coordinate s(t), not an individual joint. This object cannot resample
+    the trajectory and does not track subsequent edits to trajectory arrays.
+    """
+
+    kind: str
+    t_accel: float
+    t_cruise: float
+    t_decel: float
+    duration: float
+    minimum_duration: float | None
+    peak_path_speed: float
+    path_acceleration: float
+
+    def __post_init__(self):
+        if self.kind not in ("triangular", "trapezoidal", "stationary"):
+            raise ValueError("profile.kind must describe a recognized phase regime.")
+        for name in (
+            "t_accel", "t_cruise", "t_decel", "duration",
+            "peak_path_speed", "path_acceleration",
+        ):
+            value = getattr(self, name)
+            if (
+                isinstance(value, (bool, np.bool_))
+                or not isinstance(value, Real)
+                or not math.isfinite(float(value))
+                or value < 0.0
+            ):
+                raise ValueError(f"profile.{name} must be finite and nonnegative.")
+        if self.duration <= 0:
+            raise ValueError("profile.duration must be strictly positive.")
+        if not math.isclose(
+            self.t_accel + self.t_cruise + self.t_decel,
+            self.duration, rel_tol=1e-12, abs_tol=0.0,
+        ):
+            raise ValueError("Profile phase times must sum to duration.")
+        if self.kind == "stationary":
+            if self.minimum_duration is not None:
+                raise ValueError("Stationary profiles have no minimum_duration.")
+            if any(
+                x != 0.0 for x in (
+                    self.t_accel, self.t_decel,
+                    self.peak_path_speed, self.path_acceleration,
+                )
+            ):
+                raise ValueError("Stationary profiles must remain at rest.")
+        else:
+            if (
+                self.minimum_duration is None
+                or isinstance(self.minimum_duration, (bool, np.bool_))
+                or not isinstance(self.minimum_duration, Real)
+                or not math.isfinite(float(self.minimum_duration))
+                or self.minimum_duration <= 0.0
+            ):
+                raise ValueError("Moving profiles require a positive minimum_duration.")
+            if (
+                self.t_accel <= 0.0
+                or self.t_decel <= 0.0
+                or self.peak_path_speed <= 0.0
+                or self.path_acceleration <= 0.0
+            ):
+                raise ValueError("Moving profiles require positive phase parameters.")
+            if self.kind == "triangular" and self.t_cruise != 0:
+                raise ValueError("Triangular profiles must have no cruise phase.")
+            if self.kind == "trapezoidal" and self.t_cruise <= 0:
+                raise ValueError("Trapezoidal profiles require a cruise phase.")
 
 
 @dataclass
@@ -284,13 +732,16 @@ class JointTrajectory:
     qd: np.ndarray
     qdd: np.ndarray
     method: str
+    profile: TrapezoidalProfileInfo | None = field(
+        default=None, kw_only=True, repr=False, compare=False,
+    )
 
     def __post_init__(self):
         self.t = _prepare_time(self.t)
         self.q = _as_real_float_array(self.q, name="q", ndim=2)
         self.qd = _as_real_float_array(self.qd, name="qd", ndim=2)
         self.qdd = _as_real_float_array(self.qdd, name="qdd", ndim=2)
-        self.method = _normalize_method(self.method)
+        self.method = _normalize_joint_trajectory_method(self.method)
 
         if self.q.shape != self.qd.shape or self.q.shape != self.qdd.shape:
             raise ValueError("q, qd, and qdd must have identical shapes.")
@@ -300,6 +751,18 @@ class JointTrajectory:
             )
         if self.q.shape[1] < 1:
             raise ValueError("Joint trajectories must contain at least one DOF.")
+        if self.profile is not None:
+            if not isinstance(self.profile, TrapezoidalProfileInfo):
+                raise ValueError("profile must be a TrapezoidalProfileInfo or None.")
+            if self.method != "trapezoidal":
+                raise ValueError(
+                    "Trapezoidal profile metadata requires method='trapezoidal'."
+                )
+            if not math.isclose(
+                self.duration, self.profile.duration,
+                rel_tol=1e-12, abs_tol=0.0,
+            ):
+                raise ValueError("profile.duration must match trajectory duration.")
 
     @property
     def samples(self):
@@ -429,3 +892,227 @@ def position_trajectory(
         af=af_vec,
     )
     return PositionTrajectory(time, p, v, a, method)
+
+def joint_waypoint_trajectory(
+    waypoints,
+    waypoint_times,
+    *,
+    method="quintic",
+    derivative_policy="zero",
+    velocities=None,
+    accelerations=None,
+    sample_times=None,
+    samples_per_segment=None,
+):
+    """Generate piecewise linear, cubic or quintic joint-space trajectories.
+
+    The 'zero' policy stops at every waypoint unless complete derivative
+    arrays are provided. The cubic-only 'shape_preserving' policy estimates
+    interior velocities, with zero velocities at both global endpoints.
+    """
+    values, times, samples, (v, a) = _prepare_waypoint_request(
+        waypoints,
+        waypoint_times,
+        cartesian=False,
+        method=method,
+        derivative_policy=derivative_policy,
+        velocities=velocities,
+        accelerations=accelerations,
+        sample_times=sample_times,
+        samples_per_segment=samples_per_segment,
+    )
+    normalized_method = _normalize_method(method)
+    t, q, qd, qdd = _piecewise_polynomial_trajectory(
+        values, times, samples,
+        method=normalized_method, velocities=v, accelerations=a,
+    )
+    return JointTrajectory(t, q, qd, qdd, normalized_method)
+
+
+def position_waypoint_trajectory(
+    waypoints,
+    waypoint_times,
+    *,
+    method="quintic",
+    derivative_policy="zero",
+    velocities=None,
+    accelerations=None,
+    sample_times=None,
+    samples_per_segment=None,
+):
+    """Generate piecewise polynomial Cartesian-position trajectories.
+
+    Cartesian waypoints and derivative matrices must have shape (K, 3).
+    The cubic-only 'shape_preserving' policy estimates coordinate-wise
+    interior velocities and rests at both endpoints.
+    """
+    values, times, samples, (v, a) = _prepare_waypoint_request(
+        waypoints,
+        waypoint_times,
+        cartesian=True,
+        method=method,
+        derivative_policy=derivative_policy,
+        velocities=velocities,
+        accelerations=accelerations,
+        sample_times=sample_times,
+        samples_per_segment=samples_per_segment,
+    )
+    normalized_method = _normalize_method(method)
+    t, p, v_samples, a_samples = _piecewise_polynomial_trajectory(
+        values, times, samples,
+        method=normalized_method, velocities=v, accelerations=a,
+    )
+    return PositionTrajectory(t, p, v_samples, a_samples, normalized_method)
+
+
+def _prepare_trapezoidal_joint_limit(value, dof, *, name):
+    """Expand positive scalar joint limits or validate a dof-length vector."""
+    try:
+        raw = np.asarray(value)
+    except Exception as exc:
+        raise ValueError(f"{name} must be a scalar or a (dof,) vector.") from exc
+
+    if raw.ndim == 0:
+        limit = _positive_finite_scalar(raw.item(), name=name)
+        return np.full(dof, limit, dtype=float)
+
+    if raw.ndim != 1 or raw.size != dof:
+        raise ValueError(f"{name} must be a scalar or have shape ({dof},).")
+    # Check booleans explicitly, including object arrays containing mixed
+    # numerical and boolean entries. Limit arrays must contain real values.
+    if np.iscomplexobj(raw) or any(
+        isinstance(item, (bool, np.bool_))
+        for item in np.asarray(value, dtype=object).flat
+    ):
+        raise ValueError(f"{name} must contain real positive numbers, not bools.")
+    limits = _as_real_float_array(value, name=name, ndim=1)
+    if np.any(limits <= 0):
+        raise ValueError(f"{name} must contain strictly positive limits.")
+    return limits
+
+
+def _prepare_trapezoidal_time_grid(t0, duration, samples):
+    """Create a finite, strictly increasing physical-time sample grid."""
+    if isinstance(t0, (bool, np.bool_)) or not isinstance(t0, Real):
+        raise ValueError("t0 must be a finite real scalar.")
+    try:
+        initial = float(t0)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("t0 must be a finite real scalar.") from exc
+    if not math.isfinite(initial):
+        raise ValueError("t0 must be a finite real scalar.")
+
+    if (
+        isinstance(samples, (bool, np.bool_))
+        or not isinstance(samples, (int, np.integer))
+        or samples < 2
+    ):
+        raise ValueError("samples must be an integer >= 2.")
+
+    with np.errstate(over="ignore", invalid="ignore"):
+        end = initial + duration
+    if not math.isfinite(end) or end <= initial:
+        raise ValueError("t0 and duration produce nonrepresentable endpoint times.")
+    times = np.linspace(initial, end, samples)
+    if not np.all(np.isfinite(times)) or np.any(np.diff(times) <= 0):
+        raise ValueError(
+            "Sampling requires strictly increasing distinguishable "
+            "floating-point times; reduce samples or rescale time."
+        )
+    return times
+
+
+def joint_trapezoidal_trajectory(
+    q0,
+    qf,
+    *,
+    v_max,
+    a_max,
+    duration=None,
+    t0=0.0,
+    samples=101,
+):
+    """Generate a synchronized rest-to-rest, point-to-point joint trajectory.
+
+    The normalized progress s follows a triangular or trapezoidal speed
+    profile. Every joint traces a straight-line path in joint space with
+    shared phase times. Limits are applied independently to each coordinate
+    and the shortest feasible duration within this profile family is used
+    unless a larger duration is requested.
+
+    Initial/final velocities are zero. Acceleration is piecewise constant
+    and its value at phase changes uses the right-hand phase, except for the
+    final time (left-hand phase). No jerk or dynamic feasibility guarantee
+    is implied. Only stationary moves may use a prescribed zero displacement.
+    """
+    q_initial = _prepare_joint_endpoint(q0, name="q0")
+    q_final = _prepare_joint_endpoint(qf, name="qf")
+    if q_initial.size != q_final.size:
+        raise ValueError("q0 and qf must contain the same number of joints.")
+
+    dof = q_initial.size
+    velocity_limits = _prepare_trapezoidal_joint_limit(
+        v_max, dof, name="v_max"
+    )
+    acceleration_limits = _prepare_trapezoidal_joint_limit(
+        a_max, dof, name="a_max"
+    )
+    with np.errstate(over="ignore", invalid="ignore"):
+        displacement = q_final - q_initial
+    if not np.all(np.isfinite(displacement)):
+        raise ValueError("qf - q0 must contain finite displacements.")
+
+    active = displacement != 0.0
+    if not np.any(active):
+        plan = _resolve_trapezoidal_phases(
+            1.0, 1.0, duration=duration, stationary=True
+        )
+    else:
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            effective_v = velocity_limits[active] / np.abs(displacement[active])
+            effective_a = acceleration_limits[active] / np.abs(
+                displacement[active]
+            )
+        v_progress = np.min(effective_v)
+        a_progress = np.min(effective_a)
+        if not (
+            np.isfinite(v_progress) and v_progress > 0
+            and np.isfinite(a_progress) and a_progress > 0
+        ):
+            raise ValueError(
+                "Joint limits and displacements produce nonrepresentable "
+                "normalized progress limits."
+            )
+        plan = _resolve_trapezoidal_phases(
+            float(v_progress), float(a_progress), duration=duration
+        )
+
+    times = _prepare_trapezoidal_time_grid(t0, plan.duration, samples)
+    elapsed = np.linspace(0.0, plan.duration, samples)
+    s, sd, sdd = _evaluate_trapezoidal_phases(plan, elapsed)
+    with np.errstate(over="ignore", invalid="ignore"):
+        q = q_initial[None, :] + s[:, None] * displacement[None, :]
+        qd = sd[:, None] * displacement[None, :]
+        qdd = sdd[:, None] * displacement[None, :]
+
+    if not all(np.all(np.isfinite(x)) for x in (q, qd, qdd)):
+        raise ValueError("Trapezoidal joint trajectory produced nonfinite values.")
+
+    # Avoid roundoff residue in boundary configurations and speeds.
+    q[0] = q_initial
+    q[-1] = q_final
+    qd[0] = qd[-1] = 0.0
+
+    profile = TrapezoidalProfileInfo(
+        kind=plan.kind,
+        t_accel=plan.t_accel,
+        t_cruise=plan.t_cruise,
+        t_decel=plan.t_decel,
+        duration=plan.duration,
+        minimum_duration=plan.minimum_duration,
+        peak_path_speed=plan.peak_speed,
+        path_acceleration=plan.acceleration,
+    )
+    return JointTrajectory(
+        times, q, qd, qdd, "trapezoidal", profile=profile
+    )

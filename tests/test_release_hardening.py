@@ -28,7 +28,6 @@ from moro.transformations import (
     is_homogeneous_transform,
     is_rotation_matrix,
 )
-from moro.util import is_SE3, is_SO3, ishtm, isrot
 from moro.visualization import RobotVisualizer, __all__ as visualization_all
 from moro.workspace import Workspace, __all__ as workspace_all
 
@@ -120,15 +119,25 @@ def test_new_modules_export_the_accepted_public_api():
         "PositionTrajectory",
         "joint_trajectory",
         "position_trajectory",
+        "joint_waypoint_trajectory",
+        "position_waypoint_trajectory",
+        "joint_trapezoidal_trajectory",
+        "TrapezoidalProfileInfo",
     }
     assert set(dynamics_all) == {
         "DynamicsSolution",
         "inverse_dynamics",
+        "inverse_dynamics_trajectory",
         "forward_dynamics",
         "state_derivative",
         "simulate",
     }
-    assert set(workspace_all) == {"Workspace", "sample_workspace"}
+    assert set(workspace_all) == {
+        "Workspace",
+        "WorkspaceSection",
+        "sample_workspace",
+        "section_workspace",
+    }
     assert "plot_workspace" in visualization_all
 
     for name in (
@@ -143,42 +152,23 @@ def test_new_modules_export_the_accepted_public_api():
         assert name in transformations_all
 
 
-def test_descriptive_transform_predicates_and_legacy_wrappers_coexist():
-    R = sp.eye(3)
-    T = sp.eye(4)
+def test_deprecated_0_5_interfaces_are_removed():
+    import importlib.util
+    import moro.util as util
 
-    assert is_rotation_matrix(R) is True
-    assert is_homogeneous_transform(T) is True
+    for legacy in ("is_SE3", "is_SO3", "ishtm", "isrot"):
+        assert not hasattr(util, legacy)
+        assert legacy not in util.__all__
 
-    for legacy, value in (
-        (is_SO3, R),
-        (isrot, R),
-        (is_SE3, T),
-        (ishtm, T),
-    ):
-        with pytest.warns(DeprecationWarning):
-            result = legacy(value)
-        assert isinstance(result, bool)
-        assert result is True
+    assert importlib.util.find_spec("moro.plotting") is None
 
-
-def test_dynamic_model_compatibility_alias_is_deprecated():
     robot = Robot((0, 0, 0, q1, "r"))
-    robot.masses = [1.0]
-    robot.cm_positions = [(0.5, 0, 0)]
-    robot.inertia_tensors = [sp.diag(0, 0, 0.1)]
-    robot.gravity = (0, -9.81, 0)
+    assert not hasattr(robot, "dynamic_model_matrix_form")
 
-    matrix_model = robot.dynamic_model()
-    equations = robot.euler_lagrange_equations()
 
-    assert isinstance(matrix_model, sp.Equality)
-    assert isinstance(equations, list)
-
-    with pytest.warns(DeprecationWarning):
-        compatibility_model = robot.dynamic_model_matrix_form()
-
-    assert compatibility_model == matrix_model
+def test_descriptive_transform_predicates_are_available():
+    assert is_rotation_matrix(sp.eye(3)) is True
+    assert is_homogeneous_transform(sp.eye(4)) is True
 
 
 def test_cross_module_time_major_and_cartesian_shape_conventions():

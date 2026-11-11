@@ -159,7 +159,7 @@ This symbolic matrix equation is returned by
 robot.dynamic_model()
 ```
 
-`dynamic_model_matrix_form()` remains temporarily as a deprecated alias.
+Moro 0.7.0 removes the deprecated `dynamic_model_matrix_form()` alias. Call `dynamic_model()` directly.
 
 ## Inverse dynamics
 

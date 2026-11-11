@@ -59,7 +59,21 @@ values = {
 viz.plot(values)
 ```
 
-The first argument is a dictionary that maps symbolic robot parameters to numerical values.
+A full symbolic substitution dictionary like `values` remains supported.
+In Moro 0.7.0, the preferred form separates the **joint configuration**
+from the **fixed DH parameters**:
+
+```python
+parameters = {l1: 1.0, l2: 0.8}
+
+viz.plot(
+    configuration=[0.5, 0.8],
+    parameters=parameters,
+)
+```
+
+The numerical joint vector follows `robot.qs` order. This is especially
+convenient when animating many configurations of the same robot.
 
 Because Three.js is the default backend, the previous call is equivalent to:
 
@@ -100,16 +114,43 @@ robot = Robot(
 )
 ```
 
-the geometric parameters must also be provided:
+the geometric parameters must also be provided, preferably
+separately from the joint configuration:
 
-```python id="90a2fx"
-values = {
-    l1: 1.0,
-    l2: 0.8,
-    q1: 0.5,
-    q2: 0.8,
-}
+```python
+parameters = {l1: 1.0, l2: 0.8}
+configuration = [0.5, 0.8]
+
+viz.plot(configuration, parameters=parameters)
 ```
+
+Alternatively, the original complete mapping still works:
+
+```python
+values = {l1: 1.0, l2: 0.8, q1: 0.5, q2: 0.8}
+viz.plot(values)
+```
+
+The keyword-only `parameters` mapping accepts **constant DH symbols**
+needed to evaluate the robot's kinematic geometry, not joint coordinates
+or dynamics-only quantities such as masses or inertia tensors. Values must
+be finite real scalars; SymPy numeric constants are accepted. For an
+expression such as `l1 / 2` in the DH table, provide `l1` as the key.
+
+These inputs are invalid and raise `ValueError`:
+
+- missing required DH parameters or joint coordinates;
+- unknown keys in the explicit `parameters` mapping;
+- joint variables in `parameters`;
+- the same key in both `configuration` and `parameters`, even when
+  the values are identical;
+- complex, nonfinite or otherwise invalid numerical values.
+
+A model with a composite joint entry, such as `q1 + theta0`, cannot be
+assigned unambiguously from a numerical joint vector using the current
+`Robot.qs` representation. Use a symbolic substitution dictionary in
+that case. For the exact contracts, see
+[Symbolic Parameters for Visualization](../examples/symbolic-visualization-parameters.md).
 
 Internally, `moro` evaluates the transformation of each robot frame with respect to the base frame and converts the resulting matrices to numerical scene data.
 
@@ -346,6 +387,86 @@ viz.animate(configurations, interval=50)
 
 For Three.js this is a positive finite number and controls the browser's
 playback timer, not the physical time coordinates of a computed trajectory.
+
+### Physical-time playback in Three.js (T-06)
+
+The default Three.js backend can reproduce joint configurations at explicit
+**physical timestamps**, including nonuniform intervals:
+
+```python
+# For a trajectory with matching time-major q and physical times t:
+viz.animate(traj.q, times=traj.t, playback_speed=1.0)
+```
+
+`times` has one strictly increasing, finite real timestamp in **seconds**
+per frame, with at least two samples. Its first value need not be zero:
+Three.js uses the elapsed time relative to the first timestamp.
+`playback_speed` is a strictly positive finite multiplier (1.0 = nominal
+physical speed, 2.0 = twice as fast, 0.5 = half speed). No intermediate
+joint configurations are interpolated inside the visualizer.
+
+For example, a minimal one-joint animation that holds unevenly spaced
+samples can be created as follows:
+
+```python
+from moro import Robot
+from moro.abc import q1
+from moro.visualization import RobotVisualizer
+
+robot = Robot((1.0, 0, 0, q1, "r"))
+viz = RobotVisualizer(robot)
+
+viz.animate(
+    [[0.0], [0.2], [0.5], [0.8], [1.0]],
+    times=[0.0, 0.1, 0.7, 0.8, 1.5],
+)
+```
+
+Playback follows a monotonic browser clock and selects the most recent
+supplied frame at or before the current physical time. The frame slider
+snaps the playback clock to the selected timestamp. Pause preserves the
+elapsed time, Play resumes, and playback stops at the final configuration.
+Pressing Play after completion restarts at the beginning. Camera operations
+and Fit View do not reset playback.
+
+If the browser is slow or a tab has been throttled, frames may be skipped
+to catch up to the physical clock. This is visual playback, **not a
+real-time control guarantee**. The time indicator displays elapsed
+physical time and the playback-speed factor; the slider remains indexed
+by frames.
+
+Do not combine explicit `times` with `interval`. A non-default
+`playback_speed` without `times` is also invalid. The original
+`interval`-based mode remains unchanged and continues looping frames
+uniformly by default.
+
+**Matplotlib limitation:** physical-time playback via `times=` is **not
+supported** in this version. Passing it with
+`backend="matplotlib"` raises a clear `ValueError`. Matplotlib
+continues to support the existing `interval`-based `FuncAnimation`
+workflow; setting a fixed `interval` cannot accurately reproduce
+arbitrary nonuniform physical times.
+
+### Backend capability summary
+
+| Animation capability | Three.js (default) | Matplotlib |
+| --- | --- | --- |
+| Fixed `interval` playback | Yes; loops | Yes; `FuncAnimation` |
+| Explicit `times` in seconds | Yes; including nonuniform grids | Not supported (raises `ValueError`) |
+| `playback_speed` with `times` | Yes; finite positive multiplier | Not supported |
+| Pause / resume / frame seek | Yes; synchronized with physical time | Unchanged Matplotlib controls |
+| Physical-time end behavior | Stops at the final configuration | Not applicable |
+| Interpolation of missing samples | No | No T-06 feature |
+| Hard real-time scheduling | Not guaranteed | Not guaranteed |
+
+For an executable two-joint example (including a nonuniform
+multi-waypoint trajectory, a trapezoidal trajectory and a visual
+verification checklist), see
+[Physical-Time Animation Playback](../examples/physical-time-playback.md).
+The behavior is based on a browser monotonic clock; if a notebook
+viewer does not render correctly, check browser console output and
+whether Three.js dependencies loaded, rather than assuming
+`times` was converted into a fixed `interval`.
 
 ## Customizing the visualization
 
@@ -642,177 +763,141 @@ style = VisualizationStyle(
 
 ## Animating an inverse-kinematics trajectory
 
-`RobotVisualizer.animate()` expects substitution dictionaries, while `solve_position_trajectory()` returns joint vectors through:
+`solve_position_trajectory()` returns joint configurations through its
+`qs` field. There is no need to convert every row to a full substitution
+dictionary: `RobotVisualizer.animate()` accepts the numeric array directly.
 
-```python id="gspk4f"
-trajectory.qs
-```
+Suppose Cartesian targets `targets` have already been prepared for the
+symbolic RR robot defined above:
 
-The two APIs can be connected easily.
+```python
+from moro.inverse_kinematics import solve_position_trajectory
 
-Suppose an IK trajectory has already been computed:
-
-```python id="i0xi4t"
+parameters = {l1: 1.0, l2: 0.8}
 trajectory = solve_position_trajectory(
     robot,
     targets,
     q0=[0.1, 0.1],
-    parameters={
-        l1: 1.0,
-        l2: 0.8,
-    },
+    parameters=parameters,
 )
 ```
 
-First verify that the trajectory converged:
+After checking convergence, pass the joint solutions to the viewer:
 
-```python id="qx0k56"
-if trajectory.converged:
-    print("Trajectory solved.")
-```
+```python
+if not trajectory.converged:
+    raise ValueError("The IK trajectory did not converge.")
 
-Then convert each joint vector into a substitution dictionary:
-
-```python id="wmug3e"
-configurations = [
-    dict(zip(robot.qs, q))
-    for q in trajectory.qs
-]
-```
-
-For a robot with symbolic geometric parameters, include them in each configuration:
-
-```python id="4p45in"
-parameters = {
-    l1: 1.0,
-    l2: 0.8,
-}
-
-configurations = [
-    {
-        **parameters,
-        **dict(zip(robot.qs, q)),
-    }
-    for q in trajectory.qs
-]
-```
-
-Now animate the result:
-
-```python id="uqi0px"
 style = VisualizationStyle(
     show_trajectory=True,
     trajectory_mode="trace",
 )
 
 viz.animate(
-    configurations,
-    backend="threejs",
+    trajectory.qs,
+    parameters=parameters,
     style=style,
 )
 ```
 
-This provides a convenient workflow from Cartesian position targets to a visual representation of the corresponding robot motion.
+The geometry constants are shared across all frames and are not embedded
+in each joint vector. This IK result does not itself prescribe physical
+sample times; use `times=` only when you have a valid matching time
+vector, or use the legacy fixed `interval` player.
 
 ## A worked example
 
-Consider a planar 2R robot:
+Consider a planar RR manipulator with symbolic link lengths:
 
-```python id="t5llra"
+```python
 import numpy as np
 
 from moro import Robot
 from moro.abc import q1, q2, l1, l2
-from moro.visualization import (
-    RobotVisualizer,
-    VisualizationStyle,
-)
+from moro.visualization import RobotVisualizer, VisualizationStyle
 
 robot = Robot(
     (l1, 0, 0, q1, "r"),
     (l2, 0, 0, q2, "r"),
 )
-
 viz = RobotVisualizer(robot)
+parameters = {l1: 1.0, l2: 0.8}
+configuration = [np.pi / 4, -np.pi / 6]
 ```
 
-Define the geometric parameters and one configuration:
+A static Matplotlib plot and the equivalent interactive Three.js view
+share exactly the same model values:
 
-```python id="yc8zvw"
-values = {
-    l1: 1.0,
-    l2: 0.8,
-    q1: np.pi / 4,
-    q2: -np.pi / 6,
-}
-```
-
-A static Matplotlib plot can be created with:
-
-```python id="bdzyp7"
+```python
 fig, ax = viz.plot(
-    values,
+    configuration,
     backend="matplotlib",
+    parameters=parameters,
     view_init=(35, 35),
 )
+
+viz.plot(configuration, parameters=parameters)
 ```
 
-The same configuration can be inspected interactively with Three.js:
+Now generate a sequence of joint configurations, with one row per frame:
 
-```python id="c5eo8m"
-viz.plot(
-    values,
-    backend="threejs",
-)
-```
+```python
+t = np.linspace(0.0, 2.0, 40)
+theta = np.linspace(0.0, np.pi / 2, t.size)
+configurations = np.column_stack((theta, -theta / 2))
 
-Now create a sequence of configurations:
-
-```python id="1fgtpf"
-configurations = []
-
-for theta in np.linspace(0, np.pi / 2, 40):
-    configurations.append({
-        l1: 1.0,
-        l2: 0.8,
-        q1: theta,
-        q2: -theta / 2,
-    })
-```
-
-Create a visualization style that shows the end-effector path:
-
-```python id="gh6c0v"
 style = VisualizationStyle(
     show_trajectory=True,
     trajectory_mode="trace",
 )
 ```
 
-Then animate the robot:
+Animate it in physical time using the default Three.js backend:
 
-```python id="02b6dy"
+```python
 viz.animate(
     configurations,
-    backend="threejs",
+    times=t,
+    parameters=parameters,
     style=style,
 )
 ```
 
-The resulting viewer allows the animation to be played, paused, inspected frame by frame, and viewed using different camera projections.
+The same configurations can be rendered with Matplotlib's fixed frame
+interval, without `times`:
 
-The same data can be rendered with Matplotlib:
-
-```python id="rlhh4g"
+```python
 animation = viz.animate(
     configurations,
     backend="matplotlib",
+    parameters=parameters,
     interval=75,
     style=style,
 )
 ```
 
+The viewer accepts traditional complete substitution dictionaries as
+well, but repeating geometric parameters in each frame is no longer
+necessary. For an independent notebook-ready exercise, see
+[Symbolic Parameters for Visualization](../examples/symbolic-visualization-parameters.md).
+
 ## Return types and migration from previous versions
+
+**Moro 0.7.0 keyword rename:** the first argument of `plot()` is
+`configuration` (formerly `num_vals`); the first argument of `animate()`
+is `configurations` (formerly `num_vals_list`). Old **named** calls
+such as `viz.plot(num_vals=values)` and
+`viz.animate(num_vals_list=frames)` must be updated; no legacy keyword
+aliases are provided. Positional calls such as `viz.plot(values)` and
+`viz.animate(frames)` are unchanged. The optional `parameters` argument
+is keyword-only, and `backend` remains the second positional argument.
+
+A complete symbolic mapping is still valid, but joint vectors plus
+`parameters=` avoid repeating fixed model geometry during animation.
+The public low-level `evaluate_robot(robot, substitutions)` API is not
+renamed or extended by API-001. See the
+[0.7.0 migration and release notes (unreleased)](../release-notes/0.7.0.md)
+for the migration summary.
 
 The default backend changed in Moro 0.6.0. A bare `viz.plot(values)`
 returns HTML rather than `(fig, ax)`, and bare

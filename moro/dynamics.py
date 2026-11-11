@@ -13,6 +13,7 @@ from moro.abc import t as symbolic_time
 __all__ = [
     "DynamicsSolution",
     "inverse_dynamics",
+    "inverse_dynamics_trajectory",
     "forward_dynamics",
     "state_derivative",
     "simulate",
@@ -319,6 +320,79 @@ def inverse_dynamics(robot, q, qd, qdd, *, parameters=None):
     qd = _as_state_vector(qd, model.dof, name="qd")
     qdd = _as_state_vector(qdd, model.dof, name="qdd")
     return _inverse_dynamics_prepared(model, q, qd, qdd)
+
+
+def _prepare_motion_history(motion, dof):
+    """Validate duck-typed time-major (q, qd, qdd) histories.
+
+    Explicit timestamps are optional. They are checked for consistency
+    when present, but are not needed to evaluate the inverse dynamics.
+    """
+    states = {}
+    for name in ("q", "qd", "qdd"):
+        try:
+            values = getattr(motion, name)
+        except AttributeError as exc:
+            raise ValueError(
+                f"motion must provide the attributes q, qd and qdd; "
+                f"missing {name!r}."
+            ) from exc
+        states[name] = _as_numeric_array(values, name=f"motion.{name}", ndim=2)
+
+    q, qd, qdd = (states[name] for name in ("q", "qd", "qdd"))
+    if q.shape != qd.shape or q.shape != qdd.shape:
+        raise ValueError(
+            "motion.q, motion.qd and motion.qdd must have identical shapes "
+            "(N, robot.dof)."
+        )
+    if q.shape[0] < 1:
+        raise ValueError("motion must contain at least one sample.")
+    if q.shape[1] != dof:
+        raise ValueError(
+            f"motion histories must have shape (N, robot.dof={dof}); "
+            f"got {q.shape}."
+        )
+
+    if hasattr(motion, "t") and motion.t is not None:
+        time = _as_numeric_array(motion.t, name="motion.t", ndim=1)
+        if time.size != q.shape[0]:
+            raise ValueError(
+                "motion.t must contain one timestamp per motion sample."
+            )
+        if time.size > 1 and np.any(np.diff(time) <= 0):
+            raise ValueError("motion.t must be strictly increasing.")
+
+    return q, qd, qdd
+
+
+def inverse_dynamics_trajectory(robot, motion, *, parameters=None):
+    """Evaluate ideal inverse dynamics over sampled joint states.
+
+    motion must expose q, qd and qdd as compatible finite real arrays
+    of shape (N, robot.dof). An optional t attribute is checked but
+    not used in the calculations. Both JointTrajectory and
+    DynamicsSolution are supported without requiring either type.
+
+    The symbolic M/C/G model is prepared once, and each output row is
+    evaluated with the same equations as inverse_dynamics().
+    Returns an independent float array of shape (N, robot.dof).
+    Friction and external loads are not included in this ideal model.
+    """
+    q, qd, qdd = _prepare_motion_history(motion, robot.dof)
+    model = _prepare_numerical_model(robot, parameters=parameters)
+    efforts = np.empty_like(q)
+
+    for index, (qi, qdi, qddi) in enumerate(zip(q, qd, qdd)):
+        try:
+            efforts[index] = _inverse_dynamics_prepared(
+                model, qi, qdi, qddi,
+            )
+        except ValueError as exc:
+            raise ValueError(
+                f"Inverse dynamics failed at sample {index}: {exc}"
+            ) from exc
+
+    return efforts
 
 
 def forward_dynamics(robot, q, qd, tau, *, parameters=None):
