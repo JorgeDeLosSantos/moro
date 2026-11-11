@@ -73,14 +73,14 @@ These labels are historical planning classifications, **not** a current to-do li
 
 The following item IDs are local to this roadmap.
 
-| ID | Candidate | Intent and preliminary scope |
+| ID | Accepted item | Implemented intent |
 | --- | --- | --- |
 | **T-01** | Multi-waypoint joint and Cartesian-position trajectories | Prescribe ordered waypoints, associated with a clearly defined time convention. |
 | **T-02** | Piecewise polynomial interpolation | Extend existing `linear`, `cubic`, `quintic` capabilities to multiple segments where mathematically appropriate. |
 | **T-03** | Continuity across segments | Specify and validate position/velocity/acceleration continuity (`C0`, `C1`, `C2`) as appropriate to interpolation method and boundary conditions. |
-| **T-04** | Trapezoidal velocity profile | [Designed](../../design/0.7.0/trapezoidal.md) and implemented (B1/B2): synchronized rest-to-rest joint motion, triangular/trapezoidal phases, optional prescribed duration and typed profile metadata; B3 adds examples and validation. |
+| **T-04** | Trapezoidal velocity profile | [Designed](../../design/0.7.0/trapezoidal.md) and implemented (B1/B2): synchronized rest-to-rest joint motion, triangular/trapezoidal phases, optional prescribed duration and typed profile metadata; B3 (PR #47) added examples and validation. |
 | **T-06** | Physical-time playback | **Completed** in PRs #49–#51: timestamped Three.js playback, controls, validated examples, backend limitations and visual Colab checks. |
-| **M-01** | API cleanup and compatibility | Complete intended deprecation cleanup and document migrations. |
+
 
 **T-05 — Basic kinematic limits is deferred beyond 0.7.0.** Velocity/acceleration constraints need a separate design of time allocation and feasibility policy. No release version has been assigned.
 
@@ -112,7 +112,7 @@ No silent changes to mathematics, frames, array shapes, or established 0.7.0 bac
 
 ### API-001 — Explicit visualizer parameters (PRs #52–#54 integrated)
 
-Improve consistency between numerical robotics operations and visualizer entry points:
+The integrated change aligns numerical robotics operations and visualizer entry points:
 
 ```python
 viz.plot(configuration, parameters=params)
@@ -129,7 +129,7 @@ viz.animate(configurations, parameters=params)
 
 ### API-002 — Inverse dynamics for sampled joint motion (PRs #55–#57 integrated)
 
-Proposed public operation:
+Implemented public operation:
 
 ```python
 tau_history = inverse_dynamics_trajectory(
@@ -184,12 +184,13 @@ Specific concerns:
 | **W-05** | Manipulability, condition-number, singularity, or joint-coordinate coloring | Needs optional metric evaluation and coherent color/scale semantics. |
 | **W-06** | Nonconvex boundaries, area/volume estimates | Requires careful geometric/uncertainty contracts; convex hull can contain unreachable regions. |
 | **W-07** | Adaptive workspace sampling and larger-scale optimization | Needs refinement objectives and benchmarks, not just a new sampling option. |
+| **Friction / external forces** | Dynamic friction and externally applied wrenches in inverse/forward dynamics | Deferred to a separately designed extension with consistent interfaces across dynamics and simulation. |
 | **D-NE** | Recursive Newton–Euler (RNEA) | Currently planned for **0.10.0** in the rolling roadmap; no decision to advance it to 0.7.0. |
 | **Later horizon** | Pose trajectories/SLERP, acceleration-level differential kinematics, control, URDF/ROS 2, predefined manipulators | Retain the separate roadmap horizon; do not expand 0.7.0 by implication. |
 
 The rolling roadmap currently places **pose trajectories/SLERP in 0.8.0**, **second-order differential kinematics in 0.9.0**, and **RNEA/reusable numerical dynamics architecture in 0.10.0**. These placements are revisable, not guarantees.
 
-## Suggested work packages
+## Work packages and present status
 
 | Package | Contents | Proposed outcome |
 | --- | --- | --- |
@@ -206,7 +207,7 @@ Packages A–C are now implemented. Package D defines the required exit criteria
 - Dynamic analysis consumes compatible sampled state arrays; avoid forcing inheritance between `JointTrajectory` and `DynamicsSolution`.
 - Numerical workspace sampling does not depend on Three.js.
 - Prefer module-level public functions and modest result objects over early general frameworks.
-- Do not promise nonuniform physical playback until actual time semantics have been defined and tested.
+- Physical-time playback remains Three.js-only and follows validated timestamp semantics; do not silently approximate irregular timing in Matplotlib.
 - Support both fixed model parameters and changing joint states explicitly, without mutating `Robot`.
 - Preserve 1-DOF, mixed R/P, degenerate/planar/3D, and symbolic-parameter regression cases.
 
