@@ -145,31 +145,44 @@ The former per-joint Euler-Lagrange behavior is available as:
 equations = robot.euler_lagrange_equations()
 ```
 
-Numerical dynamics and simulation live in `moro.dynamics`.
-After defining physical properties (masses, centers of mass, inertia tensors,
-and gravity), evaluate states and trajectories with:
+Numerical dynamics and simulation live in `moro.dynamics`. For
+example, we can define a planar 2R manipulator with numerical physical
+properties, evaluate its required torques, and simulate a constant input:
 
 ```python
+import sympy as sp
 from moro.dynamics import (
-    inverse_dynamics,
-    forward_dynamics,
-    inverse_dynamics_trajectory,
-    simulate,
+    inverse_dynamics, forward_dynamics,
+    inverse_dynamics_trajectory, simulate,
 )
+
+dynamic_robot = Robot(
+    (1.0, 0, 0, q1, "r"),
+    (0.8, 0, 0, q2, "r"),
+)
+dynamic_robot.masses = [1.2, 0.8]
+dynamic_robot.cm_positions = [(-0.5, 0, 0), (-0.4, 0, 0)]
+dynamic_robot.inertia_tensors = [
+    sp.diag(0, 0, 0.08),
+    sp.diag(0, 0, 0.04),
+]
+dynamic_robot.gravity = (0, -9.81, 0)
 
 q = [0.2, -0.1]
 qd = [0.0, 0.0]
 qdd = [0.5, -0.2]
-parameters = {l1: 1.0, l2: 1.0}
 
-forces = inverse_dynamics(robot, q, qd, qdd, parameters=parameters)
-acceleration = forward_dynamics(robot, q, qd, forces, parameters=parameters)
-effort_history = inverse_dynamics_trajectory(robot, traj, parameters=parameters)
+forces = inverse_dynamics(dynamic_robot, q, qd, qdd)
+acceleration = forward_dynamics(dynamic_robot, q, qd, forces)
+effort_history = inverse_dynamics_trajectory(dynamic_robot, traj)
 
-solution = simulate(robot, (0.0, 2.0), q, qd0=qd, tau=forces, parameters=parameters)
+solution = simulate(
+    dynamic_robot, (0.0, 2.0), q,
+    qd0=qd, tau=forces,
+)
 ```
 
-For a fully specified physical model, see the
+For a more detailed treatment, see the
 [numerical dynamics example](https://jorgedelossantos.github.io/moro/examples/numerical-dynamics.html).
 
 ## Workspace Sampling
