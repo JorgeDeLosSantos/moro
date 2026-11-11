@@ -159,8 +159,7 @@ def plot_workspace(
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
         _set_equal_3d_limits(ax, workspace.bounds)
-        if show_grid:
-            ax.grid(True)
+        ax.grid(show_grid)
         return fig, ax
 
     axis_map = {
@@ -173,8 +172,7 @@ def plot_workspace(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_aspect("equal", adjustable="box")
-    if show_grid:
-        ax.grid(True)
+    ax.grid(show_grid)
     return fig, ax
 
 
@@ -244,6 +242,5 @@ def plot_workspace_section(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_aspect("equal", adjustable="box")
-    if show_grid:
-        ax.grid(True)
+    ax.grid(show_grid)
     return fig, ax
