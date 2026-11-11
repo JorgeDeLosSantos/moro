@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+* **Multi-waypoint joint and Cartesian-position trajectories:** piecewise linear, cubic, and quintic interpolation with documented time-domain continuity, explicit waypoint derivatives, configurable sampling, and shape-preserving cubic interior velocities.
+* **Trapezoidal/triangular joint motion:** synchronized rest-to-rest profiles with velocity/acceleration inputs, optional duration, and inspectable phase metadata.
+* **Physical-time Three.js playback:** nonuniform timestamps with playback speed control, while retaining the fixed-interval animation path.
+* **Explicit fixed-symbolic-parameter substitutions** in `RobotVisualizer.plot(configuration, parameters=...)` and `animate(configurations, parameters=...)`.
+* **Sampled inverse dynamics:** `inverse_dynamics_trajectory(robot, motion, parameters=...)` accepts compatible histories of joint position, velocity, and acceleration with shape `(N, dof)`.
+* **Workspace sampling and sections:** random, Sobol, Latin-hypercube, and joint-space grid methods; `WorkspaceSection` and `section_workspace()` for approximate Cartesian slabs.
+* **Interactive workspace visualization:** `plot_workspace()` and `plot_workspace_section()` support Three.js point clouds, plane projections and camera controls, optional `show_grid`, and explicit Matplotlib rendering.
+* Cross-module regression tests, user-guide examples, and 0.7.0 stabilization acceptance checks.
+
+### Changed
+
+* **Breaking:** `RobotVisualizer.plot(num_vals=...)` becomes `plot(configuration=...)`, and `animate(num_vals_list=...)` becomes `animate(configurations=...)`. Old keyword names are not accepted; positional arguments still work.
+* **Breaking:** `plot_workspace(workspace)` now defaults to Three.js and returns `IPython.display.HTML`. Code needing a Matplotlib `(fig, ax)` must explicitly use `backend="matplotlib"`.
+* `plot_workspace_section(section)`, new during 0.7.0 development, likewise defaults to Three.js; use `backend="matplotlib"` for `(fig, ax)`.
+* Workspace and section grids are disabled by default and enabled with `show_grid=True`. Their numerical sampled data remain unaffected.
+
+### Removed
+
+* Deprecated `Robot.dynamic_model_matrix_form()` alias; use `Robot.dynamic_model()`.
+* Deprecated Boolean `moro.util.is_SO3()`, `isrot()`, `is_SE3()`, and `ishtm()`; use `moro.transformations.is_rotation_matrix()` and `is_homogeneous_transform()`. The descriptive predicates can return `None` for symbolically indeterminate membership.
+* Obsolete `moro.plotting` module; modern robot plotting is provided by `moro.visualization.RobotVisualizer`. Not every legacy diagram helper has a one-to-one replacement.
+
+### Compatibility and scope
+
+* Three.js animations and workspace viewers return notebook-friendly HTML, which requires browser access to Three.js CDN resources; Matplotlib remains an explicit backend.
+* Physical-time `times=` playback is Three.js-only. Matplotlib retains fixed-interval animation rather than approximating irregular timestamps.
+* Sampled inverse dynamics is ideal `M(q)qdd + C(q,qd)qd + G(q)`: no friction, contact, external wrenches, or actuator-feasibility checks.
+* Workspace point clouds and slab sections are numerical approximations, not exact boundaries or intersections.
+* **T-05**, general velocity/acceleration-limit handling for trajectories, is postponed beyond 0.7.0; the trapezoidal generator's own `v_max`/`a_max` remain supported.
+
+
 ## [0.6.1] - 2026-11-03
 
 ### Changed
