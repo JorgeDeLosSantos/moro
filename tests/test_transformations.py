@@ -1,7 +1,6 @@
 import sympy as sp
 import pytest
 
-from moro.util import is_SE3, is_SO3, ishtm, isrot
 
 from moro.transformations import (
     axa2quat,
@@ -1266,41 +1265,19 @@ def test_axis_angle_degree_round_trip():
     )
 
 
-@pytest.mark.parametrize(
-    "legacy,new_predicate,value",
-    [
-        (is_SO3, is_rotation_matrix, rotz(sp.pi/4)),
-        (isrot, is_rotation_matrix, rotz(sp.pi/4)),
-        (is_SE3, is_homogeneous_transform, rt2htm(rotz(sp.pi/4), [1,2,3])),
-        (ishtm, is_homogeneous_transform, rt2htm(rotz(sp.pi/4), [1,2,3])),
-    ],
-)
-def test_legacy_transform_predicates_warn_and_preserve_boolean_contract(
-    legacy,
-    new_predicate,
-    value,
-):
-    with pytest.warns(DeprecationWarning):
-        result = legacy(value)
+def test_modern_transform_predicates_without_legacy_wrappers():
+    R = rotz(sp.pi / 4)
+    T = rt2htm(R, [1, 2, 3])
+    assert is_rotation_matrix(R) is True
+    assert is_homogeneous_transform(T) is True
 
-    assert result is True
-    assert result == (new_predicate(value) is True)
-
-
-def test_legacy_predicates_collapse_symbolic_indeterminate_to_false():
     a, b, c, d, e, f, g, h, i = sp.symbols("a:i", real=True)
-    R = sp.Matrix([[a,b,c],[d,e,f],[g,h,i]])
-    T = rt2htm(R, [0,0,0])
+    symbolic_R = sp.Matrix([[a, b, c], [d, e, f], [g, h, i]])
+    symbolic_T = rt2htm(symbolic_R, [0, 0, 0])
+    # The descriptive API preserves mathematical indeterminacy.
+    assert is_rotation_matrix(symbolic_R) is None
+    assert is_homogeneous_transform(symbolic_T) is None
 
-    with pytest.warns(DeprecationWarning):
-        assert is_SO3(R) is False
-    with pytest.warns(DeprecationWarning):
-        assert is_SE3(T) is False
-
-
-def test_legacy_predicates_forward_tolerance():
-    R = sp.Matrix(sp.N(rotz(0.3)))
-    R[0,0] += 1e-11
-
-    with pytest.warns(DeprecationWarning):
-        assert is_SO3(R, tol=1e-9) is True
+    perturbed = sp.Matrix(sp.N(rotz(0.3)))
+    perturbed[0, 0] += 1e-11
+    assert is_rotation_matrix(perturbed, tol=1e-9) is True

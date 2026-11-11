@@ -1007,16 +1007,6 @@ class Robot:
         tau = Matrix([symbols(f"tau_{i+1}") for i in range(self.dof)])
         return Eq(MatAdd(MatMul(M, qdd), MatMul(C, qd), G), tau)
 
-    def dynamic_model_matrix_form(self):
-        """Deprecated alias of :meth:`dynamic_model`."""
-        warnings.warn(
-            "dynamic_model_matrix_form() is deprecated in Moro 0.5.0; "
-            "use dynamic_model() for the matrix manipulator equation.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.dynamic_model()
-
     def link_kinetic_energy(self,i):
         """
         Returns the kinetic energy of i-th link.

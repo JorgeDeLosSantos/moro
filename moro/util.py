@@ -5,7 +5,6 @@ This library has been designed, mainly, for academic and research purposes,
 using SymPy as base library. 
 """
 
-import warnings
 from sympy import pi
 from sympy.matrices import Matrix
 import sympy as sp
@@ -18,11 +17,7 @@ from sympy.core.basic import Basic
 __all__ = [
     "pprint",
     "deg2rad",
-    "ishtm",
     "isorthonormal",
-    "is_SE3",
-    "is_SO3",
-    "isrot",
     "rad2deg",
     "sympy2float",
     "sympy_matrix_to_numpy_float",
@@ -97,43 +92,6 @@ def issympyobject(obj):
         return False
 
     
-def _warn_legacy_transform_predicate(name, replacement):
-    warnings.warn(
-        f"{name}() is deprecated; use "
-        f"moro.transformations.{replacement}() instead.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-
-
-def ishtm(H, tol=1e-9):
-    """Deprecated Boolean compatibility wrapper for SE(3) membership."""
-    _warn_legacy_transform_predicate("ishtm", "is_homogeneous_transform")
-    from moro.transformations import is_homogeneous_transform
-    return is_homogeneous_transform(H, tol=tol) is True
-
-
-def is_SE3(H, tol=1e-9):
-    """Deprecated Boolean compatibility wrapper for SE(3) membership."""
-    _warn_legacy_transform_predicate("is_SE3", "is_homogeneous_transform")
-    from moro.transformations import is_homogeneous_transform
-    return is_homogeneous_transform(H, tol=tol) is True
-
-
-def is_SO3(R, tol=1e-9):
-    """Deprecated Boolean compatibility wrapper for SO(3) membership."""
-    _warn_legacy_transform_predicate("is_SO3", "is_rotation_matrix")
-    from moro.transformations import is_rotation_matrix
-    return is_rotation_matrix(R, tol=tol) is True
-
-
-def isrot(R, tol=1e-9):
-    """Deprecated Boolean compatibility wrapper for SO(3) membership."""
-    _warn_legacy_transform_predicate("isrot", "is_rotation_matrix")
-    from moro.transformations import is_rotation_matrix
-    return is_rotation_matrix(R, tol=tol) is True
-
-
 def isorthonormal(R):
     """
     Check if R is orthonormal
@@ -217,6 +175,3 @@ def enable_vprinting():
     
 
 
-if __name__=="__main__":
-    H = Matrix([[1,1,0,5],[1,0,0,4],[0,0,1,0],[0,0,0,1]])
-    print(ishtm(H))
