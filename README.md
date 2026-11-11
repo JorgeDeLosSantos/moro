@@ -14,10 +14,10 @@ It is designed primarily for robotics education and for workflows where inspecti
 * **Forward kinematics:** Compute symbolic end-effector and intermediate-frame transformations.
 * **Differential kinematics:** Evaluate task Jacobians, Cartesian velocities, velocity IK, singular values, numerical rank, condition number, and manipulability.
 * **Inverse kinematics:** Solve numerical Cartesian position IK and full-pose IK with Jacobian-based methods; position-only CCD remains available.
-* **Trajectory generation:** Generate linear, cubic, and quintic point-to-point trajectories in joint or Cartesian position space.
-* **Dynamics:** Derive symbolic equations of motion, evaluate inverse/forward dynamics numerically, and integrate motion with `solve_ivp`.
-* **Workspace sampling:** Approximate reachable Cartesian workspace from finite joint ranges with reproducible joint-space sampling.
-* **Visualization:** Plot and animate robot configurations using Matplotlib or Three.js, and plot sampled workspaces with Matplotlib.
+* **Trajectory generation:** Generate point-to-point and multi-waypoint linear, cubic, and quintic joint/Cartesian-position trajectories, plus synchronized trapezoidal joint profiles.
+* **Dynamics:** Derive symbolic equations of motion, evaluate inverse/forward dynamics and sampled trajectory efforts numerically, and integrate motion with `solve_ivp`.
+* **Workspace sampling:** Explore approximate reachable Cartesian workspaces with seeded random, Sobol, Latin-hypercube, or grid joint-space samplers and Cartesian plane sections.
+* **Visualization:** Plot and animate robot configurations with Three.js by default; visualize workspaces and sections in Three.js with optional grids, or select Matplotlib explicitly.
 
 ## Installation
 
@@ -129,7 +129,7 @@ traj = joint_trajectory(
 )
 ```
 
-The result uses time-major arrays such as `traj.q.shape == (N, dof)` and can be passed directly to `RobotVisualizer.animate()`.
+The result uses time-major arrays such as `traj.q.shape == (N, dof)` and can be passed directly to `RobotVisualizer.animate()`. In the current **0.7.0 development branch**, `joint_waypoint_trajectory()` generates multi-waypoint motion, `joint_trapezoidal_trajectory()` produces synchronized rest-to-rest profiles, and `viz.animate(traj.q, times=traj.t)` uses physical-time playback in Three.js.
 
 ## Dynamics and Simulation
 
@@ -172,14 +172,22 @@ solution = simulate(
 ## Workspace Sampling
 
 ```python
-from moro.workspace import sample_workspace
-from moro.visualization import plot_workspace
+from moro.workspace import sample_workspace, section_workspace
+from moro.visualization import plot_workspace, plot_workspace_section
 
-workspace = sample_workspace(robot, samples=5000, seed=42)
-fig, ax = plot_workspace(workspace)
+workspace = sample_workspace(robot, samples=1024, method="sobol", seed=42)
+viewer = plot_workspace(workspace)  # Three.js in the 0.7.0 development branch
+# Matplotlib instead: fig, ax = plot_workspace(workspace, backend="matplotlib")
+
+section = section_workspace(workspace, plane="xy", level=0.0, thickness=0.05)
+section_viewer = plot_workspace_section(section, show_grid=True)
 ```
 
-Workspace samples are uniform in joint coordinates, not Cartesian space. The result stores both `workspace.configurations` and their corresponding Cartesian `workspace.points`.
+Workspace sampling operates in joint coordinates, not uniformly in Cartesian space. The result stores both `workspace.configurations` and their corresponding Cartesian `workspace.points`. Sections select points near a plane; they do not reconstruct exact workspace boundaries. For the last stable release on PyPI, see the published [0.6.1 notes](https://jorgedelossantos.github.io/moro/release-notes/0.6.1.html).
+
+## 0.7.0 development and migration
+
+The **0.7.0 functionality is currently on `develop`**, not yet published to PyPI. Compared with 0.6.x, this branch renames the `RobotVisualizer` keyword arguments to `configuration` / `configurations`, changes `plot_workspace()` to default to Three.js, and removes the previously deprecated dynamic-model alias, transformation wrappers, and `moro.plotting`. See the [unreleased 0.7.0 migration guide](https://jorgedelossantos.github.io/moro/release-notes/0.7.0.html).
 
 ## Documentation
 
