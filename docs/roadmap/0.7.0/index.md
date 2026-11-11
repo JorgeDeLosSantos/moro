@@ -138,7 +138,7 @@ Keep `moro.workspace` (sampling/data) independent of `moro.visualization.workspa
 
 | ID | Candidate | Initial direction |
 | --- | --- | --- |
-| **W-01** | Three.js workspace backend | **Implemented in D5 (pending CI and browser acceptance):** `plot_workspace()` defaults to interactive Three.js points; explicit `backend='matplotlib'` preserves `(fig, ax)`. Camera presets, fitting and projection use the same shared camera helpers as `RobotVisualizer`. |
+| **W-01** | Three.js workspace backend | **Implemented in D5 (pending CI and browser acceptance):** `plot_workspace()` and `plot_workspace_section()` default to interactive Three.js points; explicit `backend='matplotlib'` preserves `(fig, ax)`. Both support an optional grid, disabled by default. Camera presets, fitting and projection reuse the shared helpers from `RobotVisualizer`. |
 | **W-02** | Cartesian plane sections | Introduce Python-side approximate slices near `xy/xz/yz` planes at an explicit level and thickness, suitable for 2D plots or Three.js exploration. |
 | **W-03** | Alternative joint-space samplers | Add method selection, initially considering `random` (current default), `sobol`, `latin_hypercube`, and `grid`, with seed and sample-count contracts documented. |
 
