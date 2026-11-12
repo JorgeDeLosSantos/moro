@@ -1,7 +1,7 @@
 # Inverse Dynamics of Joint Trajectories: Quintic vs. Trapezoidal
 
-This notebook-ready example explores **API-002** in Moro 0.7.0
-(development branch). We generate two rest-to-rest motions of a planar
+This notebook-ready example explores **API-002** in Moro 0.7.0.
+We generate two rest-to-rest motions of a planar
 RR manipulator with **identical joint-space endpoints and duration**,
 then compare the generalized torques required by the ideal dynamics.
 
@@ -207,4 +207,4 @@ the resulting efforts; the derivatives already encode time dependence.
 
 For details, see [Dynamics](../user-guide/dynamics.md),
 [Trajectory Generation](../user-guide/trajectories.md) and
-[0.7.0 development notes](../release-notes/0.7.0.md).
+[0.7.0 release notes](../release-notes/0.7.0.md).

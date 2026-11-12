@@ -193,7 +193,7 @@ The complete substitution dictionary introduced above still works:
 viz.plot(values)
 ```
 
-In the Moro 0.7.0 development branch, the preferred form separates the joint state
+The preferred form separates the joint state
 from the fixed geometric parameters:
 
 ```python

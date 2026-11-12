@@ -5,8 +5,8 @@ numerical joint vector for the robot configuration and pass constant
 symbolic DH parameters separately. The same workflow works in Jupyter
 and Google Colab, with **Three.js** as the default rendering backend.
 
-The examples use the **0.7.0 development version**, not the 0.6.1
-PyPI release. No browser-specific JavaScript or extra visualization
+These examples use the `parameters=` visualization API introduced in
+Moro 0.7.0. No browser-specific JavaScript or extra visualization
 packages are needed in notebook cells.
 
 ## 1. Build a symbolic RR model
@@ -189,4 +189,4 @@ gravity) are not required for kinematic visualization.
 
 For full API conventions, see the
 [Visualization User Guide](../user-guide/visualization.md)
-and [unreleased 0.7.0 development notes](../release-notes/0.7.0.md).
+and [0.7.0 release notes](../release-notes/0.7.0.md).

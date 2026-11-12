@@ -5,7 +5,7 @@ robot joint configurations at their real, possibly nonuniform, sample
 times. Unlike the older fixed-`interval` player, timestamped playback
 uses the time vector produced by the trajectory generator.
 
-The exercises require the current Moro 0.7.0 development version.
+These exercises use the physical-time playback API introduced in Moro 0.7.0.
 They use a fully numerical manipulator model, so no additional geometric
 parameter substitutions are needed. For a model with symbolic lengths,
 the API-001 `parameters=` argument lets you supply those fixed values
@@ -211,7 +211,7 @@ the requested physical-time playback.
 Also, `times` and `interval` must not be specified together.
 For background and the timing contract, see
 [Visualization](../user-guide/visualization.md) and the
-[T-06 design](https://github.com/JorgeDeLosSantos/moro/blob/develop/docs/design/0.7.0/physical-time-playback.md).
+[T-06 design](https://github.com/JorgeDeLosSantos/moro/blob/master/docs/design/0.7.0/physical-time-playback.md).
 
 **Teaching question:** Compare the two animations from Section 2.
 How does holding every sample for 150 milliseconds change the student's
