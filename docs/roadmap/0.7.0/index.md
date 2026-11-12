@@ -1,6 +1,6 @@
 # Moro 0.7.0 — Frozen feature scope and stabilization plan
 
-> **Status:** Scope frozen (S1), M-01 cleanup merged (S2), integration and Colab checks accepted (S3); S4 documentation consolidated in PR #66; S5 release-candidate preparation underway. Moro 0.7.0 remains **unreleased**.  
+> **Status:** **Released on 2026-11-11 (America/Mexico_City)** as the stable GitHub Release `0.7.0`, with successful Trusted Publishing to PyPI. S1–S5 are complete; this document is retained as the historical release plan.  
 > **Baseline:** `develop` after PR #62 (merge `0c1b11b`), with no outstanding feature PRs when S1 began.  
 > **Goal:** stabilize, document and release the accepted functionality without adding new features.  
 > **Previous planning:** the 2026-11-03 candidate inventory and the rolling Moro roadmap are preserved in the design discussions and the historical notes below.
@@ -9,14 +9,14 @@
 
 **Working theme:** Advanced Trajectories & Numerical Exploration.
 
-**Current status:** The functional scope described below is implemented in
-`develop`. The core trajectory changes (T-01–T-04) were integrated via
-PRs #40–#47; physical-time playback (T-06) via PRs #49–#51;
-visualization API (API-001) via PRs #52–#54; inverse dynamics over
-trajectories (API-002) via PRs #55–#57; and workspace work
-(API-003/D1–D5) via PRs #58–#62. **Implementation complete does not
-mean release-ready:** compatibility cleanup, final cross-module
-validation, docs/migration review, and version/release checks remain.
+**Final status:** Features T-01–T-04, T-06, API-001/002/003,
+and M-01 were integrated, validated and released in Moro 0.7.0.
+The final documentation was integrated in PR #69, and the release tag
+points to commit `0904660691cf70c4bf157bca86913001eb25dd87`.
+The public GitHub Release was published at 2026-11-12 02:24:53 UTC
+(2026-11-11 20:24:53 Mexico City time), and the Trusted Publishing
+workflow succeeded. This plan is now a historical record; the
+scope-freeze and stabilization gates below are complete.
 
 The primary goal inherited from the rolling roadmap is to extend `moro.trajectory` from point-to-point interpolation to **multi-waypoint trajectories and motion profiles**. Complementary improvements emerged from practical use: more consistent visualization parameters, reusable inverse dynamics over sampled motion, and improved sampled-workspace exploration.
 
