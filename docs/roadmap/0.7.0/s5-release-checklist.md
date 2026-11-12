@@ -1,16 +1,15 @@
 # S5 — Moro 0.7.0 release-candidate checklist
 
-> **Status:** Candidate preparation in progress, **not published**.
-> Do not tag, publish a GitHub Release, or upload to PyPI until
-> the reviewed release candidate has been integrated into `master`
-> and the maintainer explicitly authorizes publication.
+> **Status:** **Completed.** Moro 0.7.0 was published on 2026-11-11
+> (Mexico City local date); the stable GitHub Release, distribution build,
+> and PyPI Trusted Publishing workflow all succeeded.
+> This checklist is retained as a historical release record.
 
 ## Candidate metadata
 
 - [x] Version set to `0.7.0` in `pyproject.toml`.
 - [x] Version set to `0.7.0` in `moro/version.py`.
-- [x] `CHANGELOG.md` contains a distinct `0.7.0` entry; **release
-      date is intentionally not assigned before publication**.
+- [x] `CHANGELOG.md` contains a distinct `0.7.0` entry; **the date is recorded in `CHANGELOG.md`**.
 - [x] Release notes include breaking changes, migration paths, new
       capabilities and explicitly deferred features.
 - [x] Existing PyPI Trusted Publishing workflow and the unprefixed
@@ -20,20 +19,20 @@
 
 ## Release-candidate validation gates
 
-- [ ] The S5 PR CI passes on Python 3.11–3.14.
-- [ ] Documentation build passes on the candidate.
-- [ ] `python -m build` and `python -m twine check dist/*` pass.
-- [ ] Wheel **and** sdist independently install in clean environments,
+- [x] The S5 PR CI passes on Python 3.11–3.14.
+- [x] Documentation build passes on the candidate.
+- [x] `python -m build` and `python -m twine check dist/*` pass.
+- [x] Wheel **and** sdist independently install in clean environments,
       import `moro`, and report `0.7.0`.
-- [ ] Both installed distributions include the Three.js viewer,
+- [x] Both installed distributions include the Three.js viewer,
       animation, workspace and common JavaScript resources.
-- [ ] Installed distribution smoke tests exercise trajectory,
+- [x] Installed distribution smoke tests exercise trajectory,
       physical-time animation, workspace and section viewers.
-- [ ] Final review finds no version inconsistencies or regressions.
-- [ ] The changelog and release-note publication wording is finalized
+- [x] Final review finds no version inconsistencies or regressions.
+- [x] The changelog and release-note publication wording is finalized
       after the release date is decided.
 
-## Maintainer publication sequence (separate authorization)
+## Maintainer publication sequence (completed for 0.7.0)
 
 1. Review the candidate diff, CI and packaging results.
 2. Merge the accepted candidate into `develop`, then prepare the
