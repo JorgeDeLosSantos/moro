@@ -1,8 +1,7 @@
 """Regression witnesses for the Moro 0.7.1 IK robustness investigation.
 
-Two strict xfails document reproducible *current* LM failures. Remove their
-xfail markers only when the solver fix makes the default calls converge.
-The other tests establish known-reachable controls without requiring
+Regression tests protect the corrected LM behavior (including two formerly
+expected failures) and known-reachable/infeasible controls, without requiring
 the solver to return a particular redundant/periodic joint configuration.
 """
 
