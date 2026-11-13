@@ -74,3 +74,86 @@ def test_physically_equivalent_m_and_mm_targets_are_reachable(regression_case):
         )
         assert solution.converged
         assert solution.error < 1e-6 * scale
+
+
+@pytest.mark.parametrize("scale", [1.0, 1e-3])
+def test_fixed_prismatic_joint_stays_infeasible_and_terminates(scale):
+    """A constrained target must not become a false success after LM hardening."""
+    robot = Robot((0, 0, q1, 0, "p"))
+    solution = solve_position_ik(
+        robot,
+        [0, 0, 3 * scale],
+        q0=[0],
+        joint_limits=[(0, 1 * scale)],
+        tol=1e-6 * scale,
+        error_change_tol=1e-12 * scale,
+        stagnation_iterations=6,
+        max_iter=100,
+    )
+    assert not solution.converged
+    assert 0 <= solution.q[0] <= scale
+    assert solution.iterations <= 100
+    assert solution.error >= 2 * scale - 1e-9 * scale
+
+
+@pytest.mark.parametrize("scale", [1.0, 1e-3])
+def test_mixed_revolute_prismatic_reachable_with_explicit_scaled_limits(scale):
+    """One R/P example exercises angular versus translational Jacobian columns."""
+    robot = Robot((200 * scale, 0, 0, q1),
+                  (0, 0, q2, 0, "p"))
+    target = np.asarray(
+        robot.T[:3, 3].subs({q1: 0.5, q2: 80 * scale}), dtype=float
+    ).reshape(3)
+    solution = solve_position_ik(
+        robot,
+        target,
+        q0=[0.49, 70 * scale],
+        joint_limits=[(-np.pi, np.pi), (0, 100 * scale)],
+        tol=1e-6 * scale,
+        error_change_tol=1e-12 * scale,
+        stagnation_iterations=12,
+        max_iter=200,
+    )
+    assert solution.converged
+    assert abs(solution.error) < 1e-6 * scale
+    assert 0 <= solution.q[1] <= 100 * scale
+
+
+def test_seeded_random_start_reproducible_without_multistart():
+    """A seeded random initial guess currently means one deterministic solve."""
+    robot = Robot((200, 0, 0, q1), (200, 0, 0, q2))
+    results = [
+        solve_position_ik(robot, [200, 200, 0], q0=None, random_state=13)
+        for _ in range(2)
+    ]
+    assert results[0].converged == results[1].converged
+    assert results[0].iterations == results[1].iterations
+    assert results[0].message == results[1].message
+    np.testing.assert_allclose(results[0].q, results[1].q, rtol=0, atol=0)
+    assert results[0].error == results[1].error
+
+
+def test_near_singular_position_ik_baseline():
+    """Retain near-singularity behavior as a control for the later correction."""
+    robot = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+    solution = solve_position_ik(
+        robot, [1.99, 0, 0], q0=[1, 0],
+        damping=10, tol=1e-8, max_iter=200,
+    )
+    assert solution.converged
+    assert solution.error < 1e-8
+
+
+def test_pose_ik_reachable_target_remains_solved():
+    """Pose IK shares LM machinery but mixes orientation and position units."""
+    from moro.inverse_kinematics import solve_pose_ik
+
+    robot = Robot((1, 0, 0, q1), (1, 0, 0, q2))
+    target = robot.T.subs({q1: 0.55, q2: 0.35})
+    result = solve_pose_ik(
+        robot, target, q0=[0.5, 0.3],
+        position_tol=1e-8, orientation_tol=1e-8, max_iter=200,
+    )
+    assert result.converged
+    assert result.position_error < 1e-8
+    assert result.orientation_error < 1e-8
