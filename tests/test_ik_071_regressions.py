@@ -177,3 +177,66 @@ def test_lm_stagnation_one_does_not_stop_at_first_damping_rejection():
     )
     assert solution.converged
     assert solution.error < 1e-6
+
+
+@pytest.mark.parametrize("stagnation_iterations", [5, 6])
+def test_default_damping_scale_pair_for_reported_rr_rrr(regression_case, stagnation_iterations):
+    """A's damping-rejection fix should solve the reported m/mm counterparts.
+
+    Use physically equivalent absolute position thresholds. These assertions
+    test the reported examples only; they are *not* a general scale-invariance
+    guarantee for arbitrary robots or initial configurations.
+    """
+    make_robot, target, q0 = regression_case
+    for scale in (1.0, 1e-3):
+        solution = solve_position_ik(
+            make_robot(scale),
+            target * scale,
+            q0=q0,
+            tol=1e-6 * scale,
+            error_change_tol=1e-12 * scale,
+            stagnation_iterations=stagnation_iterations,
+            max_iter=100,
+        )
+        assert solution.converged, (
+            f"scale={scale} stalled={stagnation_iterations} "
+            f"error={solution.error} iterations={solution.iterations} "
+            f"reason={solution.message}"
+        )
+        assert solution.error < 1e-6 * scale
+
+
+def test_unreachable_scaled_rr_stays_nonconvergent():
+    """The relaxed LM rejection accounting must not claim unreachable goals."""
+    for scale in (1.0, 1e-3):
+        robot = Robot((200 * scale, 0, 0, q1),
+                      (200 * scale, 0, 0, q2))
+        solution = solve_position_ik(
+            robot,
+            [1000 * scale, 1000 * scale, 0],
+            q0=[0.1, 0.1],
+            tol=1e-6 * scale,
+            error_change_tol=1e-12 * scale,
+            max_iter=100,
+        )
+        assert not solution.converged
+        assert solution.iterations <= 100
+        assert np.isfinite(solution.error)
+
+
+@pytest.mark.parametrize("scale", [1.0, 1e-3])
+def test_scaled_rr_lm_with_restricted_revolute_joint(scale):
+    """Limits can prevent reaching a Cartesian target at either scale."""
+    robot = Robot((200 * scale, 0, 0, q1),
+                  (200 * scale, 0, 0, q2))
+    sol = solve_position_ik(
+        robot, [200 * scale, 200 * scale, 0],
+        q0=[0, 0],
+        joint_limits=[(0, 0), (0, 0)],
+        tol=1e-6 * scale,
+        error_change_tol=1e-12 * scale,
+        max_iter=50,
+    )
+    assert not sol.converged
+    assert sol.q == [0.0, 0.0]
+    assert sol.iterations <= 50
