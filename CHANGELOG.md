@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-13
+
+### Fixed
+
+* Corrected **premature Levenberg–Marquardt inverse-kinematics stagnation**: consecutive rejected trial steps that increase damping are no longer automatically counted as accepted-step stagnation in `solve_position_ik()` and `solve_pose_ik()`.
+* Added bounded termination for repeated unsuccessful damping adjustments while retaining detection of genuinely blocked steps caused by joint limits and preserving the global `max_iter` attempt budget.
+* The original reported reachable RR and RRR problems now converge with default LM options for both metre- and millimetre-scale representations when equivalent absolute Cartesian tolerances are used.
+
+### Tests and documentation
+
+* Expanded deterministic regression coverage for position and pose IK, Cartesian-position trajectory solving, random-seed reproducibility, singular configurations, mixed revolute/prismatic joints, and unreachable or constrained targets.
+* Clarified how LM rejection, stagnation, joint limits, damping and iteration accounting work, including length-unit scaling limitations.
+
+### Compatibility and scope
+
+* No public API signatures, result structures, method defaults, or parameter names changed. `damping=1.0` and `stagnation_iterations=5` remain defaults.
+* Convergence outcomes and iteration counts may differ from 0.7.0 because the numerical termination behavior has been corrected.
+* **Not a guarantee of global convergence or unit invariance:** the numerical damping parameter remains scale sensitive; general normalization for mixed joint types and weighted full-pose IK remains deferred.
+
+
 ## [0.7.0] - 2026-11-11
 
 ### Added
