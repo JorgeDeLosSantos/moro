@@ -1,6 +1,6 @@
 # Moro 0.7.1 — D4 stabilization gate
 
-> **Status:** In review (PR #76). Do not mark complete until final CI and release candidate checks are verified.
+> **Status:** D4 completed; PR #76 merged after CI approval. Release-candidate validation remains a separate D5 gate.
 > **Baseline:** `develop` after IK-071-A (#74) and scaled regression evaluation (#75).
 > **Scope:** no numerical algorithm redesign or changed public solver options.
 
@@ -9,7 +9,7 @@
 - D1 (PR #72) established the original RR/RRR default-LM failures and feasibility controls, initially with two strict xfails.
 - IK-071-A (PR #74) separated rejected LM damping adjustments from accepted-step stagnation, while retaining the `max_iter` attempt budget and existing public defaults.
 - Scale evaluation (PR #75) passed Python 3.11–3.14, distribution smoke tests and docs build, with **1659 passed, 2 skipped** reported by the Python 3.11 test job. This established that the reported RR/RRR targets are solved both in metres and millimetres when linear tolerances are scaled consistently.
-- This D4 PR updates theory/user guidance and regression descriptions and adds trajectory/pose IK coverage. Its CI outcome must be confirmed before merge.
+- D4 PR #76 updated theory/user guidance and regression descriptions, and added trajectory/pose IK coverage. Its CI passed Python 3.11–3.14, documentation, and distribution checks; Python 3.11 reported **1662 passed, 2 skipped**. The PR was merged into `develop` as `be8d5d8`.
 
 ## D4 acceptance checklist
 
@@ -19,9 +19,9 @@
 - [x] Explicit guards for `max_iter` and `stagnation_iterations=1`.
 - [x] Control tests for mixed R/P, near-singular start, seeded initial configurations and reachable full pose.
 - [x] The scale-invariance limitation is explicitly documented; full normalization remains out of the accepted patch.
-- [ ] New D4 trajectory/pose tests and doc changes pass Python 3.11–3.14 and documentation CI.
-- [ ] Review any CI anomalies and resolve before integrating PR #76.
-- [ ] Validate the release candidate packaging, Sphinx build and clean wheel/sdist installation under D5.
+- [x] New D4 trajectory/pose tests and doc changes pass Python 3.11–3.14 and documentation CI.
+- [x] Review D4 CI and integrate PR #76.
+- [ ] Validate the 0.7.1 release candidate packaging, Sphinx build and clean wheel/sdist installation under D5.
 
 ## Important numerical limits
 
