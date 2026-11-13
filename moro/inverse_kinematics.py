@@ -1020,6 +1020,7 @@ def _solve_pose_jacobian(
     completed_steps = 0
     stalled_by_step = 0
     stalled_by_error = 0
+    consecutive_rejections = 0
 
     state = _evaluate_pose_state(
         fk_func, q, target_num, position_weight, orientation_weight
@@ -1119,6 +1120,30 @@ def _solve_pose_jacobian(
 
         completed_steps += 1
 
+        if method == "lm" and not accepted_step:
+            # Damping adaptation is not accepted-step stagnation; every
+            # rejected trial still consumes one max_iter attempt.
+            consecutive_rejections += 1
+            attempted_step_norm = float(np.linalg.norm(q_trial - q))
+            if step_tol > 0 and attempted_step_norm <= step_tol:
+                stalled_by_step += 1
+                if stalled_by_step >= stagnation_iterations:
+                    return _make_pose_solution(
+                        q, False, completed_steps, method, target_pose,
+                        state=state, message=MSG_STAGNATED_STEP,
+                    )
+            else:
+                stalled_by_step = 0
+            stalled_by_error = 0
+            if consecutive_rejections >= max(12, stagnation_iterations):
+                return _make_pose_solution(
+                    q, False, completed_steps, method, target_pose,
+                    state=state, message=MSG_STAGNATED_POSE_ERROR,
+                )
+            continue
+
+        consecutive_rejections = 0
+
         not_converged_next = not (
             next_state["position_error"] <= position_tol
             and next_state["orientation_error"] <= orientation_tol
@@ -1143,10 +1168,7 @@ def _solve_pose_jacobian(
                 state=state, message=MSG_CONVERGED
             )
 
-        if (
-            stalled_by_step >= stagnation_iterations
-            and (method != "lm" or accepted_step or stagnation_iterations > 1)
-        ):
+        if stalled_by_step >= stagnation_iterations:
             return _make_pose_solution(
                 q, False, completed_steps, method, target_pose,
                 state=state, message=MSG_STAGNATED_STEP
@@ -1184,6 +1206,7 @@ def _solve_newton_or_lm(
     completed_steps = 0
     stalled_by_step = 0
     stalled_by_error = 0
+    consecutive_rejections = 0
 
     p_current = _safe_eval_vector(fk_func, q, 3)
     if p_current is None:
@@ -1343,6 +1366,34 @@ def _solve_newton_or_lm(
 
         completed_steps += 1
 
+        if method == "lm" and not accepted_step:
+            # Rejected LM trials adjust damping; they do not establish
+            # accepted-step stagnation. Every attempt still counts in max_iter.
+            consecutive_rejections += 1
+            attempted_step_norm = float(np.linalg.norm(q_trial - q))
+            if step_tol > 0 and attempted_step_norm <= step_tol:
+                # A step blocked by limits (or numerically negligible) is
+                # genuine joint-step stagnation, even when LM rejects it.
+                stalled_by_step += 1
+                if stalled_by_step >= stagnation_iterations:
+                    return _make_solution(
+                        q, False, completed_steps, method,
+                        message=MSG_STAGNATED_STEP,
+                        target=target, position=p_current, residual=error_vec,
+                    )
+            else:
+                stalled_by_step = 0
+            stalled_by_error = 0
+            if consecutive_rejections >= max(12, stagnation_iterations):
+                return _make_solution(
+                    q, False, completed_steps, method,
+                    message=MSG_STAGNATED_ERROR,
+                    target=target, position=p_current, residual=error_vec,
+                )
+            continue
+
+        consecutive_rejections = 0
+
         if step_tol > 0 and step_norm <= step_tol and error_norm_next >= tol:
             stalled_by_step += 1
         else:
@@ -1371,11 +1422,7 @@ def _solve_newton_or_lm(
                 residual=error_vec,
             )
 
-        if (
-            stalled_by_step >= stagnation_iterations
-            and error_norm >= tol
-            and (method != "lm" or accepted_step or stagnation_iterations > 1)
-        ):
+        if stalled_by_step >= stagnation_iterations and error_norm >= tol:
             return _make_solution(
                 q,
                 converged=False,

@@ -33,15 +33,11 @@ def regression_case(request):
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="0.7.0 LM counts five rejected damping adjustments as stagnation",
-)
 def test_lm_default_does_not_terminate_before_first_accepted_step(regression_case):
     make_robot, target, q0 = regression_case
     solution = solve_position_ik(make_robot(1.0), target, q0=q0)
 
-    # Currently XFAIL: the reported cases exit after five rejected LM trials.
+    # Regression: default LM must adapt damping past initial rejected trials.
     assert solution.converged
     assert solution.error < 1e-6
 
@@ -157,3 +153,27 @@ def test_pose_ik_reachable_target_remains_solved():
     assert result.converged
     assert result.position_error < 1e-8
     assert result.orientation_error < 1e-8
+
+
+@pytest.mark.parametrize("max_iter", [1, 3, 5])
+def test_lm_rejected_attempts_still_count_toward_max_iter(max_iter):
+    """Damping adjustments cannot bypass the public iteration budget."""
+    robot = Robot((200, 0, 0, q1), (200, 0, 0, q2))
+    solution = solve_position_ik(
+        robot, [200, 200, 0], q0=[0.1, 0.1],
+        max_iter=max_iter,
+    )
+    assert not solution.converged
+    assert solution.iterations == max_iter
+    assert solution.message == "Maximum number of iterations reached."
+
+
+def test_lm_stagnation_one_does_not_stop_at_first_damping_rejection():
+    """One rejected, still-movable LM trial is not an accepted stagnation step."""
+    robot = Robot((200, 0, 0, q1), (200, 0, 0, q2))
+    solution = solve_position_ik(
+        robot, [200, 200, 0], q0=[0.1, 0.1],
+        stagnation_iterations=1,
+    )
+    assert solution.converged
+    assert solution.error < 1e-6
