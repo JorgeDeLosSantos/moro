@@ -239,3 +239,54 @@ def test_scaled_rr_lm_with_restricted_revolute_joint(scale):
     assert not sol.converged
     assert sol.q == [0.0, 0.0]
     assert sol.iterations <= 50
+
+
+def test_lm_position_trajectory_preserves_corrected_first_waypoint():
+    """Sequential IK must benefit from the corrected default LM behavior."""
+    from moro.inverse_kinematics import solve_position_trajectory
+
+    robot = Robot((200, 0, 0, q1), (200, 0, 0, q2))
+    target = [200, 200, 0]
+    trajectory = solve_position_trajectory(
+        robot, [target, target], q0=[0.1, 0.1],
+    )
+    assert trajectory.converged
+    assert trajectory.failed_index is None
+    assert len(trajectory.solutions) == 2
+    assert trajectory.solutions[0].converged
+    assert trajectory.solutions[1].converged
+    assert trajectory.solutions[1].iterations == 0
+
+
+def test_pose_lm_attempt_budget_and_infeasible_limits():
+    """Pose LM must retain finite bounded termination under hard joint limits."""
+    from moro.inverse_kinematics import solve_pose_ik
+
+    robot = Robot((1.0, 0, 0, q1))
+    target = robot.T.subs({q1: 0.9})
+    for max_iter in (1, 3, 15):
+        sol = solve_pose_ik(
+            robot, target, q0=[0],
+            joint_limits=[(0.0, 0.0)],
+            max_iter=max_iter,
+        )
+        assert not sol.converged
+        assert sol.iterations <= max_iter
+        assert sol.q == [0.0]
+        assert np.isfinite(sol.position_error)
+        assert np.isfinite(sol.orientation_error)
+
+
+def test_pose_lm_rejected_attempts_consume_max_iter():
+    """Pose LM keeps the same public iteration-count convention as position LM."""
+    from moro.inverse_kinematics import solve_pose_ik
+
+    robot = Robot((1.0, 0, 0, q1))
+    target = robot.T.subs({q1: 1.0})
+    sol = solve_pose_ik(
+        robot, target, q0=[0.0],
+        max_iter=1, position_tol=1e-12, orientation_tol=1e-12,
+    )
+    assert not sol.converged
+    assert sol.iterations == 1
+    assert sol.message == "Maximum number of iterations reached."
