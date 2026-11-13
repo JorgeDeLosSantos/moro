@@ -64,3 +64,27 @@ Sample sizes are exploratory. These numbers must not be turned into CI success-r
 - Do not equate a rejected trial with a physically impossible target.
 - Maintain controlled termination for genuinely blocked problems.
 - `stagnation_iterations=10` alone is not an accepted fix.
+
+
+## Follow-up D1 coverage (PR #72)
+
+The initial regression commit passed GitHub CI, including Python 3.11–3.14, distribution checks, and documentation. Python 3.11 reported `1639 passed, 2 skipped, 2 xfailed`. The two strict expected failures were the reported default-LM RR and RRR witnesses.
+
+An additional commit extends deterministic coverage to:
+- a target unreachable because a prismatic joint is limited to a shorter travel, at both length scales;
+- a reachable mixed R/P robot with scaled linear geometry **and** explicitly scaled prismatic limits;
+- seeded random-start reproducibility;
+- a near-singular reachable position-IK control;
+- a reachable full-pose IK control with separate angular and translational accuracy checks.
+
+These are **regression protections**, not claims of a global success rate. Their new CI status must be confirmed before declaring D1 complete.
+
+### D1-to-D2 preliminary design implications
+
+1. Keep the LM damping-adjustment budget independent from an accepted-step stagnation measure. A rejected trial signals an inadequate proposed damping value, not proof that the configuration is stuck.
+2. Keep a finite bound on consecutive rejected trials and on total iterations; preserve meaningful messages if damping adaptation cannot produce improvement.
+3. Compare normalization policies against mixed R/P systems. Scaling position alone changes only translational Jacobian rows for revolute joints, while prismatic columns retain dimensionless translational derivatives; blindly normalizing a common `J` can change the relative joint-step penalty.
+4. Pose-IK weights and orientation residuals require their own examination; pose IK should not inherit a position-only normalization uncritically.
+5. Default `damping=1` semantics must be reviewed explicitly before deciding whether a scale-normalized policy is acceptable in a patch release.
+
+The above are **design considerations**, not yet approved numerical changes.
