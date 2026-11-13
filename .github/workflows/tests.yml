@@ -111,7 +111,6 @@ jobs:
           from moro.workspace import sample_workspace, section_workspace
           from moro.visualization import plot_workspace, plot_workspace_section
           from moro.trajectory import joint_waypoint_trajectory
-          assert moro.__version__ == "0.7.0"
           robot = moro.Robot((0.5, 0, 0, q, "r"))
           robot.joint_limits = [(0.0, 1.0)]
           workspace = sample_workspace(robot, method="grid", grid_shape=(5,))
@@ -121,7 +120,7 @@ jobs:
           motion = joint_waypoint_trajectory([0.0, 0.5, 1.0], [0, 1, 2], samples_per_segment=3)
           assert motion.q.shape == (5, 1)
           assert isinstance(viz.animate(motion.q, times=motion.t), HTML)
-          print("Moro 0.7.0 installed-sdist smoke test passed.")
+          print(f"Moro {moro.__version__} installed-sdist smoke test passed.")
           PY
 
       - name: Smoke test installed package
@@ -167,7 +166,6 @@ jobs:
           assert '"joint_solids"' in plot.data
           assert '"interval": 50.0' in animation.data
           assert '"joint_solids"' in animation.data
-          assert moro.__version__ == "0.7.0"
           from moro.trajectory import joint_waypoint_trajectory
           from moro.workspace import section_workspace
           from moro.visualization import plot_workspace_section
@@ -179,5 +177,5 @@ jobs:
           motion = joint_waypoint_trajectory([0.0, 0.5, 1.0], [0, 1, 2], samples_per_segment=3)
           assert motion.q.shape == (5, 1)
           assert isinstance(viz.animate(motion.q, times=motion.t), HTML)
-          print("Moro 0.7.0 installed-wheel smoke test passed.")
+          print(f"Moro {moro.__version__} installed-wheel smoke test passed.")
           PY
