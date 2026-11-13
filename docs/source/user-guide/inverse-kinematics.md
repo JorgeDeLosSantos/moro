@@ -456,6 +456,21 @@ stagnation_iterations=5
 
 These options normally do not need to be changed for basic use, but they can be useful when diagnosing difficult IK problems.
 
+With Levenberg–Marquardt, a rejected trial may simply mean that the damping
+parameter needs to be increased. Moro therefore distinguishes such damping
+adjustments from genuinely small accepted updates. Rejected attempts still
+count toward `max_iter`, and persistently rejected steps terminate within a
+finite budget. A step that is effectively blocked by joint limits can still
+trigger the step-stagnation criterion.
+
+The initial damping is specified numerically, so conversion between linear
+units (such as metres and millimetres) can change the convergence path,
+even when the physical target is equivalent. The position tolerance
+(`tol`) and error-change threshold (`error_change_tol`) are expressed in
+the same linear units as the robot model and target. The correction to
+LM rejection handling does not guarantee convergence from every initial
+guess or general unit invariance.
+
 ## Inspecting an IK solution
 
 `solve_position_ik()` returns an `IKSolution`.

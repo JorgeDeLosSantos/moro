@@ -774,6 +774,16 @@ $$
 
 consecutive iterations or sweeps.
 
+For Levenberg–Marquardt, a rejected trial normally increases the damping
+parameter without changing the joint configuration. Rejected trials with a
+non-negligible **proposed** joint step are damping-adaptation attempts, not
+accepted-step stagnation; they do not increase the accepted-step stagnation
+counter. A rejected trial whose effective movement **after joint limits** is
+negligible can still indicate genuine step stagnation. A finite consecutive
+rejection budget also prevents endless damping adjustments.
+
+Rejections remain counted in `max_iter` and in the returned `iterations`.
+
 ## Stagnation by lack of error improvement
 
 Moro also tracks the change in Cartesian error:
