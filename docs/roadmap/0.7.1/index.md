@@ -81,7 +81,7 @@ No public argument renames or new result class hierarchy. Changes to convergence
 - Explicit maintainer authorization is required before publishing a stable GitHub Release, which triggers PyPI Trusted Publishing.
 - Verify PyPI installation and synchronize `develop` after release.
 
-Follow [maintainer release procedure](../../.github/RELEASING.md).
+Follow [maintainer release procedure](../../../.github/RELEASING.md).
 
 ## Acceptance principles
 
@@ -98,4 +98,4 @@ Follow [maintainer release procedure](../../.github/RELEASING.md).
 - [Moro 0.7.0 release plan](../0.7.0/index.md)
 - [Inverse-kinematics theory](../../source/theory/inverse-kinematics.md)
 - [Inverse-kinematics user guide](../../source/user-guide/inverse-kinematics.md)
-- [Release runbook](../../.github/RELEASING.md)
+- [Release runbook](../../../.github/RELEASING.md)
