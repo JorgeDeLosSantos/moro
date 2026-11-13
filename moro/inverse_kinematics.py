@@ -1935,7 +1935,11 @@ def solve_position_ik(
 
     Stagnation can stop the solver early when the effective step becomes too
     small or the position error stops improving for
-    ``stagnation_iterations`` consecutive iterations/sweeps.
+    ``stagnation_iterations`` consecutive iterations/sweeps. In LM,
+    ordinary rejected trials adjust damping without counting as accepted-step
+    stagnation. Rejected steps blocked by joint limits can still count toward
+    step stagnation, and a finite consecutive rejection budget prevents
+    indefinite damping adjustment. All attempts count toward ``max_iter``.
 
     If ``q0 is None``, random initialization is sampled with a local NumPy
     Generator, so integer ``random_state`` values make initialization
